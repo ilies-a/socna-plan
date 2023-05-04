@@ -30,6 +30,7 @@ const PlanElementMenu: React.FC = () => {
   },[planElements]);
 
   const addLine = useCallback(()=>{
+    console.log("addLine")
     const lineLenghtMaxWhenAdded = 100;
     let lineLength = planProps.dimensions.w * 0.3;
     lineLength = lineLength < lineLenghtMaxWhenAdded ? lineLength : lineLenghtMaxWhenAdded;
