@@ -562,16 +562,24 @@ const Plan: React.FC = () => {
                 </Group> */}
                 {
                     Object.entries(planElements).map(([i, v]) => {
-                    return <Group key = {i}><Rect
-                    key = {i}
-                    x={0}
-                    y={0}
-                    width={100}
-                    height={100}
-                    fill="blue"
-                    onClick={e =>{console.log("Click on child")}}
-                    draggable
-                /></Group>
+                    return <Group key = {i}>
+                    <Group key={i}
+                    // onMouseUp={_ => {
+                    //     if(l.addPointSession){                    
+                    //         l.endAddPointSession();
+                    //         dispatch(updatePlanElement(l));
+                    //     }
+                    // }}
+                    >
+                    <Path
+                        data= "M 0 0 50 0"
+                        stroke="grey"
+                        strokeWidth={50}
+
+                    />
+
+                </Group>
+                </Group>
                 })
                 }
                 </Layer>
