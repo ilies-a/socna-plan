@@ -561,8 +561,18 @@ const Plan: React.FC = () => {
                 />
                 </Group> */}
                 {
-                    Object.entries(planElements).map(([_, v]) => {
-                    return getPlanElement(v)})
+                    Object.entries(planElements).map(([i, v]) => {
+                    return <Rect
+                    key = {i}
+                    x={0}
+                    y={0}
+                    width={100}
+                    height={100}
+                    fill="blue"
+                    onClick={e =>{console.log("Click on child")}}
+                    draggable
+                />
+                })
                 }
                 </Layer>
             </Stage>

@@ -46,7 +46,7 @@ const PlanElementMenu: React.FC = () => {
 
     const newElement:PlanElement = new Line(v4(), [new Point(p1x,p1y), new Point(p2x, p2y)], 25);
     dispatch(addPlanElement(newElement));
-  },[dispatch, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
+  },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
 
   return (
     <div className={styles['main']}>

@@ -6,7 +6,7 @@ const id2 = v4();
 
 export const initialPlanElements: {[key:string]: PlanElement} = {
     [id1]: new Line(id1, [new Point(50,50), new Point(300,50), new Point(400,300)], 25),
-    // [id2]: new Line(id2, [new Point(500,500), new Point(600,510), new Point(700,530)], 25),
+    [id2]: new Line(id2, [new Point(500,500), new Point(600,510), new Point(700,530)], 25),
 
     // [id2]: new Rectangle(id2, 500, 110, 100, 100),
 };
