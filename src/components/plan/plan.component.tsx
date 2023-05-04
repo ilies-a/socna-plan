@@ -562,6 +562,7 @@ const Plan: React.FC = () => {
                 </Group> */}
                 {
                     Object.entries(planElements).map(([i, el]) => {
+                        console.log("el.constructor.name", el.constructor.name);
                         const l = el as Line;
                         const path = l.path;
                     return <Group key = {i}>
