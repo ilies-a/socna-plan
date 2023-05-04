@@ -43,6 +43,16 @@ const Plan: React.FC = () => {
     // const [draggable, setDraggable] = useState<boolean>(true);
     
     useEffect(()=>{
+        dispatch(setPlanElements(initialPlanElements));
+    },[dispatch]);
+
+    useEffect(()=>{
+        const newPlanProps = new PlanProps();
+        newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
+        dispatch(updatePlanProps(newPlanProps));
+    },[dispatch]);
+    
+    useEffect(()=>{
         const newPlanProps = new PlanProps();
         newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
         dispatch(updatePlanProps(newPlanProps));
