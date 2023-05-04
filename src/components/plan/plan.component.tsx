@@ -550,7 +550,6 @@ const Plan: React.FC = () => {
                     dispatch(setUnselectAllOnPlanMouseUp(true));}}
                 >
                 <Layer>
-                {/* <Group key={123}>
                 <Rect
                     x={0}
                     y={0}
@@ -559,11 +558,10 @@ const Plan: React.FC = () => {
                     fill="blue"
                     onClick={e =>{console.log("Click on child")}}
                 />
-                </Group> */}
-                {
+                {/* {
                     Object.entries(planElements).map(([_, v]) => {
                     return getPlanElement(v)})
-                }
+                } */}
                 </Layer>
             </Stage>
         {/* <div style={{"position":"absolute"}}>{msg}</div> */}
