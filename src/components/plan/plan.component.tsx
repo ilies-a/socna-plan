@@ -561,9 +561,11 @@ const Plan: React.FC = () => {
                 />
                 </Group> */}
                 {
-                    Object.entries(planElements).map(([i, v]) => {
+                    Object.entries(planElements).map(([i, el]) => {
+                        const l = el as Line;
+                        const path = l.path;
                     return <Group key = {i}>
-                    <Group key={i}
+                    <Group key={l.id}
                     // onMouseUp={_ => {
                     //     if(l.addPointSession){                    
                     //         l.endAddPointSession();
@@ -572,12 +574,79 @@ const Plan: React.FC = () => {
                     // }}
                     >
                     <Path
-                        data= "M 0 0 50 0"
+                        data= {
+                            (():string => {
+                                let s:string = "";
+                                s += "M";
+                                for(const point of path){
+                                    s += " " + point.x + " " + point.y + " ";
+                                }
+                                // let iMax = path.length - 1;
+                                // if(path[0].x === path[iMax].x && path[0].y === path[iMax].y){
+                                //     s += "Z";
+                                // }
+                                s += l.pathIsClose ? "Z":"";
+                                return s
+                            })()
+                        }
                         stroke="grey"
-                        strokeWidth={50}
+                        strokeWidth={l.width}
+                        // onMouseDown={_ => {
+                        //     dispatch(setSelectingPlanElement(true));
+                        // }}
+                        // onTouchStart={_ => {
+                        //     dispatch(setSelectingPlanElement(true));
+                        // }}
+                        // onMouseUp={_ => {
+                        //     // console.log("plan el mouseup")
+                        //     // dispatch(setSelectingPlanElement(false));
+                        //     // selectPlanElement(el);
+                        //     //dispatch(setSelectingPlanElement(false));
+                        // }}
+                        // onTouchEnd={_ => {
+                        //     dispatch(setSelectingPlanElement(false));
+                        // }}
+                        onClick={_ => {
+                            console.log("selectPlanElement");
+                            selectPlanElement(el);
+                            dispatch(setUnselectAllOnPlanMouseUp(false));
+                        }}
+                        onTap={_ => {
+                            console.log("selectPlanElement");
+                            selectPlanElement(el);
+                            dispatch(setUnselectAllOnPlanMouseUp(false));
+                        }}
+                        onPointerDown={_ =>{
+                            el.setOnPointerDown(true);
+                        }}
+                        //CODE FOR SHAPE VERSION
+                        // sceneFunc={(context, shape) => {
+                        //     context.beginPath();
+                        //     if(!path.length) return;
 
+                        //     context.moveTo(path[0].x, path[0].y);
+                        //     for(let i=1; i<path.length; i++){
+                        //         context.lineTo(path[i].x, path[i].y);
+                        //     }
+
+                        // //   context.closePath();
+                        // // (!) Konva specific method, it is very important
+                        // context.fillStrokeShape(shape);
+                        // }}
                     />
-
+                    {                    
+                        path.map((p, _) => {
+                            return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id}/>
+                        })
+                    }
+                    {   
+                        //property l.addingPointFrom
+                        //l.addingPoint ?
+                        //<LineAddPoint line={l} position={cursorPosOnPlan}/>
+                        l.addPointSession?
+                        <LineAddPoint line={l} position={cursorPos}/>
+                        :null
+                    }
                 </Group>
                 </Group>
                 })
