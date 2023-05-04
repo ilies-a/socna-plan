@@ -1,0 +1,2 @@
+export const PLAN_WIDTH_SCREEN_RATIO = 0.9;
+export const PLAN_HEIGHT_SCREEN_RATIO = 0.8;

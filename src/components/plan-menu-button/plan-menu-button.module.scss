@@ -1,0 +1,26 @@
+.button{
+    $size: 50px;
+    font-size: 1em;
+    border:1px solid black;
+    width:$size;
+    height:$size;
+    border-radius: 50%;
+
+    &:active, &.active{
+        border-width: 2px;
+        font-weight: bold;;
+    }
+
+    @media(pointer: fine){
+        &:hover {
+            border-width: 2px;
+            font-weight: bold;
+        }
+    }
+
+    // span{
+    //     transform: translate(-50%, -50%);
+    //     border: 1px solid red;
+    // }
+
+}
