@@ -2,7 +2,7 @@ import { Group, Layer, Path, Rect, Shape, Stage } from "react-konva";
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, Line, LinePointMode, PlanElement, PlanProps, Point, Position, Rectangle } from "@/entities";
+import { Dimensions, Line, LinePointMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle } from "@/entities";
 import { initialPlanElements } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
@@ -68,8 +68,8 @@ const Plan: React.FC = () => {
     }, [dispatch]); 
 
     const getPlanElement = useCallback((el:PlanElement)=> {
-        switch(el.constructor.name){
-            case("Line"): {
+        switch(el.typeName){
+            case(PlanElementTypeName.Line): {
                 const l = el as Line;
                 const path = l.path;
                 // return <Path
@@ -167,30 +167,30 @@ const Plan: React.FC = () => {
                 </Group>
                 )
             };
-            case("Rectangle"): {
-                const r = el as Rectangle;
-                return(
-                    <Rect
-                        key={el.id}
-                        x={r.getX()}
-                        y={r.getY()}
-                        width={r.getW()}
-                        height={r.getH()}
-                        fill="blue"
-                        draggable
-                        onDragEnd={e => {
-                            r.setPos(e.target.getPosition().x, e.target.getPosition().y)
+            // default: {
+            //     const r = el as Rectangle;
+            //     return(
+            //         <Rect
+            //             key={el.id}
+            //             x={r.getX()}
+            //             y={r.getY()}
+            //             width={r.getW()}
+            //             height={r.getH()}
+            //             fill="blue"
+            //             draggable
+            //             onDragEnd={e => {
+            //                 r.setPos(e.target.getPosition().x, e.target.getPosition().y)
 
-                            // console.log("r.x = ",r.x)
-                            // const rindex = planElements.findIndex((value) => value.id === el.id);
-                            // (planElements[rindex] as Rectangle).x = r.x;
-                            // (planElements[rindex] as Rectangle).x1 = r.x;
-                            const newPlanElements = {...planElements};
-                            setPlanElements(newPlanElements);
-                        }}
-                    />
-                )
-            }
+            //                 // console.log("r.x = ",r.x)
+            //                 // const rindex = planElements.findIndex((value) => value.id === el.id);
+            //                 // (planElements[rindex] as Rectangle).x = r.x;
+            //                 // (planElements[rindex] as Rectangle).x1 = r.x;
+            //                 const newPlanElements = {...planElements};
+            //                 setPlanElements(newPlanElements);
+            //             }}
+            //         />
+            //     )
+            // }
         }
     },[cursorPos, dispatch, planElements, selectPlanElement]);
 
@@ -210,8 +210,8 @@ const Plan: React.FC = () => {
     const addingPoint = useCallback(()=>{
         for(const elId in planElements){
             const el = planElements[elId];
-            switch(el.constructor.name){
-                case("Line"): {
+            switch(el.typeName){
+                case(PlanElementTypeName.Line): {
                     const l = el as Line;
                     if(l.addPointSession){
                         return true;
@@ -226,8 +226,8 @@ const Plan: React.FC = () => {
         //check if a linepoint is selected and has a selected point and is in AddPointMode and not already on addPointSession
         for(const elId in planElements){
             const el = planElements[elId];
-            switch(el.constructor.name){
-                case("Line"): {
+            switch(el.typeName){
+                case(PlanElementTypeName.Line): {
                     const l = el as Line;
                     if(l.getSelected() && l.linePointMode === LinePointMode.AddPoint && l.selectedPointId!= null && !l.addPointSession && l.pointIdCursorIsOver){
                         console.log("ok startAddPointSession")
@@ -245,8 +245,8 @@ const Plan: React.FC = () => {
     //     //check if a linepoint is selected and has a selected point and is in AddPointMode
     //     for(const elId in planElements){
     //         const el = planElements[elId];
-    //         switch(el.constructor.name){
-    //             case("Line"): {
+    //         switch(el.typeName){
+    //             case(PlanElementTypeName.Line): {
     //                 const l = el as Line;
     //                 if(l.addPointSession){
     //                     l.endAddPointSession();
@@ -262,8 +262,8 @@ const Plan: React.FC = () => {
         //check if a linepoint is selected and has a selected point and is in AddPointMode
         for(const elId in planElements){
             const el = planElements[elId];
-            switch(el.constructor.name){
-                case("Line"): {
+            switch(el.typeName){
+                case(PlanElementTypeName.Line): {
                     const l = el as Line;
                     if(l.addPointSession){
                         // l.endAddPointSession();
@@ -280,8 +280,8 @@ const Plan: React.FC = () => {
     const unselectAllOnPlanMouseUpAdditionalConditions = useCallback(() => {
         for(const elId in planElements){
             const el = planElements[elId];
-            switch(el.constructor.name){
-                case("Line"): {
+            switch(el.typeName){
+                case(PlanElementTypeName.Line): {
                     const l = el as Line;
                     if(l.selectedPointId){
                         l.selectPointId(null);
@@ -299,8 +299,8 @@ const Plan: React.FC = () => {
 
         for(const elId in planElements){
             const el = planElements[elId];
-            switch(el.constructor.name){
-                case("Line"): {
+            switch(el.typeName){
+                case(PlanElementTypeName.Line): {
                     const l = el as Line;
                     if(l.pointIdPointingDownOn){
                         unselectElements = false;
@@ -343,8 +343,8 @@ const Plan: React.FC = () => {
 
         // for(const elId in planElements){
         //     const el = planElements[elId];
-        //     switch(el.constructor.name){
-        //         case("Line"): {
+        //     switch(el.typeName){
+        //         case(PlanElementTypeName.Line): {
         //             const l = el as Line;
         //             if(l.selectedPointId){
         //                 l.selectPointId(null);
@@ -356,8 +356,8 @@ const Plan: React.FC = () => {
 
         // for(const elId in planElements){
         //     const el = planElements[elId];
-        //     switch(el.constructor.name){
-        //         case("Line"): {
+        //     switch(el.typeName){
+        //         case(PlanElementTypeName.Line): {
         //             const l = el as Line;
              
         //                 l.addPointSession = null;
@@ -561,96 +561,8 @@ const Plan: React.FC = () => {
                 />
                 </Group> */}
                 {
-                    Object.entries(planElements).map(([i, el]) => {
-                        console.log("el.constructor.name", el.constructor.name);
-                        const l = el as Line;
-                        const path = l.path;
-                    return <Group key = {i}>
-                    <Group key={l.id}
-                    // onMouseUp={_ => {
-                    //     if(l.addPointSession){                    
-                    //         l.endAddPointSession();
-                    //         dispatch(updatePlanElement(l));
-                    //     }
-                    // }}
-                    >
-                    <Path
-                        data= {
-                            (():string => {
-                                let s:string = "";
-                                s += "M";
-                                for(const point of path){
-                                    s += " " + point.x + " " + point.y + " ";
-                                }
-                                // let iMax = path.length - 1;
-                                // if(path[0].x === path[iMax].x && path[0].y === path[iMax].y){
-                                //     s += "Z";
-                                // }
-                                s += l.pathIsClose ? "Z":"";
-                                return s
-                            })()
-                        }
-                        stroke="grey"
-                        strokeWidth={l.width}
-                        // onMouseDown={_ => {
-                        //     dispatch(setSelectingPlanElement(true));
-                        // }}
-                        // onTouchStart={_ => {
-                        //     dispatch(setSelectingPlanElement(true));
-                        // }}
-                        // onMouseUp={_ => {
-                        //     // console.log("plan el mouseup")
-                        //     // dispatch(setSelectingPlanElement(false));
-                        //     // selectPlanElement(el);
-                        //     //dispatch(setSelectingPlanElement(false));
-                        // }}
-                        // onTouchEnd={_ => {
-                        //     dispatch(setSelectingPlanElement(false));
-                        // }}
-                        onClick={_ => {
-                            console.log("selectPlanElement");
-                            selectPlanElement(el);
-                            dispatch(setUnselectAllOnPlanMouseUp(false));
-                        }}
-                        onTap={_ => {
-                            console.log("selectPlanElement");
-                            selectPlanElement(el);
-                            dispatch(setUnselectAllOnPlanMouseUp(false));
-                        }}
-                        onPointerDown={_ =>{
-                            el.setOnPointerDown(true);
-                        }}
-                        //CODE FOR SHAPE VERSION
-                        // sceneFunc={(context, shape) => {
-                        //     context.beginPath();
-                        //     if(!path.length) return;
-
-                        //     context.moveTo(path[0].x, path[0].y);
-                        //     for(let i=1; i<path.length; i++){
-                        //         context.lineTo(path[i].x, path[i].y);
-                        //     }
-
-                        // //   context.closePath();
-                        // // (!) Konva specific method, it is very important
-                        // context.fillStrokeShape(shape);
-                        // }}
-                    />
-                    {                    
-                        path.map((p, _) => {
-                            return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id}/>
-                        })
-                    }
-                    {   
-                        //property l.addingPointFrom
-                        //l.addingPoint ?
-                        //<LineAddPoint line={l} position={cursorPosOnPlan}/>
-                        l.addPointSession?
-                        <LineAddPoint line={l} position={cursorPos}/>
-                        :null
-                    }
-                </Group>
-                </Group>
-                })
+                    Object.entries(planElements).map(([_, v]) => {
+                    return getPlanElement(v)})
                 }
                 </Layer>
             </Stage>
@@ -687,7 +599,7 @@ export default Plan;
 
 //     for(const elId in planElements){
 //         const el = planElements[elId];
-//         switch(el.constructor.name){
+//         switch(el.typeName){
 //             case("Rectangle"): {
 //                 const r = el as Rectangle;
 //                 const rLeft = r.getX1();

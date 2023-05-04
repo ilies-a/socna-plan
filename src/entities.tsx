@@ -1,5 +1,6 @@
 import { v4 } from 'uuid';
 
+export enum PlanElementTypeName {Line}
 
 export class PlanProps {
     dimensions:Dimensions = new Dimensions(0,0);
@@ -74,9 +75,11 @@ export abstract class PlanElement {
     id:string;
     protected selected:boolean = false;
     onPointerDown:boolean = false;
+    typeName:PlanElementTypeName;
 
-    constructor(id:string){
+    constructor(id:string, typeName:PlanElementTypeName){
         this.id = id;
+        this.typeName = typeName;
     }
 
     getSelected():boolean {
@@ -102,8 +105,8 @@ export class Rectangle extends PlanElement{
     private x2:number;
     private y2:number;
 
-    constructor(id:string, x:number, y:number, w:number, h:number){
-        super(id);
+    constructor(id:string, typeName:PlanElementTypeName, x:number, y:number, w:number, h:number){
+        super(id, typeName);
         this.x = x;
         this.y = y;
         this.w = w;
@@ -182,7 +185,7 @@ export class Line extends PlanElement {
     width:number;
 
     constructor(id:string, path:Point[], width:number){
-        super(id);
+        super(id, PlanElementTypeName.Line);
         this.path = path;
         this.width = width;
     }

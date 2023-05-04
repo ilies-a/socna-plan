@@ -1,4 +1,4 @@
-import { Line, LinePointMode, PlanElement, PlanProps, Point, Position } from "@/entities";
+import { Line, LinePointMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position } from "@/entities";
 import { addPlanElement, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanProps } from "@/redux/plan/plan.selectors";
 import { useCallback, useEffect, useMemo } from "react";
@@ -19,8 +19,8 @@ const PlanElementMenu: React.FC = () => {
   const selectMenu = useCallback(() =>{
     const el = getSelectedPlanElement(planElements);
     if(!el) return null;
-    switch(el.constructor.name){
-      case("Line"): {
+    switch(el.typeName){
+      case(PlanElementTypeName.Line): {
         return <LineMenu line={el as Line}/>;
       }
       default: {
