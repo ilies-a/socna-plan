@@ -562,7 +562,7 @@ const Plan: React.FC = () => {
                 </Group> */}
                 {
                     Object.entries(planElements).map(([i, v]) => {
-                    return <Rect
+                    return <Group key = {i}><Rect
                     key = {i}
                     x={0}
                     y={0}
@@ -571,7 +571,7 @@ const Plan: React.FC = () => {
                     fill="blue"
                     onClick={e =>{console.log("Click on child")}}
                     draggable
-                />
+                /></Group>
                 })
                 }
                 </Layer>
