@@ -142,29 +142,7 @@ const Plan: React.FC = () => {
                 //     scaleY= {0.5}
                 // />
                 return  (
-                    <Group key={l.id}
-                    // onMouseUp={_ => {
-                    //     if(l.addPointSession){                    
-                    //         l.endAddPointSession();
-                    //         dispatch(updatePlanElement(l));
-                    //     }
-                    // }}
-                        // onClick={_ => {
-                        //     console.log("selectPlanElement");
-                        //     toggleSelectPlanElement(el);
-                        //     moveUpPlanElement(el);
-                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
-                        // }}
-                        // onTap={_ => {
-                        //     console.log("selectPlanElement");
-                        //     toggleSelectPlanElement(el);
-                        //     moveUpPlanElement(el);
-                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
-                        // }}
-                        // onPointerDown={_ =>{
-                        //     el.setOnPointerDown(true);
-                        // }}
-                    >
+                    <Group key={l.id}>
                     <Path
                         data= {
                             (():string => {
@@ -173,10 +151,6 @@ const Plan: React.FC = () => {
                                 for(const point of path){
                                     s += " " + point.x + " " + point.y + " ";
                                 }
-                                // let iMax = path.length - 1;
-                                // if(path[0].x === path[iMax].x && path[0].y === path[iMax].y){
-                                //     s += "Z";
-                                // }
                                 s += l.pathIsClose ? "Z":"";
                                 return s
                             })()
@@ -190,66 +164,12 @@ const Plan: React.FC = () => {
                             console.log("selectPlanElement");
                             toggleSelectPlanElement(el);
                             moveUpPlanElement(el);
-                            // dispatch(setUnselectAllOnPlanMouseUp(false));
                         }}
                         onTap={_ => {
                             console.log("selectPlanElement");
                             toggleSelectPlanElement(el);
                             moveUpPlanElement(el);
-                            // dispatch(setUnselectAllOnPlanMouseUp(false));
                         }}
-                        // onPointerDown={_ =>{
-                        //     el.setOnPointerDown(true);
-                        // }}
-                        // onMouseDown={_ => {
-                        //     dispatch(setSelectingPlanElement(true));
-                        // }}
-                        // onTouchStart={_ => {
-                        //     dispatch(setSelectingPlanElement(true));
-                        // }}
-                        // onMouseUp={_ => {
-                        //     // console.log("plan el mouseup")
-                        //     // dispatch(setSelectingPlanElement(false));
-                        //     // selectPlanElement(el);
-                        //     //dispatch(setSelectingPlanElement(false));
-                        // }}
-                        // onTouchEnd={_ => {
-                        //     dispatch(setSelectingPlanElement(false));
-                        // }}
-                        // onClick={_ => {
-                        //     console.log("selectPlanElement");
-                        //     selectPlanElement(el);
-                        //     const newPlanElements = planElements.slice();
-                        //     const planElement = newPlanElements.find(iterEl => iterEl.id === el.id);
-                        //     if(!planElement) return;
-                        //     const index = planElements.indexOf(planElement);
-                        //     newPlanElements.splice(index, 1);
-                        //     newPlanElements.push(planElement);
-                        //     dispatch(setPlanElements(newPlanElements))
-                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
-                        // }}
-                        // onTap={_ => {
-                        //     console.log("selectPlanElement");
-                        //     selectPlanElement(el);
-                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
-                        // }}
-                        // onPointerDown={_ =>{
-                        //     el.setOnPointerDown(true);
-                        // }}
-                        //CODE FOR SHAPE VERSION
-                        // sceneFunc={(context, shape) => {
-                        //     context.beginPath();
-                        //     if(!path.length) return;
-
-                        //     context.moveTo(path[0].x, path[0].y);
-                        //     for(let i=1; i<path.length; i++){
-                        //         context.lineTo(path[i].x, path[i].y);
-                        //     }
-
-                        // //   context.closePath();
-                        // // (!) Konva specific method, it is very important
-                        // context.fillStrokeShape(shape);
-                        // }}
                     />
                     {                    
                         path.map((p, _) => {
@@ -369,7 +289,7 @@ const Plan: React.FC = () => {
         };
     }
     const handlePinchTouchMove = useCallback((touches:TouchList)=>{
-        setMsg("")
+        // setMsg("")
 
         var touch1 = touches[0];
         var touch2 = touches[1];
@@ -395,7 +315,6 @@ const Plan: React.FC = () => {
                 }
             }
             dispatch(setAddingPointLineIdPointId(null));
-
           }
 
           // if the stage was under Konva's drag&drop
@@ -448,7 +367,6 @@ const Plan: React.FC = () => {
           scale = scale > scaleMax ? scaleMax : scale < scaleMin ? scaleMin : scale;
 
           planProps.scale = scale;
-          dispatch(updatePlanProps(planProps));
         //   stage.scaleX(scale);
         //   stage.scaleY(scale);
 
@@ -462,7 +380,7 @@ const Plan: React.FC = () => {
           };
 
           planProps.position = newPos;
-          dispatch(updatePlanProps(planProps));
+        //   dispatch(updatePlanProps(planProps));
         //   setStagePosition(newPos);
 
           //stage.position(newPos);
@@ -474,7 +392,7 @@ const Plan: React.FC = () => {
     },[addingPointLineIdPointId, dispatch, lastCenter, lastDist, planElements, planProps, scaleMin]);
 
     const handlePinchTouchEnd = useCallback(()=>{
-        setMsg("handlePinchTouchMove")
+        // setMsg("handlePinchTouchMove")
         setLastDist(0);
         setLastCenter(null);
     }, []);
@@ -538,7 +456,7 @@ const Plan: React.FC = () => {
                 //     handleAddPoint();
                 // }}
                 onPointerUp={handleOnPointerUp}
-                onMouseMove={e => {
+                onMouseMove={e => { //and not onPointerMove to make it work only on desktop and avoid duplicate with onTouchMove needed here for pinch
                     setCursorPosWithEventPos(e, false);
                     // console.log("PLAN ONEMOUSEMOVE")
                     // setCursorPos(new Point(e.evt.offsetX - e.currentTarget.getPosition().x, e.evt.offsetY - e.currentTarget.getPosition().y));
