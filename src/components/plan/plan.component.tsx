@@ -538,7 +538,7 @@ const Plan: React.FC = () => {
                 //     handleAddPoint();
                 // }}
                 onPointerUp={handleOnPointerUp}
-                onPointerMove={e => {
+                onMouseMove={e => {
                     setCursorPosWithEventPos(e, false);
                     // console.log("PLAN ONEMOUSEMOVE")
                     // setCursorPos(new Point(e.evt.offsetX - e.currentTarget.getPosition().x, e.evt.offsetY - e.currentTarget.getPosition().y));
@@ -552,7 +552,8 @@ const Plan: React.FC = () => {
                     handlePinchTouchMove(e.evt.touches);
                     dispatch(setUnselectAllOnPlanMouseUp(false));
                 }}
-                onTouchEnd={e => {handlePinchTouchEnd(); 
+                onTouchEnd={e => {
+                    handlePinchTouchEnd(); 
                     if(e.evt.touches.length === 0){
                         setScaling(false);
                     }
