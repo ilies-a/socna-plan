@@ -5,6 +5,11 @@
     width:$size;
     height:$size;
     border-radius: 50%;
+    opacity:0.5;
+
+    &.available{
+        opacity:1;
+    }
 
     &:active, &.active{
         border-width: 2px;

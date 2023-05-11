@@ -1,4 +1,5 @@
 import { v4 } from 'uuid';
+import { cloneArray } from './utils';
 
 export enum PlanElementTypeName {Line}
 
@@ -10,9 +11,69 @@ export class PlanProps {
     // constructor(dimensions:Dimensions, position:Position){
     //     this.dimensions = dimensions;
     //     this.position = position;
-
     // } 
 }
+
+export enum PlanMode { MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
+
+// export class PlanElementsHelper{
+//     static planElementsSeparatedBySelection(planElements:PlanElement[]): [PlanElement[], PlanElement[]]{
+//         const planElementsSBS: [PlanElement[], PlanElement[]] = [[], []];
+//         for(const el of planElements){
+//             planElementsSBS[el.getSelected()?0:1].push(el);
+//         }
+//         return planElementsSBS;
+//     }
+// }
+
+export class PlanElementsHelper {
+    static clone(planElements:PlanElement[]):PlanElement[]{
+        const planElementsClone:PlanElement[] = [];
+        for(const el of planElements){
+            planElementsClone.push(el.clone());
+        }
+        return planElementsClone;
+    }
+
+    static findElementById(planElements:PlanElement[], planElementId:string): PlanElement | undefined{
+        return planElements.find(el => el.id === planElementId)
+    }
+
+    static findElementIndexById(planElements:PlanElement[], planElementId:string): number{
+        return planElements.findIndex(el => el.id === planElementId)
+    }
+}
+
+
+
+
+// export class PlanElements {
+//     elements: PlanElement[];
+
+//     constructor(elements: PlanElement[]){
+//         this.elements = elements;
+//     }
+
+//     clone():PlanElements{
+//         const planElements:PlanElement[] = [];
+
+//         for(const el of this.elements){
+//             planElements.push(el.clone());
+//         }
+//         return new PlanElements(planElements);
+//     }
+// }
+
+
+// export class PlanElements {
+//     unselectedElements: PlanElement[];
+//     selectedElements: PlanElement[];
+
+//     constructor(unselectedElements: PlanElement[], selectedElements: PlanElement[]){
+//         this.unselectedElements = unselectedElements;
+//         this.selectedElements = selectedElements;
+//     } 
+// }
 
 
 export class Dimensions{
@@ -37,6 +98,17 @@ export class Point{
 }
 
 
+export class Vector2D{
+    x:number;
+    y:number;
+
+    constructor(x:number, y:number){
+        this.x = x;
+        this.y = y;
+    } 
+}
+
+
 export class Position{
     x:number;
     y:number;
@@ -47,15 +119,15 @@ export class Position{
     } 
 }
 
-export class Scale{
-    x:number;
-    y:number;
+// export class Scale{
+//     x:number;
+//     y:number;
 
-    constructor(x:number, y:number){
-        this.x = x;
-        this.y = y;
-    } 
-}
+//     constructor(x:number, y:number){
+//         this.x = x;
+//         this.y = y;
+//     } 
+// }
 
 class Offsets{
     left:number;
@@ -92,6 +164,10 @@ export abstract class PlanElement {
 
     setOnPointerDown(value: boolean) {
         this.onPointerDown = value;
+    }
+
+    clone():PlanElement{
+        return this;
     }
 }
 
@@ -247,7 +323,6 @@ export class Line extends PlanElement {
     }
 
     removePoint(id:string, join:boolean){
-        console.log("join", join)
         const pIndex = this.getPathPointIndexById(id);
         if(join){
             this.path.splice(pIndex, 1);
@@ -275,14 +350,12 @@ export class Line extends PlanElement {
         this.pathIsClose = false;
     }
 
-    addPointAndEndAddPointSession(point:Point, startingFromPointId:string){
-        console.log("startingFromPointId",startingFromPointId)
+    addPoint(point:Point, startingFromPointId:string):boolean{ //return true if point is added false otherwise
         // if(this.addPointSession?.pointIndexCursorIsOver !== null){
         const startingFromPointIndex = this.getPathPointIndexById(startingFromPointId);
-        console.log("startingFromPointIndex",startingFromPointIndex)
         if(this.pointIdCursorIsOver === startingFromPointId){
-            this.endAddPointSession();
-            return;
+            // this.endAddPointSession();
+            return false;
         }
         else if(this.pointIdCursorIsOver !== null){
             const pointIndexCursorIsOver = this.getPathPointIndexById(this.pointIdCursorIsOver);
@@ -290,29 +363,36 @@ export class Line extends PlanElement {
             if( (startingFromPointIndex === 0 && pointIndexCursorIsOver === this.path.length - 1) ||
                 (pointIndexCursorIsOver === 0 && startingFromPointIndex === this.path.length - 1)){
                 this.pathIsClose = true;
+                this.selectedPointId = null;
                 //if we close path we also remove the LinePointMode.AddPoint mode for a better user experience;
                 if(this.linePointMode === LinePointMode.AddPoint){
                     this.linePointMode = LinePointMode.MovePoint;
                 }
-                this.endAddPointSession();
-                return;
+                // this.endAddPointSession();
+                return true;
             }
             // this.endAddPointSession();
             // return;
         }
         
-        let newPointIndex = startingFromPointIndex === 0 ? 0 : startingFromPointIndex + 1;
+        let newPointIndex = -1;
 
-        if(startingFromPointIndex === 0){
+        if(!this.pathIsClose && startingFromPointIndex === 0){
             newPointIndex = startingFromPointIndex;
-        }else if(startingFromPointIndex === this.path.length - 1){
+        }else if(!this.pathIsClose && startingFromPointIndex === this.path.length - 1){
             newPointIndex = startingFromPointIndex + 1;
         }else{
+            let offset = 1;
+            let minimumValue = 0;
+            let modulus = this.path.length;
+            const previousPointIndex = (startingFromPointIndex - 1 - 1 - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
+            const nextPointIndex = (startingFromPointIndex + 1 - 1 - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
+
             //determining adding before or after startingFromPoint
             const pN = point;
             const pS = this.path[startingFromPointIndex];
-            const pB = this.path[startingFromPointIndex - 1];
-            const pA = this.path[startingFromPointIndex + 1];
+            const pB = this.path[previousPointIndex];
+            const pA = this.path[nextPointIndex];
 
             const pSpBAngle = Math.atan2(pB.y - pS.y, pB.x - pS.x);
             const pSpNAngle = Math.atan2(pN.y - pS.y, pN.x - pS.x);
@@ -329,8 +409,9 @@ export class Line extends PlanElement {
         // const newPointIndex = Math.abs(diff1) < Math.abs(diff2) ? startingFromPointIndex : startingFromPointIndex + 1;
 
         this.path.splice(newPointIndex, 0, point);
-        this.selectPointId(this.path[newPointIndex].id);
-        this.endAddPointSession();
+        this.selectPointId(null);
+        // this.endAddPointSession();
+        return true;
     }
 
     // updatePointIndexCursor(cursor:Point):boolean{
@@ -370,6 +451,7 @@ export class Line extends PlanElement {
     joinExtremePoints(){
         this.path.splice(this.path.length - 1, 1);
         this.pathIsClose = true;
+        this.selectedPointId = null;
     }
 
     onRemovePointMode():boolean{
@@ -380,12 +462,39 @@ export class Line extends PlanElement {
         this.linePointMode = this.defaultLinePointMode;
     }
     
+    override clone():Line{
+        // path:Point[];
+        // pathIsClose:boolean = false;
+        // defaultLinePointMode:LinePointMode = LinePointMode.MovePoint;
+        // linePointMode:LinePointMode = this.defaultLinePointMode;
+        // // selectedPointIndex:number | null = null;
+        // selectedPointId:string | null = null;
+        // addPointSession:AddPointSession | null = null;
+        // // pointIndexCursorIsOver:number | null = null;
+        // pointIdCursorIsOver:string | null = null;
+        // pointIdPointingDownOn:string | null = null;
+        // pointRadius = 20;
+        // memoizedMoveOrAddMode:LinePointMode = this.defaultLinePointMode;
+        // width:number;
+
+
+        const lineClone:Line = new Line(this.id, cloneArray(this.path), this.width);
+        lineClone.pathIsClose = this.pathIsClose;
+        lineClone.selected = this.selected;
+        // lineClone.linePointMode = this.linePointMode;
+        lineClone.selectedPointId = this.selectedPointId;
+        lineClone.pointIdCursorIsOver = this.pointIdCursorIsOver;
+        lineClone.pointIdPointingDownOn = this.pointIdPointingDownOn;
+        // lineClone.memoizedMoveOrAddMode = this.memoizedMoveOrAddMode;
+        return lineClone;
+    }
+
     override setSelected(selected:boolean){
         this.selected = selected;
         if(!selected){
             this.selectedPointId = null;
-            if(this.linePointMode != LinePointMode.RemovePointNoJoin && this.linePointMode != LinePointMode.RemovePointThenJoin) return;
-            this.linePointMode = this.defaultLinePointMode;
+        //     if(this.linePointMode != LinePointMode.RemovePointNoJoin && this.linePointMode != LinePointMode.RemovePointThenJoin) return;
+        //     this.linePointMode = this.defaultLinePointMode;
         }
     }
 }
@@ -399,5 +508,60 @@ class AddPointSession{
     constructor(lineId:string, startPointId:string){
         this.lineId = lineId;
         this.startPointId = startPointId;
+    }
+}
+
+export class DblClick {
+    secondClickMaxDelay: number = 200;
+    click: number = 0;
+
+    start(){
+        this.click = 1;
+        setTimeout(()=>{
+            this.end();
+        },this.secondClickMaxDelay);
+    }
+    end(){
+        this.click = 0;
+    }
+}
+
+
+export class PlanElementsRecordsHandler{
+    records: PlanElement[][] = [[]];
+    currentRecordIndex: number = 0;
+    clone():PlanElementsRecordsHandler {
+        const planElementsRecordsHandlerClone = new PlanElementsRecordsHandler();
+        planElementsRecordsHandlerClone.currentRecordIndex = this.currentRecordIndex;
+        planElementsRecordsHandlerClone.records = this.records.map(planElements => PlanElementsHelper.clone(planElements));
+        return planElementsRecordsHandlerClone;
+    }
+}
+
+export class PlanPointerUpActionsHandler{
+    elementIdOnPointerDown: string | null = null;
+    lineIdPointIdOnPointerDown: [string, string] | null = null;
+    dragEndLineIdPointId: [string, string] | null = null;
+    addSessionLineId: string | null = null;
+    
+    // constructor(
+    //     elementIdOnPointerDown:string | null,  
+    //     lineIdPointIdOnPointerDown:[string, string] | null ,
+    //     dragEndLineIdPointId:[string, string] | null,
+    //     addSessionLineId:string | null,
+    //     ){
+    //     this.elementIdOnPointerDown = elementIdOnPointerDown;
+    //     this.lineIdPointIdOnPointerDown = lineIdPointIdOnPointerDown;
+    //     this.dragEndLineIdPointId = dragEndLineIdPointId;
+    //     this.addSessionLineId = addSessionLineId;
+
+    // }
+    clone(planPointerUpActionsHandler:PlanPointerUpActionsHandler): PlanPointerUpActionsHandler{
+        const planPointerUpActionsHandlerClone = new PlanPointerUpActionsHandler();
+        planPointerUpActionsHandlerClone.elementIdOnPointerDown = planPointerUpActionsHandler.elementIdOnPointerDown;
+        planPointerUpActionsHandlerClone.lineIdPointIdOnPointerDown = planPointerUpActionsHandler.lineIdPointIdOnPointerDown;
+        planPointerUpActionsHandlerClone.dragEndLineIdPointId = planPointerUpActionsHandler.dragEndLineIdPointId;
+        planPointerUpActionsHandlerClone.addSessionLineId = planPointerUpActionsHandler.addSessionLineId;
+        return planPointerUpActionsHandlerClone;
     }
 }

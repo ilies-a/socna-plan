@@ -5,19 +5,20 @@ import { MouseEventHandler, useCallback, useEffect, useMemo } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import styles from './plan-menu-button.module.scss';
-import { getSelectedPlanElement } from "@/utils";
+// import { getSelectedPlanElement } from "@/utils";
 
 type Props = {
     name: string,
     handleOnClick: MouseEventHandler<HTMLButtonElement> | undefined,
-    active: boolean
+    active: boolean,
+    available: boolean
   };
 
-const PlanMenuButton: React.FC<Props> = ({name, handleOnClick, active}) => {
+const PlanMenuButton: React.FC<Props> = ({name, handleOnClick, active, available}) => {
 
   return (
     <button
-        className={`${styles['button']} ${active? styles['active'] : null}`} 
+        className={`${styles['button']} ${active? styles['active'] : null} ${available? styles['available'] : null}`} 
         onClick={handleOnClick}>
             {name}
         </button>

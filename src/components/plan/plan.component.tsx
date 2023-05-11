@@ -1,16 +1,17 @@
 import { Group, Layer, Path, Rect, Shape, Stage } from "react-konva";
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, Line, LinePointMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle } from "@/entities";
-import { initialPlanElements } from "@/utils";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, Line, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler } from "@/entities";
+import { cloneArray } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
-import { setPlanElements, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectPlanElements, selectPlanProps, selectSelectingPlanElement, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAddingPointLineIdPointId, setPlanCursorPos, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddingPointLineIdPointId, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import LineAddPoint from "../line-add-point/line-add-point.component";
 import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
-
+import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
+import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 
 const Plan: React.FC = () => {
     const minPlanDim: Dimensions = new Dimensions(window.innerWidth * 0.8, window.innerHeight * 0.8);
@@ -18,13 +19,20 @@ const Plan: React.FC = () => {
     // const [planScale, setPlanScale] = useState<number>(1);
     const [planPos, setPlanPos] = useState<Point>(new Point(0,0));
     const [cursorPos, setCursorPos] = useState<Point>(new Point(0,0));
+    const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
 
     const planProps:PlanProps = useSelector(selectPlanProps);
-    const planElements:{ [key: string]: PlanElement } = useSelector(selectPlanElements);
+    const planMode: PlanMode = useSelector(selectPlanMode);
+
+    const planElements: PlanElement[] = useSelector(selectPlanElements);
+    const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
+
     const selectingPlanElement = useSelector(selectSelectingPlanElement);
     const unselectAllOnPlanMouseUp = useSelector(selectUnselectAllOnPlanMouseUp);
     const [dragging, setDragging] = useState<boolean>(false);
     const [scaling, setScaling] = useState<boolean>(false);
+    const scaleMax = 2;
+    const scaleMin = 1/9;
 
     const stageRef = useRef<any>();
     // const [stageScale, setStageScale] = useState<{ x: number; y: number; }>({x:1, y:1});
@@ -33,25 +41,62 @@ const Plan: React.FC = () => {
     const [lastCenter, setLastCenter] = useState<{ x: number; y: number; } | null>(null);
     const [lastDist, setLastDist] = useState<number>(0);
 
+
+    const [dragStartPos, setDragStartPos] = useState<Position | null>(null);
+    // const [dragDxy, setDragDxy] = useState<Vector2D>(new Vector2D(0,0));
+
     const [msg, setMsg] = useState("");
 
     const dispatch = useDispatch();
+    const planPointerUpActionsHandler: PlanPointerUpActionsHandler = useSelector(selectPlanPointerUpActionsHandler);
+    const addingPointLineIdPointId: [string, string] | null = useSelector(selectAddingPointLineIdPointId);
+
+    const addPoint = useAddPoint();
+    const removeLineIfNoPoints = useRemLine();
+
+    // const [dblCick, setDblClick] = useState<DblClick>(new DblClick());
 
     // const [msg, setMsg] = useState("");
     // const [counter, setCounter] = useState(0);
 
     // const [draggable, setDraggable] = useState<boolean>(true);
     
-    useEffect(()=>{
-        dispatch(setPlanElements(initialPlanElements));
-    },[dispatch]);
+    const dblClick: DblClick = useMemo(() =>{
+        return new DblClick();
+    }, []);
 
-    useEffect(()=>{
-        const newPlanProps = new PlanProps();
-        newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
-        dispatch(updatePlanProps(newPlanProps));
-    },[dispatch]);
+    const addLineAndSetToAddMode = useCallback((e:any) => {
+        if(planMode != PlanMode.AddPoint) return;
+
+        const pX = planCursorPos.x;
+        const pY = planCursorPos.y;
     
+        const newLine:Line = new Line(v4(), [new Point(pX, pY)], 25);
+        const firstPointId = newLine.path[0].id;
+        newLine.setSelected(true);
+        newLine.selectPointId(firstPointId);
+
+        // newLine.startAddPointSession(firstPointId);
+        // newLine.pointIdCursorIsOver = firstPointId;
+
+        dispatch(setAddingPointLineIdPointId([newLine.id, firstPointId]));
+        dispatch(addPlanElement(newLine));
+        // console.log("--> newLine.path.length", newLine.path.length);
+        
+        dispatch(setPlanMode(PlanMode.AddPoint));
+        // dispatch(setUnselectAllOnPlanMouseUp(false));
+
+    }, [planCursorPos.x, planCursorPos.y, dispatch, planMode]);
+
+    const handleDblClick = useCallback((e:any, f:any) =>{
+        if(dblClick.click === 0){
+            dblClick.start();
+        }else{
+            dblClick.end();
+            f(e);
+        }
+    }, [dblClick]);    
+
     useEffect(()=>{
         const newPlanProps = new PlanProps();
         newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
@@ -64,6 +109,21 @@ const Plan: React.FC = () => {
 
     const selectPlanElement = useCallback((el:PlanElement)=>{
         el.setSelected(true);
+        dispatch(updatePlanElement(el));
+    }, [dispatch]);
+
+    const moveUpPlanElement = useCallback((el:PlanElement)=>{
+        const newPlanElements = planElements.slice();
+        const planElement = newPlanElements.find(iterEl => iterEl.id === el.id);
+        if(!planElement) return;
+        const index = planElements.indexOf(planElement);
+        newPlanElements.splice(index, 1);
+        newPlanElements.push(planElement);
+        dispatch(setPlanElements(newPlanElements));
+    }, [dispatch, planElements]);
+
+    const toggleSelectPlanElement = useCallback((el:PlanElement)=>{
+        el.setSelected(!el.getSelected());
         dispatch(updatePlanElement(el));
     }, [dispatch]); 
 
@@ -89,6 +149,21 @@ const Plan: React.FC = () => {
                     //         dispatch(updatePlanElement(l));
                     //     }
                     // }}
+                        // onClick={_ => {
+                        //     console.log("selectPlanElement");
+                        //     toggleSelectPlanElement(el);
+                        //     moveUpPlanElement(el);
+                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
+                        // }}
+                        // onTap={_ => {
+                        //     console.log("selectPlanElement");
+                        //     toggleSelectPlanElement(el);
+                        //     moveUpPlanElement(el);
+                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
+                        // }}
+                        // onPointerDown={_ =>{
+                        //     el.setOnPointerDown(true);
+                        // }}
                     >
                     <Path
                         data= {
@@ -106,8 +181,26 @@ const Plan: React.FC = () => {
                                 return s
                             })()
                         }
+                        fillEnabled = {false}
                         stroke="grey"
+                        // dash={[33, 10]}
                         strokeWidth={l.width}
+                        onClick={e => {
+                            e.cancelBubble = true;
+                            console.log("selectPlanElement");
+                            toggleSelectPlanElement(el);
+                            moveUpPlanElement(el);
+                            // dispatch(setUnselectAllOnPlanMouseUp(false));
+                        }}
+                        onTap={_ => {
+                            console.log("selectPlanElement");
+                            toggleSelectPlanElement(el);
+                            moveUpPlanElement(el);
+                            // dispatch(setUnselectAllOnPlanMouseUp(false));
+                        }}
+                        // onPointerDown={_ =>{
+                        //     el.setOnPointerDown(true);
+                        // }}
                         // onMouseDown={_ => {
                         //     dispatch(setSelectingPlanElement(true));
                         // }}
@@ -123,19 +216,26 @@ const Plan: React.FC = () => {
                         // onTouchEnd={_ => {
                         //     dispatch(setSelectingPlanElement(false));
                         // }}
-                        onClick={_ => {
-                            console.log("selectPlanElement");
-                            selectPlanElement(el);
-                            dispatch(setUnselectAllOnPlanMouseUp(false));
-                        }}
-                        onTap={_ => {
-                            console.log("selectPlanElement");
-                            selectPlanElement(el);
-                            dispatch(setUnselectAllOnPlanMouseUp(false));
-                        }}
-                        onPointerDown={_ =>{
-                            el.setOnPointerDown(true);
-                        }}
+                        // onClick={_ => {
+                        //     console.log("selectPlanElement");
+                        //     selectPlanElement(el);
+                        //     const newPlanElements = planElements.slice();
+                        //     const planElement = newPlanElements.find(iterEl => iterEl.id === el.id);
+                        //     if(!planElement) return;
+                        //     const index = planElements.indexOf(planElement);
+                        //     newPlanElements.splice(index, 1);
+                        //     newPlanElements.push(planElement);
+                        //     dispatch(setPlanElements(newPlanElements))
+                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
+                        // }}
+                        // onTap={_ => {
+                        //     console.log("selectPlanElement");
+                        //     selectPlanElement(el);
+                        //     dispatch(setUnselectAllOnPlanMouseUp(false));
+                        // }}
+                        // onPointerDown={_ =>{
+                        //     el.setOnPointerDown(true);
+                        // }}
                         //CODE FOR SHAPE VERSION
                         // sceneFunc={(context, shape) => {
                         //     context.beginPath();
@@ -153,16 +253,8 @@ const Plan: React.FC = () => {
                     />
                     {                    
                         path.map((p, _) => {
-                            return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id}/>
+                            return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id && !dragging && !scaling}/>
                         })
-                    }
-                    {   
-                        //property l.addingPointFrom
-                        //l.addingPoint ?
-                        //<LineAddPoint line={l} position={cursorPosOnPlan}/>
-                        l.addPointSession?
-                        <LineAddPoint line={l} position={cursorPos}/>
-                        :null
                     }
                 </Group>
                 )
@@ -192,183 +284,79 @@ const Plan: React.FC = () => {
             //     )
             // }
         }
-    },[cursorPos, dispatch, planElements, selectPlanElement]);
+    },[dragging, moveUpPlanElement, scaling, toggleSelectPlanElement]);
 
     const unselectAllPlanElements = useCallback(() => {
-        console.log("PRE unselectAllPlanElements");
-
-        //if(selectingPlanElement) return;
-
-        console.log("unselectAllPlanElements");
         for(const elId in planElements){
             planElements[elId].setSelected(false);
         }
         dispatch(setPlanElements(planElements));
-
     }, [dispatch, planElements]);
     
-    const addingPoint = useCallback(()=>{
-        for(const elId in planElements){
-            const el = planElements[elId];
-            switch(el.typeName){
-                case(PlanElementTypeName.Line): {
-                    const l = el as Line;
-                    if(l.addPointSession){
-                        return true;
-                    }
-                }
+    const handleClick= useCallback(()=>{
+        unselectAllPlanElements();
+    }, [unselectAllPlanElements]);
+
+    const getPlanElements = () => {
+        // const planElementsSBS: [PlanElement[], PlanElement[]] = [[], []];
+        const selectedElements: PlanElement[] = [];
+        const unselectedElements: PlanElement[] = [];
+
+        for(const el of planElements){
+            if(el.getSelected()){
+                selectedElements.push(el);
+            }
+            else{
+                unselectedElements.push(el);
             }
         }
-        return false;
-    },[planElements]);
-    
-    const handleAddPoint = useCallback(() => {
-        //check if a linepoint is selected and has a selected point and is in AddPointMode and not already on addPointSession
-        for(const elId in planElements){
-            const el = planElements[elId];
-            switch(el.typeName){
-                case(PlanElementTypeName.Line): {
-                    const l = el as Line;
-                    if(l.getSelected() && l.linePointMode === LinePointMode.AddPoint && l.selectedPointId!= null && !l.addPointSession && l.pointIdCursorIsOver){
-                        console.log("ok startAddPointSession")
-                        l.startAddPointSession(l.selectedPointId);
-                        dispatch(updatePlanElement(l));
-                        dispatch(setUnselectAllOnPlanMouseUp(false));
-                        return;
-                    }
+        return <>
+                <Group>
+                {
+                    unselectedElements.map((el, _) => {
+                        return getPlanElement(el)
+                    })
                 }
-            }
-        }        
-    }, [dispatch, planElements]);
-    
-    // const endAddPointSession = useCallback(() => {
-    //     //check if a linepoint is selected and has a selected point and is in AddPointMode
-    //     for(const elId in planElements){
-    //         const el = planElements[elId];
-    //         switch(el.typeName){
-    //             case(PlanElementTypeName.Line): {
-    //                 const l = el as Line;
-    //                 if(l.addPointSession){
-    //                     l.endAddPointSession();
-    //                     dispatch(updatePlanElement(l));
-    //                     return;
-    //                 }
-    //             }
-    //         }
-    //     }        
-    // }, [dispatch, planElements]);
-
-    const addPoint = useCallback(() => {
-        //check if a linepoint is selected and has a selected point and is in AddPointMode
-        for(const elId in planElements){
-            const el = planElements[elId];
-            switch(el.typeName){
-                case(PlanElementTypeName.Line): {
-                    const l = el as Line;
-                    if(l.addPointSession){
-                        // l.endAddPointSession();
-                        l.addPointAndEndAddPointSession(new Point(cursorPos.x, cursorPos.y), l.selectedPointId as string);
-                        // l.selectPointIndex(l.selectedPointIndex as number + 1);
-                        dispatch(updatePlanElement(l));
-                        return;
-                    }
-                }
-            }
-        }        
-    }, [cursorPos.x, cursorPos.y, dispatch, planElements]);
-
-    const unselectAllOnPlanMouseUpAdditionalConditions = useCallback(() => {
-        for(const elId in planElements){
-            const el = planElements[elId];
-            switch(el.typeName){
-                case(PlanElementTypeName.Line): {
-                    const l = el as Line;
-                    if(l.selectedPointId){
-                        l.selectPointId(null);
-                        dispatch(updatePlanElement(l));
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }, [dispatch, planElements]);
-
-    const handleMouseUp = useCallback(()=>{
-        let unselectElements = true;
-
-        for(const elId in planElements){
-            const el = planElements[elId];
-            switch(el.typeName){
-                case(PlanElementTypeName.Line): {
-                    const l = el as Line;
-                    if(l.pointIdPointingDownOn){
-                        unselectElements = false;
-                        l.pointIdPointingDownOn = null;
-                    }
-                    if(l.onPointerDown){
-                        unselectElements = false;
-                        l.setOnPointerDown(false);
-                    }
-                    if(l.addPointSession){
-                        l.addPointAndEndAddPointSession(new Point(cursorPos.x, cursorPos.y), l.selectedPointId as string);
-                        dispatch(updatePlanElement(l));
-                    }
-                    if(l.selectedPointId){
-                        if(l.pointOverJoinablePoint(l.selectedPointId, planProps.scale) && l.path.length > 3){
-                            l.joinExtremePoints();
+                </Group>
+                <Group
+                    // draggable = {addingPoint()}
+                    draggable = {planMode === PlanMode.MovePoint}
+                    onDragStart={e => {
+                        setDragStartPos(new Position(e.currentTarget.getPosition().x, e.currentTarget.getPosition().y));
+                        // console.log("e.evt.offsetX", e.evt.)
+                    }}
+                    onDragEnd={e => {
+                        if(!dragStartPos) return;
+                        const dragDxy = new Vector2D(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
+                        for(const el of selectedElements){
+                            if(!(el.typeName === PlanElementTypeName.Line)) continue;
+                            const l = el as Line;
+                                for(const p of l.path){
+                                    p.x += dragDxy.x;
+                                    p.y += dragDxy.y;
+                                }
                         }
-                        l.selectPointId(null);
-                    }
-                    dispatch(updatePlanElement(l));
+                        setDragStartPos(null);
+                        e.currentTarget.setPosition(new Vector2D(0,0));
+                    }}
+                >
+                {
+                    selectedElements.map((el, _) => {
+                        return getPlanElement(el)
+                    })
                 }
-            }
-        }
-        if(dragging || scaling){
-            unselectElements = false;
-        }
-        if(unselectElements){
-            unselectAllPlanElements();
-        }
-        // dispatch(setUnselectAllOnPlanMouseUp(true));
+                </Group>
+                {   
+                    //property l.addingPointFrom
+                    //l.addingPoint ?
+                    //<LineAddPoint line={l} position={cursorPosOnPlan}/>
+                    addingPointLineIdPointId?
+                    <LineAddPoint line={PlanElementsHelper.findElementById(planElements, addingPointLineIdPointId[0]) as Line} position={planCursorPos}/>
+                    :null
+                }
+            </>
+    }
 
-        // if(unselectElements){
-        //     unselectAllPlanElements();
-        // }else{
-        //     if(addingPoint()){
-        //         addPoint();
-        //     }
-        //     // dispatch(setUnselectAllOnPlanMouseUp(true));
-        // }
-
-        // for(const elId in planElements){
-        //     const el = planElements[elId];
-        //     switch(el.typeName){
-        //         case(PlanElementTypeName.Line): {
-        //             const l = el as Line;
-        //             if(l.selectedPointId){
-        //                 l.selectPointId(null);
-        //             }
-        //             dispatch(updatePlanElement(l));
-        //         }
-        //     }
-        // }
-
-        // for(const elId in planElements){
-        //     const el = planElements[elId];
-        //     switch(el.typeName){
-        //         case(PlanElementTypeName.Line): {
-        //             const l = el as Line;
-             
-        //                 l.addPointSession = null;
-        //                 // l.pointIdCursorIsOver = null; 
-        //                 dispatch(updatePlanElement(l));
-
-                    
-        //         }
-        //     }
-        // }  
-    },[cursorPos.x, cursorPos.y, dispatch, dragging, planElements, planProps.scale, scaling, unselectAllPlanElements]);
 
     function getDistance(p1:{ x: number; y: number; }, p2:{ x: number; y: number; }) {
         return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
@@ -393,6 +381,22 @@ const Plan: React.FC = () => {
 
         if (touch1 && touch2) {
           setScaling(true);
+
+          //if were adding a point while scaling, cancel adding
+          if(addingPointLineIdPointId){
+            const lineIndex = PlanElementsHelper.findElementIndexById(planElements, addingPointLineIdPointId[0]);
+            if(lineIndex > -1){
+                const line = planElements[lineIndex] as Line;
+                // removeLineIfNoPoints(lineIndex)
+                if(line.path.length < 2){ //if line has only one point we remove the line
+                    const clone = PlanElementsHelper.clone(planElements);
+                    clone.splice(lineIndex, 1);
+                    dispatch(setPlanElements(clone));
+                }
+            }
+            dispatch(setAddingPointLineIdPointId(null));
+
+          }
 
           // if the stage was under Konva's drag&drop
           // we need to stop it, and implement our own pan logic with two pointers
@@ -441,6 +445,7 @@ const Plan: React.FC = () => {
           };
 
           var scale = stage.scaleX() * (dist / lastDistLocalVar);
+          scale = scale > scaleMax ? scaleMax : scale < scaleMin ? scaleMin : scale;
 
           planProps.scale = scale;
           dispatch(updatePlanProps(planProps));
@@ -466,19 +471,25 @@ const Plan: React.FC = () => {
         //   setMsg("scale = "+ scale);
 
         }
-    },[dispatch, lastCenter, lastDist, planProps]);
+    },[addingPointLineIdPointId, dispatch, lastCenter, lastDist, planElements, planProps, scaleMin]);
 
     const handlePinchTouchEnd = useCallback(()=>{
         setMsg("handlePinchTouchMove")
         setLastDist(0);
         setLastCenter(null);
     }, []);
-    
 
+    const handleOnPointerUp = useCallback(()=>{
+        if(addingPointLineIdPointId){
+            addPoint()
+        }
+    }, [addPoint, addingPointLineIdPointId]);
+    
     const setCursorPosWithEventPos = useCallback((e:any, touch:boolean)=>{
         const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
-        setCursorPos(new Point((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale));
-    },[planProps.scale]);
+        // setCursorPos(new Point((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale));
+        dispatch(setPlanCursorPos(new Vector2D((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale)))
+    },[dispatch, planProps.scale]);
 
     return (
         // <div onClick={e =>{console.log("Click on parent")}}>Parent
@@ -493,6 +504,7 @@ const Plan: React.FC = () => {
                 height={planProps.dimensions.h}
                 position={planProps.position}
                 scale={{x:planProps.scale, y:planProps.scale}}
+                onClick={handleClick}
                 // onClick={_ => {
                 //     console.log("click on plan")
                 //     endAddPointSession();
@@ -510,21 +522,25 @@ const Plan: React.FC = () => {
                 // }}
                 //onDoubleClick={setPlanScaleCallback}
                 //onDblTap={setPlanScaleCallback}
-                onMouseDown={e => {
+                onPointerDown={e => {
+                    handleDblClick(e, addLineAndSetToAddMode);
                     // alert("currentTarget x = "+e.currentTarget.getPosition().x + ", currentTarget y = "+e.currentTarget.getPosition().y);
                     setCursorPosWithEventPos(e, false);
                     // setCursorPos(new Point(e.evt.offsetX - e.currentTarget.getPosition().x, e.evt.offsetY - e.currentTarget.getPosition().y));
-                    handleAddPoint();
+                    // handleAddPoint();
                 }}
-                onTouchStart={e => {
-                    // var touchPos = e.target.getStage()?.getPointerPosition();
-                    // if(!touchPos) return;
-                    // setCursorPos(new Point(touchPos.x - e.currentTarget.getPosition().x, touchPos.y - e.currentTarget.getPosition().y));
-                    setCursorPosWithEventPos(e, true);
-                    handleAddPoint();
-                }}
-                onMouseMove={e => {
+                // onTouchStart={e => {
+                //     // handleDblClick(e, addLineAndSetToAddMode);
+                //     // var touchPos = e.target.getStage()?.getPointerPosition();
+                //     // if(!touchPos) return;
+                //     // setCursorPos(new Point(touchPos.x - e.currentTarget.getPosition().x, touchPos.y - e.currentTarget.getPosition().y));
+                //     setCursorPosWithEventPos(e, true);
+                //     handleAddPoint();
+                // }}
+                onPointerUp={handleOnPointerUp}
+                onPointerMove={e => {
                     setCursorPosWithEventPos(e, false);
+                    // console.log("PLAN ONEMOUSEMOVE")
                     // setCursorPos(new Point(e.evt.offsetX - e.currentTarget.getPosition().x, e.evt.offsetY - e.currentTarget.getPosition().y));
                 }}
                 onTouchMove={e => {
@@ -534,6 +550,7 @@ const Plan: React.FC = () => {
                     setCursorPosWithEventPos(e, true);
                     e.evt.preventDefault(); //for pinch
                     handlePinchTouchMove(e.evt.touches);
+                    dispatch(setUnselectAllOnPlanMouseUp(false));
                 }}
                 onTouchEnd={e => {handlePinchTouchEnd(); 
                     if(e.evt.touches.length === 0){
@@ -541,13 +558,20 @@ const Plan: React.FC = () => {
                     }
                 }}
                 // onMouseUp={handleMouseUp}
-                onPointerUp={handleMouseUp}
-                draggable = {!scaling && !addingPoint()}
-                onDragStart={_ => {setDragging(true); dispatch(setUnselectAllOnPlanMouseUp(false));} }
-                onDragEnd={e => {setDragging(false);
+                draggable = {!scaling && !addingPointLineIdPointId} //&& planMode !== PlanMode.AddPoint}
+                onDragStart={e => {
+                    setDragging(true); 
+                    // dispatch(setUnselectAllOnPlanMouseUp(false));
+                } }
+                onDragMove={e => {
+                    // dispatch(setUnselectAllOnPlanMouseUp(false));
+                } }
+                onDragEnd={e => {
+                    setDragging(false);
                     planProps.position = e.currentTarget.getPosition();
                     dispatch(updatePlanProps(planProps));
-                    dispatch(setUnselectAllOnPlanMouseUp(true));}}
+                    // dispatch(setUnselectAllOnPlanMouseUp(true));
+                }}
                 >
                 <Layer>
                 {/* <Group key={123}>
@@ -561,8 +585,10 @@ const Plan: React.FC = () => {
                 />
                 </Group> */}
                 {
-                    Object.entries(planElements).map(([_, v]) => {
-                    return getPlanElement(v)})
+                    getPlanElements()
+                    // PlanElementsHelper.planElementsSeparatedBySelection(planElements).map((planElements, _) => {
+                    //     return getPlanElement(el);
+                    // })
                 }
                 </Layer>
             </Stage>

@@ -1,4 +1,5 @@
 import { Line, PlanElement, PlanProps, Point } from "@/entities";
+import { cloneArray } from "@/utils";
 
 // export const setPlanElements = (planElements:{ [key: string]: PlanElement }):{ [key: string]: PlanElement } => {
 //   const initialPlanElements: {[key:string]: PlanElement} = {
@@ -12,25 +13,29 @@ export const updatePlanProps = (planProps: PlanProps):PlanProps => {
   return {...planProps};
 };
 
-export const setPlanElements = (planElements:{ [key: string]: PlanElement}):{ [key: string]: PlanElement } => {
-  return {...planElements};
+export const setPlanElements = (planElements: PlanElement[]): PlanElement[]=> {
+  return cloneArray(planElements);
 };
 
-export const addPlanElement = (planElements:{ [key: string]: PlanElement }, planElement:PlanElement):{ [key: string]: PlanElement } => {
-    return {...planElements, [planElement.id]:planElement};
+export const addPlanElement = (planElements: PlanElement[], planElement:PlanElement): PlanElement[] => {
+  planElements.push(planElement);
+  return cloneArray(planElements);
 };
 
-export const removePlanElement = (planElements:{ [key: string]: PlanElement }, planElementId:string):{ [key: string]: PlanElement } => {
-  if(planElements[planElementId]){
-    delete planElements[planElementId];
-    return {...planElements};
+export const removePlanElement = (planElements: PlanElement[], planElementId:string): PlanElement[] => {
+  const planElementIndex = planElements.findIndex(el => el.id === planElementId);
+  if(planElementIndex){
+    planElements.splice(planElementIndex, 1);
+    return cloneArray(planElements);
   }
   return planElements;
 };
 
-export const updatePlanElement = (planElements:{ [key: string]: PlanElement }, planElement:PlanElement):{ [key: string]: PlanElement } => {
-    if(planElements[planElement.id]){
-      return {...planElements, [planElement.id]:planElement};
+export const updatePlanElement = (planElements: PlanElement[], planElement:PlanElement): PlanElement[] => {
+    let planElementFound = planElements.find(el => el.id === planElement.id);
+    if(planElementFound){
+      planElementFound = planElement;
+      return cloneArray(planElements);
     }
     return planElements;
   };

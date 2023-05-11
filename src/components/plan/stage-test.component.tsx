@@ -142,26 +142,111 @@ const StageTest: React.FC = () => {
             position={stagePosition}
             style={{'border':'1px solid black', 'backgroundColor':'white'}}
             hitOnDragEnabled
-            draggable = {draggable}
-            onTouchMove={e => {
+            // draggable = {draggable}
+            // onTouchMove={e => {
 
 
-              handlePinchTouchMove(e.evt.touches);
-              // let touches = e.evt.changedTouches;
-              // var touch1 = touches[0];
-              // var touch2 = touches[1];
-              // setMsg("touches.length = "+touches.length+", touch2 = "+touch2);
+            //   handlePinchTouchMove(e.evt.touches);
+            //   // let touches = e.evt.changedTouches;
+            //   // var touch1 = touches[0];
+            //   // var touch2 = touches[1];
+            //   // setMsg("touches.length = "+touches.length+", touch2 = "+touch2);
         
+            // }}
+            // onTouchEnd={handlePinchTouchEnd}
+            draggable = {false}
+            onClick={e => {
+              alert("parent click")
+
             }}
-            onTouchEnd={handlePinchTouchEnd}
+            onPointerDown={e => {
+              console.log("parent down")
+              setMsg("parent down");
+              } }
+              onPointerUp={e => {
+                console.log("parent up")
+                // alert("parent up")
+                setMsg("parent up");
+              } }
+              onPointerMove={e => {
+                console.log("parent move")
+                setMsg("parent move");
+              } }
+              // onPointerMove={e => {
+              //   console.log("parent move")
+              //   setMsg("parent move");
+              // } }
+              onDragStart={e =>{
+                console.log("parent dragstart")
+                setMsg("parent dragstart");
+              }}
+              onDragMove={e =>{
+                console.log("parent dragmove")
+                setMsg("parent dragmove");
+              }}
+              onDragEnd={e =>{
+                console.log("parent dragend")
+                setMsg("parent dragend");
+              }}
             >
             <Layer>
+              <Rect
+                    x={50}
+                    y={50}
+                    width={100}
+                    height={100}
+                    fill="red"                  
+                    onPointerDown={e => {
+                      console.log("child down")
+                      setMsg("child down");
+                    } }
+                    onPointerMove={e => {
+                      console.log("child move")
+                      setMsg("child move");
+                    } }
+                />
                 <Rect
                     x={50}
                     y={50}
                     width={100}
                     height={100}
                     fill="blue"
+                    draggable
+                    onClick={e => {
+                      e.cancelBubble = true;
+                      console.log("child click")
+                    }}
+                    onPointerDown={e => {
+                      e.cancelBubble = true;
+                      console.log("child down")
+                      setMsg("child down");
+                    } }
+                    onPointerMove={e => {
+                      e.cancelBubble = true;
+                      console.log("child move")
+                      setMsg("child move");
+                    } }
+                    onPointerUp={e => {
+                      e.cancelBubble = true;
+                      e.evt.stopPropagation();
+                      console.log("child up")
+                      setMsg("child up");
+                    } }
+                    onDragStart={e =>{
+                      e.cancelBubble = true;
+                      console.log("child dragstart")
+                      setMsg("child dragstart");
+                    }}
+                    onDragMove={e =>{
+                      e.cancelBubble = true;
+                      console.log("child dragmove")
+                      setMsg("child dragmove");
+                    }}
+                    onDragEnd={e =>{
+                      e.cancelBubble = true;
+                      console.log("child dragend")
+                      setMsg("child dragend");
+                    }}
                 />
             </Layer>
         </Stage>
