@@ -393,9 +393,11 @@ const Plan: React.FC = () => {
 
     const handlePinchTouchEnd = useCallback(()=>{
         // setMsg("handlePinchTouchMove")
+        setScaling(false);
         setLastDist(0);
         setLastCenter(null);
-    }, []);
+        dispatch(updatePlanProps(planProps));
+    }, [dispatch, planProps]);
 
     const handleOnPointerUp = useCallback(()=>{
         if(addingPointLineIdPointId){
@@ -471,9 +473,8 @@ const Plan: React.FC = () => {
                     dispatch(setUnselectAllOnPlanMouseUp(false));
                 }}
                 onTouchEnd={e => {
-                    handlePinchTouchEnd(); 
                     if(e.evt.touches.length === 0){
-                        setScaling(false);
+                        handlePinchTouchEnd(); 
                     }
                 }}
                 // onMouseUp={handleMouseUp}

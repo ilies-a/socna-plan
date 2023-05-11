@@ -14,7 +14,7 @@ export const updatePlanProps = (planProps: PlanProps):PlanProps => {
 };
 
 export const setPlanElements = (planElements: PlanElement[]): PlanElement[]=> {
-  return cloneArray(planElements);
+  return planElements;
 };
 
 export const addPlanElement = (planElements: PlanElement[], planElement:PlanElement): PlanElement[] => {
