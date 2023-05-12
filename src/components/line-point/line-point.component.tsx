@@ -1,5 +1,6 @@
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
+import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D } from "@/entities";
 import { setAddingPointLineIdPointId, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectAddingPointLineIdPointId, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
@@ -7,7 +8,7 @@ import { cloneArray } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
-
+import { v4 } from 'uuid';
 
 type Props = {
   line: Line,
@@ -27,8 +28,11 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
   const planPointerUpActionsHandler: PlanPointerUpActionsHandler = useSelector(selectPlanPointerUpActionsHandler);
   const addingPointLineIdPointId: [string, string] | null = useSelector(selectAddingPointLineIdPointId);
   const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
+  const [dragStartPos, setDragStartPos] = useState<Vector2D | null>(null);
+
   const addPoint = useAddPoint();
   const removeLineIfNoPoints = useRemLine();
+  const savePlan = useSavePlan();
 
   // const [test, setTest] = useState(false);
 
@@ -123,19 +127,22 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
         const join:boolean = planMode === PlanMode.RemovePointThenJoin;
         if(!join && !line.pathIsClose) return;
   
-        const planElementsClone = PlanElementsHelper.clone(planElements);
-        const lineClone: Line | undefined = planElementsClone.find(el => el.id === line.id ) as Line | undefined;
+        const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+        const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+
+        const lineClone: Line | undefined = nextPlanElementsClone.find(el => el.id === line.id ) as Line | undefined;
         if(!lineClone) return;
         lineClone.removePoint(id, join);
 
-        const lineIndex = PlanElementsHelper.findElementIndexById(planElementsClone, line.id);
+        const lineIndex = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, line.id);
         if(lineIndex > -1){
-          if((planElementsClone[lineIndex] as Line).path.length < 2){
-            planElementsClone.splice(lineIndex, 1);
+          if((nextPlanElementsClone[lineIndex] as Line).path.length === 1){
+            nextPlanElementsClone.splice(lineIndex, 1);
           }
         }
-  
-        dispatch(setPlanElements(planElementsClone));
+        savePlan(currentPlanElementsClone, nextPlanElementsClone);
+
+        // dispatch(setPlanElements(planElementsClone));
 
         // const planElementsRecordsClone:PlanElementsRecordsHandler = planElementsRecords.clone();
         // // const planElementsClone = PlanElementsHelper.clone(planElements);
@@ -172,15 +179,15 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
         line.selectedPointId = null;
         dispatch(updatePlanElement(line));
       }
-    }else{
-      if(addingPointLineIdPointId){
-        addPoint();
-      }
-      // if(line.pointOverJoinablePoint(id, planProps.scale) && line.path.length > 3){
-      //   line.joinExtremePoints();
-      // }
-      // dispatch(updatePlanElement(line));   
     }
+    if(addingPointLineIdPointId){
+      addPoint(id);
+    }
+    // if(line.pointOverJoinablePoint(id, planProps.scale) && line.path.length > 3){
+    //   line.joinExtremePoints();
+    // }
+    // dispatch(updatePlanElement(line));   
+  
     // if(selected && (planMode === PlanMode.RemovePointNoJoin || planMode === PlanMode.RemovePointThenJoin)){
     //   const join:boolean = planMode === PlanMode.RemovePointThenJoin;
     //   if(!join && !line.pathIsClose) return;
@@ -230,7 +237,7 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
       // }
     
 
-  },[selected, planMode, line, planElements, id, dispatch, addingPointLineIdPointId, addPoint]);
+  },[selected, addingPointLineIdPointId, planMode, line, planElements, id, savePlan, dispatch, addPoint]);
 
   // const handleOnTouchEnd = handleOnMouseUp;
 
@@ -288,8 +295,28 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
       line.joinExtremePoints();
     }
     line.selectedPointId = null;
-    dispatch(updatePlanElement(line));   
-  },[dispatch, id, line, planProps.scale]);
+
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+    const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+
+    const currentLineClone: Line = currentPlanElementsClone[PlanElementsHelper.findElementIndexById(planElements, line.id)] as Line;
+
+    const currentLinePointClone = currentLineClone.getPathPointById(id) as Point;
+    if(!currentLinePointClone || !dragStartPos) return; //todo: throw error
+
+    currentLinePointClone.x = dragStartPos.x;
+    currentLinePointClone.y = dragStartPos.y;
+
+    console.log("currentLinePointClone", currentLinePointClone)
+    const nextLineClone: Line = nextPlanElementsClone[PlanElementsHelper.findElementIndexById(planElements, line.id)] as Line;
+    const nextLinePointClone = nextLineClone.getPathPointById(id) as Point;
+    console.log("nextLinePointClone", nextLinePointClone)
+
+    savePlan(currentPlanElementsClone, nextPlanElementsClone);
+
+    setDragStartPos(null);
+
+  },[dragStartPos, id, line, planElements, planProps.scale, savePlan]);
 
   return (
     <Circle
@@ -343,13 +370,14 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
         onPointerOut={handleOnMouseOut}
         draggable = {line.selectedPointId === id && planMode === PlanMode.MovePoint}
         onDragStart={e => {
+          setDragStartPos(planCursorPos);
           // console.log("point dragstart")
           e.cancelBubble = true;
         }}
         onDragMove={e => {
           // console.log("point dragmove")
           e.cancelBubble = true;
-          updateLinePoint(new Point(e.target.position().x, e.target.position().y));
+          updateLinePoint(new Point(v4(), e.target.position().x, e.target.position().y));
         }}
         onDragEnd={e => {
           // console.log("point dragend")

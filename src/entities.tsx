@@ -87,11 +87,12 @@ export class Dimensions{
 }
 
 export class Point{
-    id:string = v4();
+    id:string;
     x:number;
     y:number;
 
-    constructor(x:number, y:number){
+    constructor(id: string, x:number, y:number){
+        this.id = id;
         this.x = x;
         this.y = y;
     } 
@@ -350,15 +351,15 @@ export class Line extends PlanElement {
         this.pathIsClose = false;
     }
 
-    addPoint(point:Point, startingFromPointId:string):boolean{ //return true if point is added false otherwise
+    addPoint(point:Point, startingFromPointId:string, pointOverId:string | null):boolean{ //return true if point is added false otherwise
         // if(this.addPointSession?.pointIndexCursorIsOver !== null){
         const startingFromPointIndex = this.getPathPointIndexById(startingFromPointId);
-        if(this.pointIdCursorIsOver === startingFromPointId){
+        if(startingFromPointId === pointOverId){
             // this.endAddPointSession();
             return false;
         }
-        else if(this.pointIdCursorIsOver !== null){
-            const pointIndexCursorIsOver = this.getPathPointIndexById(this.pointIdCursorIsOver);
+        else if(pointOverId !== null){
+            const pointIndexCursorIsOver = this.getPathPointIndexById(pointOverId);
             //if starting point and target are extremity points we close the path
             if( (startingFromPointIndex === 0 && pointIndexCursorIsOver === this.path.length - 1) ||
                 (pointIndexCursorIsOver === 0 && startingFromPointIndex === this.path.length - 1)){
@@ -478,7 +479,7 @@ export class Line extends PlanElement {
         // width:number;
 
 
-        const lineClone:Line = new Line(this.id, cloneArray(this.path), this.width);
+        const lineClone:Line = new Line(this.id, this.cloneLinePath(), this.width);
         lineClone.pathIsClose = this.pathIsClose;
         lineClone.selected = this.selected;
         // lineClone.linePointMode = this.linePointMode;
@@ -487,6 +488,10 @@ export class Line extends PlanElement {
         lineClone.pointIdPointingDownOn = this.pointIdPointingDownOn;
         // lineClone.memoizedMoveOrAddMode = this.memoizedMoveOrAddMode;
         return lineClone;
+    }
+
+    cloneLinePath(): Point[]{
+        return this.path.map(p => new Point(p.id, p.x, p.y));
     }
 
     override setSelected(selected:boolean){

@@ -8,7 +8,7 @@ const INITIAL_STATE = {
   planProps: new PlanProps(),
   // planIsScaling: false,
   // planIsDragging: false,
-  planElements: [new Line(v4(), [new Point(50,50), new Point(300,50), new Point(400,300)], 25)] as PlanElement[],
+  planElements: [] as PlanElement[],
   planElementsTemp: [] as PlanElement[],
   planMode: PlanMode.MovePoint,
   selectingPlanElement: false,

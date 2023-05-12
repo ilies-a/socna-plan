@@ -9,6 +9,7 @@ import LineMenu from "./line-menu.component";
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
 import { cloneArray } from "@/utils";
+import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 const {v4} = require("uuid");
 
 const PlanElementMenu: React.FC = () => {
@@ -16,6 +17,7 @@ const PlanElementMenu: React.FC = () => {
   const planElements: PlanElement[] = useSelector(selectPlanElements);
   const planMode: PlanMode = useSelector(selectPlanMode);
   const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
+  const savePlan = useSavePlan();
 
   const dispatch = useDispatch();
 
@@ -47,7 +49,7 @@ const PlanElementMenu: React.FC = () => {
     const p2x = p1x + lineLength;
     const p2y = p1y;
 
-    const newElement:PlanElement = new Line(v4(), [new Point(p1x,p1y), new Point(p2x, p2y)], 25);
+    const newElement:PlanElement = new Line(v4(), [new Point(v4(), p1x,p1y), new Point(v4(), p2x, p2y)], 25);
     dispatch(addPlanElement(newElement));
   },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
 
@@ -65,30 +67,17 @@ const PlanElementMenu: React.FC = () => {
   }, [dispatch]);
 
   const removeSelectedPlanElements = useCallback(()=>{
-    const planElementsClone = PlanElementsHelper.clone(planElements);
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+    const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
     for(const el of planElements){
         if(!el.getSelected()) continue;
-        const planElementToRemoveIndex = planElementsClone.findIndex((iterEl) => iterEl.id === el.id);
+        const planElementToRemoveIndex = nextPlanElementsClone.findIndex((iterEl) => iterEl.id === el.id);
         if(planElementToRemoveIndex === -1) continue;
-        planElementsClone.splice(planElementToRemoveIndex, 1);
-
-        const planElementsRecordsClone:PlanElementsRecordsHandler = planElementsRecords.clone();
-        // const planElementsClone = PlanElementsHelper.clone(planElements);
-        
-        // const planElementsClone = cloneArray(planElements);
-        planElementsRecordsClone.currentRecordIndex++;
-        planElementsRecordsClone.records = planElementsRecordsClone.records.slice(0, planElementsRecordsClone.currentRecordIndex);
-        planElementsRecordsClone.records.push(planElementsClone);
-        dispatch(setPlanElementsRecords(planElementsRecordsClone));
-        dispatch(setPlanElements(planElementsRecordsClone.records[planElementsRecordsClone.currentRecordIndex]));
-        // const planElementsRecordsClone:PlanElementsRecordsHandler = planElementsRecords.clone();
-        // planElementsClone.splice(planElementToRemoveIndex, 1);
-        // planElementsRecordsClone.records[planElementsRecordsClone.currentRecordIndex] = planElementsClone;
-        // dispatch(setPlanElementsRecords(planElementsRecordsClone));
-        // dispatch(setPlanElements(planElementsClone));
+        nextPlanElementsClone.splice(planElementToRemoveIndex, 1);
     }
-    dispatch(setPlanElements(planElementsClone));
-  }, [dispatch, planElements, planElementsRecords]);
+    savePlan(currentPlanElementsClone, nextPlanElementsClone);
+
+  }, [planElements, savePlan]);
 
   const toPreviousRecord = useCallback(()=>{
     if(planElementsRecords.currentRecordIndex === 0 ) return;

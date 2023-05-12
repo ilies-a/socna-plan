@@ -12,13 +12,14 @@ import LineAddPoint from "../line-add-point/line-add-point.component";
 import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
+import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 
 const Plan: React.FC = () => {
     const minPlanDim: Dimensions = new Dimensions(window.innerWidth * 0.8, window.innerHeight * 0.8);
     const [planDim, setPlanDim] = useState<Dimensions>(minPlanDim);
     // const [planScale, setPlanScale] = useState<number>(1);
-    const [planPos, setPlanPos] = useState<Point>(new Point(0,0));
-    const [cursorPos, setCursorPos] = useState<Point>(new Point(0,0));
+    const [planPos, setPlanPos] = useState<Point>(new Point(v4(), 0,0));
+    const [cursorPos, setCursorPos] = useState<Point>(new Point(v4(), 0,0));
     const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
 
     const planProps:PlanProps = useSelector(selectPlanProps);
@@ -51,7 +52,11 @@ const Plan: React.FC = () => {
     const planPointerUpActionsHandler: PlanPointerUpActionsHandler = useSelector(selectPlanPointerUpActionsHandler);
     const addingPointLineIdPointId: [string, string] | null = useSelector(selectAddingPointLineIdPointId);
 
+    const [planElementsAtDragStart, setPlanElementsAtDragStart] = useState<PlanElement[] | null>(null);
+
+
     const addPoint = useAddPoint();
+    const savePlan = useSavePlan();
     const removeLineIfNoPoints = useRemLine();
 
     // const [dblCick, setDblClick] = useState<DblClick>(new DblClick());
@@ -71,22 +76,27 @@ const Plan: React.FC = () => {
         const pX = planCursorPos.x;
         const pY = planCursorPos.y;
     
-        const newLine:Line = new Line(v4(), [new Point(pX, pY)], 25);
+        const newLine:Line = new Line(v4(), [new Point(v4(), pX, pY)], 25);
         const firstPointId = newLine.path[0].id;
         newLine.setSelected(true);
         newLine.selectPointId(firstPointId);
 
+        dispatch(addPlanElement(newLine));
+
         // newLine.startAddPointSession(firstPointId);
         // newLine.pointIdCursorIsOver = firstPointId;
+        // const planElementsClone = PlanElementsHelper.clone(planElements);
+        // planElementsClone.push(newLine);
+        // savePlan(planElementsClone);
 
-        dispatch(setAddingPointLineIdPointId([newLine.id, firstPointId]));
-        dispatch(addPlanElement(newLine));
+
+
         // console.log("--> newLine.path.length", newLine.path.length);
-        
         dispatch(setPlanMode(PlanMode.AddPoint));
+        dispatch(setAddingPointLineIdPointId([newLine.id, firstPointId]));
         // dispatch(setUnselectAllOnPlanMouseUp(false));
 
-    }, [planCursorPos.x, planCursorPos.y, dispatch, planMode]);
+    }, [planMode, planCursorPos.x, planCursorPos.y, dispatch]);
 
     const handleDblClick = useCallback((e:any, f:any) =>{
         if(dblClick.click === 0){
@@ -103,6 +113,10 @@ const Plan: React.FC = () => {
         dispatch(updatePlanProps(newPlanProps));
     },[dispatch]);
     
+    useEffect(()=>{
+        console.log("planElements.length", planElements.length);
+    },[planElements]);
+
     // const setPlanScaleCallback = useCallback(()=> {
     //     setPlanScale(planScale+0.5);
     // },[planScale]);
@@ -243,6 +257,7 @@ const Plan: React.FC = () => {
                     draggable = {planMode === PlanMode.MovePoint}
                     onDragStart={e => {
                         setDragStartPos(new Position(e.currentTarget.getPosition().x, e.currentTarget.getPosition().y));
+                        setPlanElementsAtDragStart(PlanElementsHelper.clone(planElements));
                         // console.log("e.evt.offsetX", e.evt.)
                     }}
                     onDragEnd={e => {
@@ -256,7 +271,14 @@ const Plan: React.FC = () => {
                                     p.y += dragDxy.y;
                                 }
                         }
+
+                        const currentPlanElementsClone = planElementsAtDragStart as PlanElement[];
+                        const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+                    
+                        savePlan(currentPlanElementsClone, nextPlanElementsClone);
+
                         setDragStartPos(null);
+                        setPlanElementsAtDragStart(null);
                         e.currentTarget.setPosition(new Vector2D(0,0));
                     }}
                 >
@@ -401,7 +423,7 @@ const Plan: React.FC = () => {
 
     const handleOnPointerUp = useCallback(()=>{
         if(addingPointLineIdPointId){
-            addPoint()
+            addPoint(null);
         }
     }, [addPoint, addingPointLineIdPointId]);
     
