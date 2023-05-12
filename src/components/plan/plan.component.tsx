@@ -221,10 +221,11 @@ const Plan: React.FC = () => {
     },[dragging, moveUpPlanElement, scaling, toggleSelectPlanElement]);
 
     const unselectAllPlanElements = useCallback(() => {
-        for(const elId in planElements){
-            planElements[elId].setSelected(false);
+        const planElementsCopy = PlanElementsHelper.clone(planElements);
+        for(const el of planElementsCopy){
+            el.setSelected(false);
         }
-        dispatch(setPlanElements(planElements));
+        dispatch(setPlanElements(planElementsCopy));
     }, [dispatch, planElements]);
     
     const handleClick= useCallback(()=>{
