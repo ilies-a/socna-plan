@@ -42,6 +42,13 @@ export class PlanElementsHelper {
     static findElementIndexById(planElements:PlanElement[], planElementId:string): number{
         return planElements.findIndex(el => el.id === planElementId)
     }
+
+    static hasSelectedElements(planElements:PlanElement[]):boolean{
+        for(const el of planElements){
+            if(el.getSelected()) return true;
+        }
+        return false;
+    }
 }
 
 
@@ -570,3 +577,37 @@ export class PlanPointerUpActionsHandler{
         return planPointerUpActionsHandlerClone;
     }
 }
+
+
+export class IconData{
+    fileName:string;
+    dimensions:Dimensions;
+  
+    constructor(fileName:string, dimensions:Dimensions){
+      this.fileName = fileName;
+      this.dimensions = dimensions;
+    }
+  }
+  
+export const iconDataArr:IconData[] = [
+    new IconData("alim-eau-pot.png", new Dimensions(50,50)),
+    new IconData("canal-eau-pluv.png", new Dimensions(50,50)),
+    new IconData("canal-eau-use.png", new Dimensions(50,50)),
+    new IconData("compass.png", new Dimensions(50,50)),
+    new IconData("compt-eau.png", new Dimensions(50,50)),
+    new IconData("add-el.png", new Dimensions(50,50)),
+    new IconData("add-point.png", new Dimensions(50,50)),
+    new IconData("del-el.png", new Dimensions(50,50)),
+    new IconData("del-point.png", new Dimensions(50,50)),
+    new IconData("del-seg.png", new Dimensions(50,50)),
+    new IconData("eau-pluv.png", new Dimensions(50,50)),
+    new IconData("fosse.png", new Dimensions(50,50)),
+    new IconData("gout.png", new Dimensions(50,50)),
+    new IconData("move.png", new Dimensions(50,50)),
+    new IconData("puit.png", new Dimensions(50,50)),
+    new IconData("regards.png", new Dimensions(50,50)),
+    new IconData("text.png", new Dimensions(50,50)),
+    new IconData("vanne-aep.png", new Dimensions(50,50)),
+    new IconData("arrow-prev.png", new Dimensions(50,50)),
+    new IconData("arrow-next.png", new Dimensions(50,50)),
+  ];

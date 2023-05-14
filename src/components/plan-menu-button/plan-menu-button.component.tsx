@@ -1,26 +1,44 @@
-import { Line, LinePointMode, PlanElement, Point, Position } from "@/entities";
-import { setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectPlanElements } from "@/redux/plan/plan.selectors";
-import { MouseEventHandler, useCallback, useEffect, useMemo } from "react";
-import { Circle, Group } from "react-konva";
-import { useDispatch, useSelector } from "react-redux";
+
+import { MouseEventHandler, ReactNode, useCallback } from "react";
 import styles from './plan-menu-button.module.scss';
-// import { getSelectedPlanElement } from "@/utils";
+import Image from "next/image";
+import { Dimensions, iconDataArr } from "@/entities";
+
 
 type Props = {
-    name: string,
+    iconFileName: string,
     handleOnClick: MouseEventHandler<HTMLButtonElement> | undefined,
     active: boolean,
     available: boolean
   };
 
-const PlanMenuButton: React.FC<Props> = ({name, handleOnClick, active, available}) => {
+const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, available}) => {
+
+  const icon = useCallback(():ReactNode  =>{
+    for(const iconData of iconDataArr){
+      if(iconData.fileName === iconFileName){
+        return(
+          <div className={styles['icon-wrapper']} >
+            <Image 
+            src={`/img/${iconData.fileName}`} 
+            alt={""} 
+            priority 
+            className={styles['icon']} 
+            width={iconData.dimensions.w * 0.5}
+            height={iconData.dimensions.h * 0.5}
+            />
+          </div>
+        );
+      }
+    }
+  },[iconFileName]);
+
 
   return (
     <button
         className={`${styles['button']} ${active? styles['active'] : null} ${available? styles['available'] : null}`} 
         onClick={handleOnClick}>
-            {name}
+            {icon()}
         </button>
   )
 };

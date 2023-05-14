@@ -67,14 +67,17 @@ const PlanElementMenu: React.FC = () => {
   }, [dispatch]);
 
   const removeSelectedPlanElements = useCallback(()=>{
+    let elementsRemoved: boolean = false; 
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
     const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
     for(const el of planElements){
         if(!el.getSelected()) continue;
+        elementsRemoved = true;
         const planElementToRemoveIndex = nextPlanElementsClone.findIndex((iterEl) => iterEl.id === el.id);
         if(planElementToRemoveIndex === -1) continue;
         nextPlanElementsClone.splice(planElementToRemoveIndex, 1);
     }
+    if(!elementsRemoved) return;
     savePlan(currentPlanElementsClone, nextPlanElementsClone);
 
   }, [planElements, savePlan]);
@@ -118,13 +121,14 @@ const PlanElementMenu: React.FC = () => {
   
   return (
     <div className={styles['main']}>
-      <PlanMenuButton name="Move" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available/>
-      <PlanMenuButton name="+" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available/>
-      <PlanMenuButton name="-" handleOnClick={removeSelectedPlanElements} active={false} available/>
-      <PlanMenuButton name="p-" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available/>
-      <PlanMenuButton name="/p-/" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available/>
-      <PlanMenuButton name="&#10558;" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
-      <PlanMenuButton name="&#10559;" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
+      <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available/>
+      <PlanMenuButton iconFileName="add-el.png" handleOnClick={removeSelectedPlanElements} active={false} available/>
+      <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)}/>
+      <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available/>
+      <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available/>
+      <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available/>
+      <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
+      <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
 
     </div>
   )
