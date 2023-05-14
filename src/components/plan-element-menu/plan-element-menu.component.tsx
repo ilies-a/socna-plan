@@ -1,15 +1,15 @@
 import { Line, LinePointMode, PlanElement, PlanElementTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
 import { addPlanElement, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import styles from './plan-element-menu.module.scss';
-import LineMenu from "./line-menu.component";
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
 import { cloneArray } from "@/utils";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
+import AddElementMenu from "../add-element-menu/add-element-menu.component";
 const {v4} = require("uuid");
 
 const PlanElementMenu: React.FC = () => {
@@ -18,7 +18,6 @@ const PlanElementMenu: React.FC = () => {
   const planMode: PlanMode = useSelector(selectPlanMode);
   const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
   const savePlan = useSavePlan();
-
   const dispatch = useDispatch();
 
   // const selectMenu = useCallback(() =>{
@@ -53,6 +52,9 @@ const PlanElementMenu: React.FC = () => {
     dispatch(addPlanElement(newElement));
   },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
 
+  const setPlanModeToAddElement= useCallback(()=>{
+    dispatch(setPlanMode(PlanMode.AddPlanElement));
+  }, [dispatch]);
   const setPlanModeToMove = useCallback(()=>{
     dispatch(setPlanMode(PlanMode.MovePoint));
   }, [dispatch]);
@@ -119,17 +121,24 @@ const PlanElementMenu: React.FC = () => {
     return planElementsRecords.currentRecordIndex < planElementsRecords.records.length - 1; 
   }, [planElementsRecords.currentRecordIndex, planElementsRecords.records.length]);
   
+
   return (
     <div className={styles['main']}>
-      <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available/>
-      <PlanMenuButton iconFileName="add-el.png" handleOnClick={removeSelectedPlanElements} active={false} available/>
-      <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)}/>
-      <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available/>
-      <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available/>
-      <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available/>
-      <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
-      <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
-
+      <div className={styles['mode-buttons']}>
+        <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available/>
+        <PlanMenuButton iconFileName="add-el.png" handleOnClick={setPlanModeToAddElement} active={planMode === PlanMode.AddPlanElement} available/>
+        <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)}/>
+        <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available/>
+        <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available/>
+        <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available/>
+        <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
+        <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
+      </div>
+      {
+      planMode === PlanMode.AddPlanElement?
+        <AddElementMenu/>
+        :null
+      }
     </div>
   )
 };

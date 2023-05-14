@@ -6,6 +6,9 @@
     height:$size;
     border-radius: 50%;
     opacity:0.5;
+    min-width: $size;
+    min-height: $size;
+
     // background-color: white;
     margin: 5px;
 
@@ -14,10 +17,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        .icon{
-            width:auto;
-            height: auto;
-        }
     }
 
 

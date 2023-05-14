@@ -108,10 +108,20 @@ const Plan: React.FC = () => {
     }, [dblClick]);    
 
     useEffect(()=>{
-        const newPlanProps = new PlanProps();
-        newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
-        dispatch(updatePlanProps(newPlanProps));
+        const handleResize = ()=>{
+            const newPlanProps = new PlanProps();
+            newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
+            dispatch(updatePlanProps(newPlanProps));
+        }
+        window.addEventListener('resize', handleResize);
+        handleResize();
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+        
     },[dispatch]);
+
     
     useEffect(()=>{
         console.log("planElements.length", planElements.length);

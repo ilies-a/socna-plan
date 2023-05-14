@@ -14,7 +14,7 @@ export class PlanProps {
     // } 
 }
 
-export enum PlanMode { MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
+export enum PlanMode { AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
 
 // export class PlanElementsHelper{
 //     static planElementsSeparatedBySelection(planElements:PlanElement[]): [PlanElement[], PlanElement[]]{
@@ -590,6 +590,7 @@ export class IconData{
   }
   
 export const iconDataArr:IconData[] = [
+    new IconData("wall.png", new Dimensions(50,50)),
     new IconData("alim-eau-pot.png", new Dimensions(50,50)),
     new IconData("canal-eau-pluv.png", new Dimensions(50,50)),
     new IconData("canal-eau-use.png", new Dimensions(50,50)),
