@@ -8,7 +8,7 @@
     opacity:0.5;
     min-width: $size;
     min-height: $size;
-
+    -webkit-tap-highlight-color: transparent;
     // background-color: white;
     margin: 5px;
 
@@ -19,6 +19,14 @@
         justify-content: center;
     }
 
+    .wall-icon{
+        position: absolute;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: grey;
+        width: $size * 0.7;
+    }
+
 
     &.available{
         opacity:1;
@@ -26,7 +34,8 @@
 
     &:active, &.active{
         border-width: 2px;
-        font-weight: bold;;
+        font-weight: bold;
+        background-color: rgba(255, 255, 255, 0.8);
     }
 
     @media(pointer: fine){

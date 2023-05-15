@@ -3,7 +3,7 @@ import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D } from "@/entities";
 import { setAddingPointLineIdPointId, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAddingPointLineIdPointId, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { selectAddingPointLineIdPointId, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { cloneArray } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group } from "react-konva";
@@ -29,12 +29,17 @@ const LinePoint: React.FC<Props> = ({line, id, position, selected}) => {
   const addingPointLineIdPointId: [string, string] | null = useSelector(selectAddingPointLineIdPointId);
   const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
   const [dragStartPos, setDragStartPos] = useState<Vector2D | null>(null);
+  const planIsDragging:boolean = useSelector(selectPlanIsDragging);
 
   const addPoint = useAddPoint();
   const removeLineIfNoPoints = useRemLine();
   const savePlan = useSavePlan();
 
   // const [test, setTest] = useState(false);
+
+  useEffect(()=>{
+    line.selectedPointId = null;
+  },[line, planIsDragging])
 
   const updateLinePoint = useCallback((p:Point) =>{
     const linePath = line.path;

@@ -1,4 +1,4 @@
-import { PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Vector2D } from "@/entities";
+import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
 
 export const updatePlanProps = (planProps: PlanProps) => ({
@@ -11,10 +11,10 @@ export const updatePlanProps = (planProps: PlanProps) => ({
 //   payload: scaling,
 // });
 
-// export const setPlanIsDragging= (dragging: boolean) => ({
-//   type: PlanActionTypes.SET_PLAN_IS_DRAGGING,
-//   payload: dragging,
-// });
+export const setPlanIsDragging= (dragging: boolean) => ({
+  type: PlanActionTypes.SET_PLAN_IS_DRAGGING,
+  payload: dragging,
+});
 
 export const setPlanCursorPos = (planCursorPos: Vector2D) => ({
   type: PlanActionTypes.SET_PLAN_CURSOR_POS,
@@ -69,4 +69,9 @@ export const setSelectingPlanElement = (selecting: boolean) => ({
 export const setUnselectAllOnPlanMouseUp = (unselect: boolean) => ({
   type: PlanActionTypes.SET_UNSELECT_ALL_ON_PLAN_MOUSE_UP,
   payload: unselect,
+});
+
+export const setLineToAdd = (line: Line | null) => ({
+  type: PlanActionTypes.SET_LINE_TO_ADD,
+  payload: line,
 });

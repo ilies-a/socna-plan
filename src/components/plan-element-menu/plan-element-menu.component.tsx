@@ -33,24 +33,24 @@ const PlanElementMenu: React.FC = () => {
   //   }
   // },[planElements]);
 
-  const addLine = useCallback(()=>{
-    console.log("addLine")
-    for(const elId in planElements){
-      console.log("elId", elId)
+  // const addLine = useCallback(()=>{
+  //   console.log("addLine")
+  //   for(const elId in planElements){
+  //     console.log("elId", elId)
 
-    }
-    const lineLenghtMaxWhenAdded = 100;
-    let lineLength = planProps.dimensions.w * 0.3;
-    lineLength = lineLength < lineLenghtMaxWhenAdded ? lineLength : lineLenghtMaxWhenAdded;
+  //   }
+  //   const lineLenghtMaxWhenAdded = 100;
+  //   let lineLength = planProps.dimensions.w * 0.3;
+  //   lineLength = lineLength < lineLenghtMaxWhenAdded ? lineLength : lineLenghtMaxWhenAdded;
 
-    const p1x = (planProps.dimensions.w * 0.5 - planProps.position.x) * 1/planProps.scale - lineLength * 0.5;
-    const p1y = (planProps.dimensions.h * 0.5 - planProps.position.y) * 1/planProps.scale;
-    const p2x = p1x + lineLength;
-    const p2y = p1y;
+  //   const p1x = (planProps.dimensions.w * 0.5 - planProps.position.x) * 1/planProps.scale - lineLength * 0.5;
+  //   const p1y = (planProps.dimensions.h * 0.5 - planProps.position.y) * 1/planProps.scale;
+  //   const p2x = p1x + lineLength;
+  //   const p2y = p1y;
 
-    const newElement:PlanElement = new Line(v4(), [new Point(v4(), p1x,p1y), new Point(v4(), p2x, p2y)], 25);
-    dispatch(addPlanElement(newElement));
-  },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
+  //   const newElement:PlanElement = new Line(v4(), [new Point(v4(), p1x,p1y), new Point(v4(), p2x, p2y)], 25);
+  //   dispatch(addPlanElement(newElement));
+  // },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
 
   const setPlanModeToAddElement= useCallback(()=>{
     dispatch(setPlanMode(PlanMode.AddPlanElement));
@@ -125,14 +125,14 @@ const PlanElementMenu: React.FC = () => {
   return (
     <div className={styles['main']}>
       <div className={styles['mode-buttons']}>
-        <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available/>
-        <PlanMenuButton iconFileName="add-el.png" handleOnClick={setPlanModeToAddElement} active={planMode === PlanMode.AddPlanElement} available/>
-        <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)}/>
-        <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available/>
-        <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available/>
-        <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available/>
-        <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
-        <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
+        <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="add-el.png" handleOnClick={setPlanModeToAddElement} active={planMode === PlanMode.AddPlanElement} available wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)} wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords} wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords} wallStrokeWidth={null}/>
       </div>
       {
       planMode === PlanMode.AddPlanElement?

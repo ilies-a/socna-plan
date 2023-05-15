@@ -12,10 +12,10 @@ export const selectPlanProps = createSelector(
 //   (plan) => plan.planIsScaling
 // );
 
-// export const selectPlanIsDragging= createSelector(
-//   [selectPlan],
-//   (plan) => plan.planIsDragging
-// );
+export const selectPlanIsDragging= createSelector(
+  [selectPlan],
+  (plan) => plan.planIsDragging
+);
 
 export const selectPlanCursorPos = createSelector(
   [selectPlan],
@@ -55,4 +55,9 @@ export const selectPlanElementsRecords = createSelector(
 export const selectAddingPointLineIdPointId = createSelector(
   [selectPlan],
   (plan) => plan.addingPointLineIdPointId
+);
+
+export const selectLineToAdd = createSelector(
+  [selectPlan],
+  (plan) => plan.lineToAdd
 );

@@ -7,7 +7,7 @@ import { v4 } from "uuid";
 const INITIAL_STATE = {
   planProps: new PlanProps(),
   // planIsScaling: false,
-  // planIsDragging: false,
+  planIsDragging: false,
   planElements: [] as PlanElement[],
   planElementsTemp: [] as PlanElement[],
   planMode: PlanMode.MovePoint,
@@ -19,6 +19,7 @@ const INITIAL_STATE = {
   planCursorPos: new Vector2D(0,0),
   // planElementsRecords: [] as PlanElement[][],
   // currentPlanElementRecordIndex: -1
+  lineToAdd: null as Line | null
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -33,11 +34,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
     //     ...state,
     //     planIsScaling: action.payload
     //   };
-    // case PlanActionTypes.SET_PLAN_IS_DRAGGING:
-    //   return {
-    //     ...state,
-    //     planIsDragging: action.payload
-    //   };
+    case PlanActionTypes.SET_PLAN_IS_DRAGGING:
+      return {
+        ...state,
+        planIsDragging: action.payload
+      };
     case PlanActionTypes.SET_PLAN_CURSOR_POS:
       return {
         ...state,
@@ -92,6 +93,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
       return {
         ...state,
         addingPointLineIdPointId: action.payload
+      };
+    case PlanActionTypes.SET_LINE_TO_ADD:
+      return {
+        ...state,
+        lineToAdd: action.payload
       };
     default:
       return state;

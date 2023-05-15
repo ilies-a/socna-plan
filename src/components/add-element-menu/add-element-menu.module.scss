@@ -5,7 +5,17 @@
     transform: translate(-50%, -200%);
     overflow-x: scroll;
     max-width: 500px;
-
+    padding: 10px;
+    .wall-buttons-wrapper{
+        position: relative;
+        .wall-stroke-input{
+            position: absolute;
+            left:50%;
+            top:-10px;
+            transform: translate(-50%);
+            width: 100%;
+        }
+    }
     // position: absolute;
     // .remove{
     //     position: relative;

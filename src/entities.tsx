@@ -1,7 +1,7 @@
 import { v4 } from 'uuid';
 import { cloneArray } from './utils';
 
-export enum PlanElementTypeName {Line}
+export enum PlanElementTypeName {Line, Wall};
 
 export class PlanProps {
     dimensions:Dimensions = new Dimensions(0,0);
@@ -253,7 +253,7 @@ export class Rectangle extends PlanElement{
 
 export enum LinePointMode {MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin}
 
-export class Line extends PlanElement {
+export abstract class Line extends PlanElement {
     path:Point[];
     pathIsClose:boolean = false;
     defaultLinePointMode:LinePointMode = LinePointMode.MovePoint;
@@ -485,16 +485,7 @@ export class Line extends PlanElement {
         // memoizedMoveOrAddMode:LinePointMode = this.defaultLinePointMode;
         // width:number;
 
-
-        const lineClone:Line = new Line(this.id, this.cloneLinePath(), this.width);
-        lineClone.pathIsClose = this.pathIsClose;
-        lineClone.selected = this.selected;
-        // lineClone.linePointMode = this.linePointMode;
-        lineClone.selectedPointId = this.selectedPointId;
-        lineClone.pointIdCursorIsOver = this.pointIdCursorIsOver;
-        lineClone.pointIdPointingDownOn = this.pointIdPointingDownOn;
-        // lineClone.memoizedMoveOrAddMode = this.memoizedMoveOrAddMode;
-        return lineClone;
+        return this;
     }
 
     cloneLinePath(): Point[]{
@@ -508,6 +499,37 @@ export class Line extends PlanElement {
         //     if(this.linePointMode != LinePointMode.RemovePointNoJoin && this.linePointMode != LinePointMode.RemovePointThenJoin) return;
         //     this.linePointMode = this.defaultLinePointMode;
         }
+    }
+}
+
+export class Wall extends Line {
+    typeName: PlanElementTypeName = PlanElementTypeName.Wall;
+
+    override clone():Wall{
+        // path:Point[];
+        // pathIsClose:boolean = false;
+        // defaultLinePointMode:LinePointMode = LinePointMode.MovePoint;
+        // linePointMode:LinePointMode = this.defaultLinePointMode;
+        // // selectedPointIndex:number | null = null;
+        // selectedPointId:string | null = null;
+        // addPointSession:AddPointSession | null = null;
+        // // pointIndexCursorIsOver:number | null = null;
+        // pointIdCursorIsOver:string | null = null;
+        // pointIdPointingDownOn:string | null = null;
+        // pointRadius = 20;
+        // memoizedMoveOrAddMode:LinePointMode = this.defaultLinePointMode;
+        // width:number;
+
+
+        const lineClone:Wall = new Wall(this.id, this.cloneLinePath(), this.width);
+        lineClone.pathIsClose = this.pathIsClose;
+        lineClone.selected = this.selected;
+        // lineClone.linePointMode = this.linePointMode;
+        lineClone.selectedPointId = this.selectedPointId;
+        lineClone.pointIdCursorIsOver = this.pointIdCursorIsOver;
+        lineClone.pointIdPointingDownOn = this.pointIdPointingDownOn;
+        // lineClone.memoizedMoveOrAddMode = this.memoizedMoveOrAddMode;
+        return lineClone;
     }
 }
 
