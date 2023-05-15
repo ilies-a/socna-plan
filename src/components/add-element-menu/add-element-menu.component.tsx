@@ -11,7 +11,8 @@ const AddElementMenu: React.FC = () => {
   const dispatch = useDispatch();
   const WALL_STROKE_MIN = 10;
   const WALL_STROKE_MAX = 50;
-  const [wallStroke, setWallStroke] = useState<number>((WALL_STROKE_MAX - WALL_STROKE_MIN) / 2);
+  const WALL_STROKE_DEFAULT = 30;
+  const [wallStroke, setWallStroke] = useState<number>(WALL_STROKE_DEFAULT);
   const lineToAdd:Line | null = useSelector(selectLineToAdd);
 
   useEffect(()=>{
@@ -28,6 +29,10 @@ const AddElementMenu: React.FC = () => {
     const wall = new Wall(v4(), [], wallStroke);
     dispatch(setLineToAdd(wall));
   },[dispatch, wallStroke]);
+
+  useEffect(()=>{
+    setPlanElementToAddToWall();
+  },[setPlanElementToAddToWall]);
 
   const handleOnClick = useCallback(() =>{
 
