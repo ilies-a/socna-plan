@@ -1,6 +1,6 @@
 .main{
     display: flex;
-    justify-content: center;
+    justify-content: center; //change to space-between for the pwa (the pwa won't have the search bar that causes render issues)
     align-items: center;
     flex-shrink: 1;
     height: 100vh;

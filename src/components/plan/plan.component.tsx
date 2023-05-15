@@ -9,7 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addPlanElement, setAddingPointLineIdPointId, setLineToAdd, setPlanCursorPos, setPlanElements, setPlanElementsRecords, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
 import { selectAddingPointLineIdPointId, selectLineToAdd, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import LineAddPoint from "../line-add-point/line-add-point.component";
-import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
+import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
@@ -115,7 +115,7 @@ const Plan: React.FC = () => {
     useEffect(()=>{
         const handleResize = ()=>{
             const newPlanProps = new PlanProps();
-            newPlanProps.dimensions = new Dimensions(window.innerWidth * PLAN_WIDTH_SCREEN_RATIO, window.innerHeight * PLAN_HEIGHT_SCREEN_RATIO);
+            newPlanProps.dimensions = new Dimensions(window.innerWidth - PLAN_HORIZONTAL_MARGIN, window.innerHeight - PLAN_MARGIN_BOTTOM);
             dispatch(updatePlanProps(newPlanProps));
         }
         window.addEventListener('resize', handleResize);
@@ -462,6 +462,7 @@ const Plan: React.FC = () => {
                 height={planProps.dimensions.h}
                 position={planProps.position}
                 scale={{x:planProps.scale, y:planProps.scale}}
+                style={{"marginTop":""+PLAN_MARGIN_TOP+"px"}}
                 onClick={handleClick}
                 // onClick={_ => {
                 //     console.log("click on plan")
