@@ -1,4 +1,4 @@
-import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Vector2D } from "@/entities";
+import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
 
 export const updatePlanProps = (planProps: PlanProps) => ({
@@ -74,4 +74,9 @@ export const setUnselectAllOnPlanMouseUp = (unselect: boolean) => ({
 export const setLineToAdd = (line: Line | null) => ({
   type: PlanActionTypes.SET_LINE_TO_ADD,
   payload: line,
+});
+
+export const setTestPoints= (testPoints: TestPoint[]) => ({
+  type: PlanActionTypes.SET_TEST_POINTS,
+  payload: testPoints,
 });

@@ -1,14 +1,15 @@
 import PlanActionTypes from "./plan.types";
-import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Vector2D } from "@/entities";
+import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { setPlanPointerUpActionsHandler } from "./plan.actions";
 import { v4 } from "uuid";
+import { initialPlanElements } from "@/global";
 
 const INITIAL_STATE = {
   planProps: new PlanProps(),
   // planIsScaling: false,
   planIsDragging: false,
-  planElements: [] as PlanElement[],
+  planElements: initialPlanElements as PlanElement[],
   planElementsTemp: [] as PlanElement[],
   planMode: PlanMode.MovePoint,
   selectingPlanElement: false,
@@ -19,7 +20,8 @@ const INITIAL_STATE = {
   planCursorPos: new Vector2D(0,0),
   // planElementsRecords: [] as PlanElement[][],
   // currentPlanElementRecordIndex: -1
-  lineToAdd: null as Line | null
+  lineToAdd: null as Line | null,
+  testPoints: [new TestPoint("", 100, 100, "")] as Point[]
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -98,6 +100,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
       return {
         ...state,
         lineToAdd: action.payload
+      };
+    case PlanActionTypes.SET_TEST_POINTS:
+      return {
+        ...state,
+        testPoints: action.payload
       };
     default:
       return state;

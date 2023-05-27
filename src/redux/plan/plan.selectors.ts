@@ -61,3 +61,9 @@ export const selectLineToAdd = createSelector(
   [selectPlan],
   (plan) => plan.lineToAdd
 );
+
+
+export const selectTestPoints = createSelector(
+  [selectPlan],
+  (plan) => plan.testPoints
+);

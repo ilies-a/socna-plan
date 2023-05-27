@@ -19,7 +19,7 @@ const AddElementMenu: React.FC = () => {
     return ()=>{
       dispatch(setLineToAdd(null));
     };
-  },[dispatch])
+  },[dispatch]);
 
   const handleWallStrokeInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
     setWallStroke(parseFloat(e.currentTarget.value));
