@@ -171,12 +171,17 @@ const Plan: React.FC = () => {
     }, [dispatch]); 
 
     const saveIfMovingWall = useCallback(()=>{
+        const MIN_SHIFT_TO_ALLOW_SAVE = 1;
         if(movingWall){
-            const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-            const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-            const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, movingWall.joinedWalls.id);
-            nextPlanElementsClone[jwIdx] = movingWall.joinedWalls.clone();
-            savePlan(nextPlanElementsClone, currentPlanElementsClone);
+            const d = Math.sqrt(Math.pow((movingWall.wallNodes[0].position.x - movingWall.startingNodesPos[0].x), 2) + Math.pow((movingWall.wallNodes[0].position.y - movingWall.startingNodesPos[0].y), 2));
+            if(d>MIN_SHIFT_TO_ALLOW_SAVE)
+            {
+                const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+                const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+                const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, movingWall.joinedWalls.id);
+                nextPlanElementsClone[jwIdx] = movingWall.joinedWalls.clone();
+                savePlan(nextPlanElementsClone, currentPlanElementsClone);
+            }
             setMovingWall(null);
         }
     },[movingWall, planElements, savePlan]);
