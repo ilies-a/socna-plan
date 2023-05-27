@@ -869,22 +869,37 @@ export const iconDataArr:IconData[] = [
     
               const pi1 = intersectionPointWithNextSegLine;
               const pi2 = intersectionPointWithPreviousSegLine;
-    
-    
-              const reflexAngleLinkedNodes = node.getReflexAngleLinkedNodes();
-              if(reflexAngleLinkedNodes && 
-                (
-                  seg.nodes[0].id === reflexAngleLinkedNodes[0].id || 
-                  seg.nodes[0].id === reflexAngleLinkedNodes[1].id || 
-                  seg.nodes[1].id === reflexAngleLinkedNodes[0].id || 
-                  seg.nodes[1].id === reflexAngleLinkedNodes[1].id
-                  )
-              ){ 
-                points = [pi1, p2, p3, pi2 as Position, node.position];
+
+            //   console.log("pi1",pi1)
+            //   console.log("pi2",pi2)
+
+
+
+              if(pi1.x === BIG_NUMBER){
+                points = [p2, p3, p4, node.position, pi2];
+
+              }
+              else if(pi2.x === BIG_NUMBER){
+                points = [p1, p2, p3, pi1, node.position];
               }
               else{
                 points = [pi1, p3, p2, pi2, node.position];
               }
+    
+            //   const reflexAngleLinkedNodes = node.getReflexAngleLinkedNodes();
+            //   if(reflexAngleLinkedNodes && 
+            //     (
+            //       seg.nodes[0].id === reflexAngleLinkedNodes[0].id || 
+            //       seg.nodes[0].id === reflexAngleLinkedNodes[1].id || 
+            //       seg.nodes[1].id === reflexAngleLinkedNodes[0].id || 
+            //       seg.nodes[1].id === reflexAngleLinkedNodes[1].id
+            //       )
+            //   ){ 
+            //     points = [pi1, p2, p3, pi2 as Position, node.position];
+            //   }
+            //   else{
+            //     points = [pi1, p3, p2, pi2, node.position];
+            //   }
     
             }
             else{
@@ -1117,11 +1132,20 @@ export class WallNode {
             // console.log("p0p1Angle = "+p0p1Angle+", p0p2Angle = "+p0p2Angle);
 
             let diff = p0p1Angle - p0p2Angle;
+            // if(Math.abs(diff) === Math.PI){
+            //     console.log("OOOOOK")
+
+            // }
+            // console.log("p0p1Angle",p0p1Angle)
+            // console.log("p0p2Angle",p0p2Angle)
+            // console.log("diff",diff)
+            // console.log("\n\n")
+
+  
             diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
 
             // console.log("node1 = "+ clockwiseSortedSegments[i].nodes[1].id +", node2 = "+ clockwiseSortedSegments[nextSegIndex].nodes[1].id)
             // console.log("diff angle = ",diff);
-
             if (diff>0) {
                 return [clockwiseSortedSegments[i].nodes[1], clockwiseSortedSegments[nextSegIndex].nodes[1]];
             }

@@ -712,7 +712,7 @@ const Plan: React.FC = () => {
                 onMouseMove={e => { //and not onPointerMove to make it work only on desktop and avoid duplicate with onTouchMove needed here for pinch
 
                     const newCursorPos = getCursorPosWithEventPos(e, false);
-                    dispatch(setPlanCursorPos(newCursorPos));
+                    // dispatch(setPlanCursorPos(newCursorPos));
 
                     handleMovingWall(newCursorPos);                    
                 }}
