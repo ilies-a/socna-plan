@@ -420,6 +420,7 @@ const Plan: React.FC = () => {
     }, [dispatch, planElements]);
     
     const handleClick = useCallback(()=>{
+        console.log("test")
         unselectAllPlanElements();
     }, [unselectAllPlanElements]);
 
