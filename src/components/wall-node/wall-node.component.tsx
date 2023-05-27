@@ -17,7 +17,11 @@ type Props = {
  
 const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
   const dispatch = useDispatch();
-    
+  const savePlan = useSavePlan();
+  const planElements: PlanElement[] = useSelector(selectPlanElements);
+  const [dragStartPos, setDragStartPos] = useState<Position | null>(null);
+  const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
+
   const updateNodePosition = useCallback((p:Position) =>{
         node.position = p;
         dispatch(updatePlanElement(joinedWalls));
@@ -383,38 +387,14 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
           radius = {node.radius}
 
           stroke= 'black'
-          strokeWidth = {0}
+          strokeWidth = {1}
           // onClick={handleOnClick}
           
           // onMouseDown = { handleOnMouseDown}
           // onPointerDown={handleOnPointerDown}
           // onTouchStart = {handleOnTouchStart}
           // onMouseUp={handleOnMouseUp}
-          onClick={e => {
-            e.cancelBubble = true;
-          }}
-          // onTap={
-          //   e => {
-          //   alert("ooksss")
-          //   e.cancelBubble = true;
-          // }}
-          onPointerUp={e => {
-            // console.log("point onPointerUp")
-            e.cancelBubble = true;
-          //   handleOnPointerUp();
-          }}
-          draggable
-          onDragStart={e => {
-              e.cancelBubble = true;
-          }}
-          onDragMove={e => {
-              e.cancelBubble = true;
-              updateNodePosition(new Position(e.target.position().x, e.target.position().y));
-          }}
-          onDragEnd={e => {
-              e.cancelBubble = true;
-              // dispatch(setTestPoints([new Point("", e.target.position().x, e.target.position().y)]))
-          }}
+
           // onPointerMove={e => {
           //   console.log("point onPointerMove")
           //   // e.cancelBubble = true;
@@ -449,6 +429,115 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
           // }}
 
       />
+      <Circle
+        x = {node.position.x}
+        y = {node.position.y}
+        radius = {node.radius}
+
+        stroke= 'red'
+        strokeWidth = {1}
+        draggable
+        onClick={e => {
+          e.cancelBubble = true;
+        }}
+        // onTap={
+        //   e => {
+        //   alert("ooksss")
+        //   e.cancelBubble = true;
+        // }}
+        onPointerUp={e => {
+          // console.log("point onPointerUp")
+          e.cancelBubble = true;
+        //   handleOnPointerUp();
+        }}
+        // draggable
+        // dragBoundFunc = {function (pos) {
+
+        //   const linkedNodes = node.linkedNodes;
+        //   console.log("planCursorPos.x", planCursorPos.x)
+        //   console.log("planCursorPos.y", planCursorPos.y)
+
+
+        //   return {
+        //     x: pos.x,
+        //     y: this.absolutePosition().y,
+        //   };
+        // }}
+        onDragStart={e => {
+            e.cancelBubble = true;
+
+            //save position at start
+            setDragStartPos(new Position(e.target.position().x, e.target.position().y));
+
+        }}
+        onDragMove={e => {
+            e.cancelBubble = true;
+            let lockHorizontally: WallNode | null = null;
+            let lockVertically: WallNode | null = null;
+
+            for(const linkedNode of node.linkedNodes){
+              const angle = Math.atan2(linkedNode.position.y - e.target.position().y, linkedNode.position.x - e.target.position().x);
+              const maxOffsetAngle = 0.1;
+              // console.log("angle", angle)
+
+              if(!lockHorizontally)
+              lockHorizontally = 
+                (angle > 0 ?
+                  angle < Math.PI /2 ?
+                    angle < maxOffsetAngle 
+                    :
+                    angle > Math.PI - maxOffsetAngle 
+                  :
+                  angle > - Math.PI /2? 
+                    angle > - maxOffsetAngle
+                    :
+                    angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
+
+              if(!lockVertically)
+              lockVertically = 
+              (Math.abs(angle) > Math.PI / 2 ? //if right
+                angle > 0 ? //if top
+                  //if top right
+                  angle < Math.PI / 2 + maxOffsetAngle
+                :
+                //if bottom right
+                angle > - Math.PI / 2 - maxOffsetAngle
+              : //if left
+                angle > 0 ? //if top
+                //if top left
+                angle > Math.PI / 2 - maxOffsetAngle
+                :
+                //if bottom left
+                angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
+
+              // console.log("lockHorizontally",lockHorizontally)
+              // console.log("lockVertically",lockVertically)
+              // console.log("\n")
+
+              // let diff = p0p1Angle - p0p2Angle;
+              // diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
+              if(lockHorizontally || lockVertically) break;
+            }
+            const newX = lockVertically ? lockVertically.position.x : e.target.position().x;
+            const newY = lockHorizontally ? lockHorizontally.position.y : e.target.position().y;
+
+            updateNodePosition(new Position(newX, newY));
+        }}
+        onDragEnd={e => {
+            e.cancelBubble = true;
+            // dispatch(setTestPoints([new Point("", e.target.position().x, e.target.position().y)]))
+            e.currentTarget.setPosition(node.position);
+
+            //save
+            if(!dragStartPos) return;
+            const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+            const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+            const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, joinedWalls.id);
+            (currentPlanElementsClone[jwIdx] as JoinedWalls).nodes[node.id].position = new Position(dragStartPos.x, dragStartPos.y);
+            savePlan(currentPlanElementsClone, nextPlanElementsClone);
+            setDragStartPos(null);
+        }}
+        />
       {/* <Text 
           x = {node.position.x}
           y = {node.position.y}

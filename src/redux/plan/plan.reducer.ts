@@ -1,5 +1,5 @@
 import PlanActionTypes from "./plan.types";
-import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
+import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { setPlanPointerUpActionsHandler } from "./plan.actions";
 import { v4 } from "uuid";
@@ -17,7 +17,7 @@ const INITIAL_STATE = {
   planElementsRecords: new PlanElementsRecordsHandler(),
   planPointerUpActionsHandler: new PlanPointerUpActionsHandler(),
   addingPointLineIdPointId: null as [string, string] | null,
-  planCursorPos: new Vector2D(0,0),
+  planCursorPos: new Position(0,0) as Vector2D,
   // planElementsRecords: [] as PlanElement[][],
   // currentPlanElementRecordIndex: -1
   lineToAdd: null as Line | null,

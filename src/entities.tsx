@@ -49,6 +49,12 @@ export class PlanElementsHelper {
         }
         return false;
     }
+
+    static unselectAllElements(planElements:PlanElement[]){
+        for(const el of planElements){
+            el.unselect();
+        }
+    }
 }
 
 
@@ -106,14 +112,9 @@ export class Point{
 }
 
 
-export class Vector2D{
+export interface Vector2D{
     x:number;
     y:number;
-
-    constructor(x:number, y:number){
-        this.x = x;
-        this.y = y;
-    } 
 }
 
 

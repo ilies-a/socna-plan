@@ -89,6 +89,8 @@ const PlanElementMenu: React.FC = () => {
     const newPlanElementsRecords:PlanElementsRecordsHandler = planElementsRecords.clone();
     newPlanElementsRecords.currentRecordIndex --;
 
+    PlanElementsHelper.unselectAllElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]);
+
     dispatch(setPlanElementsRecords(newPlanElementsRecords));
     dispatch(setPlanElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]));
     console.log("\n\n\n\n\n\n\n\n\n\n\n\n")
@@ -102,6 +104,9 @@ const PlanElementMenu: React.FC = () => {
     const newPlanElementsRecords:PlanElementsRecordsHandler = planElementsRecords.clone();
 
     newPlanElementsRecords.currentRecordIndex ++;
+
+    PlanElementsHelper.unselectAllElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]);
+
     dispatch(setPlanElementsRecords(newPlanElementsRecords));
     dispatch(setPlanElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]));
 

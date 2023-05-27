@@ -178,9 +178,9 @@ const Plan: React.FC = () => {
             {
                 const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
                 const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-                const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, movingWall.joinedWalls.id);
-                nextPlanElementsClone[jwIdx] = movingWall.joinedWalls.clone();
-                savePlan(nextPlanElementsClone, currentPlanElementsClone);
+                const jwIdx = PlanElementsHelper.findElementIndexById(currentPlanElementsClone, movingWall.joinedWalls.id);
+                currentPlanElementsClone[jwIdx] = movingWall.joinedWalls.clone();
+                savePlan(currentPlanElementsClone, nextPlanElementsClone);
             }
             setMovingWall(null);
         }
@@ -405,11 +405,12 @@ const Plan: React.FC = () => {
 
     const unselectAllPlanElements = useCallback(() => {
         //doesnt work well on desktop:
-        const planElementsCopy = PlanElementsHelper.clone(planElements);
-        for(const el of planElementsCopy){
-            el.unselect();
-        }
-        dispatch(setPlanElements(planElementsCopy));
+        // const planElementsCopy = PlanElementsHelper.clone(planElements);
+        // for(const el of planElementsCopy){
+        //     el.unselect();
+        // }
+        PlanElementsHelper.unselectAllElements(planElements);
+        dispatch(setPlanElements(planElements));
         // if(!preventPointerUpOnPlan){
         //     const planElementsCopy = PlanElementsHelper.clone(planElements);
         //     for(const el of planElementsCopy){
@@ -459,7 +460,7 @@ const Plan: React.FC = () => {
                     }}
                     onDragEnd={e => {
                         if(!dragStartPos) return;
-                        const dragDxy = new Vector2D(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
+                        const dragDxy = new Position(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
                         for(const el of selectedElements){
                             if(!(el.typeName === PlanElementTypeName.Wall)) continue;
                             const l = el as Wall;
@@ -476,7 +477,7 @@ const Plan: React.FC = () => {
 
                         setDragStartPos(null);
                         setPlanElementsAtDragStart(null);
-                        e.currentTarget.setPosition(new Vector2D(0,0));
+                        e.currentTarget.setPosition(new Position(0,0));
                     }}
                 >
                 {
@@ -713,8 +714,7 @@ const Plan: React.FC = () => {
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     dispatch(setPlanCursorPos(newCursorPos));
 
-                    handleMovingWall(newCursorPos);
-                    
+                    handleMovingWall(newCursorPos);                    
                 }}
                 onTouchMove={e => {
                     // var touchPos = e.target.getStage()?.getPointerPosition();

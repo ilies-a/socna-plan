@@ -20,6 +20,8 @@ export function useSavePlan() {
 
     planElementsRecordsClone.currentRecordIndex++;
     planElementsRecordsClone.records = planElementsRecordsClone.records.slice(0, planElementsRecordsClone.currentRecordIndex);
+
+
     planElementsRecordsClone.records.push(nextPlanElements);
 
     dispatch(setPlanElementsRecords(planElementsRecordsClone));
