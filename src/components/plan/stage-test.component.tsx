@@ -3,7 +3,6 @@ import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dimensions, Line, LinePointMode, PlanElement, Point, Position, Rectangle } from "@/entities";
-import { initialPlanElements } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElements, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
