@@ -14,9 +14,10 @@ import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import WallNodeComponent from "../wall-node/wall-node.component";
+import WallComponent from "../wall-component/wall-component.component";
 
 
-interface JoinedWallsAndWallNodes{
+export interface JoinedWallsAndWallNodes{
     joinedWalls:JoinedWalls,
     wallNodes: [WallNode, WallNode],
     startingNodesPos: [Position, Position]
@@ -265,83 +266,93 @@ const Plan: React.FC = () => {
                             const points = nodesAndPoints[1];
                             const wallIndex = w.wallIsSelected([nodes[0].id, nodes[1].id]);
                             const wallIsSelected = wallIndex != null ? true:false;
-                            return (
-                                <Path
-                                    key={v4()}
-                                    data= {
-                                        (():string => {
-                                            let s:string = "";
-                                            s += "M";
-                                            for(const point of points){
-                                                s += " " + point.x + " " + point.y + " ";
-                                            }
-                                            // let iMax = path.length - 1;
-                                            // if(path[0].x === path[iMax].x && path[0].y === path[iMax].y){
-                                            //     s += "Z";
-                                            // }
-                                            s += "Z";
-                                            return s
-                                        })()
-                                    }
-                                    // fill={colorsForTesting.shift()}
-                                    fill="grey"
-                                    stroke="green"
-                                    strokeWidth={wallIsSelected ? 2 : 0}
-                                    onPointerDown={_ => {
-                                        console.log("onPointerDown")
-                                        // setPreventPointerUpOnPlan(true);
-                                        const nodesIds:[string, string] = [nodes[0].id, nodes[1].id];
-                                        if(wallIsSelected) return;
-                                        w.selectWall(nodesIds);                                   
-                                        dispatch(updatePlanElement(w));
-                                    }}
-                                    onPointerMove={_=>{
-                                        if(!pointerStartPos || movingWall) return;
-                                        console.log("ok setMovingWall")
-                                        const wClone = w.clone();                                        
-                                        const node1Clone = w.nodes[nodes[0].id];
-                                        const node2Clone = w.nodes[nodes[1].id];
-
-                                        setMovingWall({ 
-                                            joinedWalls:wClone, 
-                                            wallNodes:[node1Clone, node2Clone],
-                                            startingNodesPos:[
-                                                new Position(node1Clone.position.x, node1Clone.position.y), 
-                                                new Position(node2Clone.position.x, node2Clone.position.y)
-                                            ]
-                                        });
-
-                                    }}
-                                    // onPointerUp={_=>{
-                                    //     setPreventPointerUpOnPlan(false);
-                                    //     console.log("onPointerUp on segment")
-                                    // }}
-                                    // onClick={e =>{
-                                    //     e.cancelBubble = true;
-
-                                    // }}
-                                    // onTouchStart={e => {
-                                    //     e.cancelBubble = true;
-                                    // }}
-                                    // onTouchMove={e => {
-                                    //     e.cancelBubble = true;
-                                    // }}
-                                    // onTouchEnd={e => {
-                                    //     e.cancelBubble = true;
-                                    // }}
+                            return <WallComponent 
+                                key={v4()}
+                                w={w}
+                                points={points}
+                                wallIsSelected={wallIsSelected}
+                                nodes={nodes}
+                                pointerStartPos={pointerStartPos}
+                                movingWall={movingWall} 
+                                setMovingWall={setMovingWall}
                                 />
-                                // <KonvaLine
-                                //     key={segNode1.id+segNode2.id}
-                                //     points={[
-                                //         w.nodes[segNode1.id].position.x,
-                                //         w.nodes[segNode1.id].position.y,
-                                //         w.nodes[segNode2.id].position.x,
-                                //         w.nodes[segNode2.id].position.y  
-                                //     ]}
-                                //     stroke={colorsForTesting.shift()}
-                                //     strokeWidth={w.width}
-                                // />
-                            );
+                            // return (
+                            //     <Path
+                            //         key={v4()}
+                            //         data= {
+                            //             (():string => {
+                            //                 let s:string = "";
+                            //                 s += "M";
+                            //                 for(const point of points){
+                            //                     s += " " + point.x + " " + point.y + " ";
+                            //                 }
+                            //                 // let iMax = path.length - 1;
+                            //                 // if(path[0].x === path[iMax].x && path[0].y === path[iMax].y){
+                            //                 //     s += "Z";
+                            //                 // }
+                            //                 s += "Z";
+                            //                 return s
+                            //             })()
+                            //         }
+                            //         // fill={colorsForTesting.shift()}
+                            //         fill="grey"
+                            //         stroke="green"
+                            //         strokeWidth={wallIsSelected ? 2 : 0}
+                            //         onPointerDown={_ => {
+                            //             console.log("onPointerDown")
+                            //             // setPreventPointerUpOnPlan(true);
+                            //             const nodesIds:[string, string] = [nodes[0].id, nodes[1].id];
+                            //             if(wallIsSelected) return;
+                            //             w.selectWall(nodesIds);                                   
+                            //             dispatch(updatePlanElement(w));
+                            //         }}
+                            //         onPointerMove={_=>{
+                            //             if(!pointerStartPos || movingWall) return;
+                            //             console.log("ok setMovingWall")
+                            //             const wClone = w.clone();                                        
+                            //             const node1Clone = w.nodes[nodes[0].id];
+                            //             const node2Clone = w.nodes[nodes[1].id];
+
+                            //             setMovingWall({ 
+                            //                 joinedWalls:wClone, 
+                            //                 wallNodes:[node1Clone, node2Clone],
+                            //                 startingNodesPos:[
+                            //                     new Position(node1Clone.position.x, node1Clone.position.y), 
+                            //                     new Position(node2Clone.position.x, node2Clone.position.y)
+                            //                 ]
+                            //             });
+
+                            //         }}
+                            //         // onPointerUp={_=>{
+                            //         //     setPreventPointerUpOnPlan(false);
+                            //         //     console.log("onPointerUp on segment")
+                            //         // }}
+                            //         // onClick={e =>{
+                            //         //     e.cancelBubble = true;
+
+                            //         // }}
+                            //         // onTouchStart={e => {
+                            //         //     e.cancelBubble = true;
+                            //         // }}
+                            //         // onTouchMove={e => {
+                            //         //     e.cancelBubble = true;
+                            //         // }}
+                            //         // onTouchEnd={e => {
+                            //         //     e.cancelBubble = true;
+                            //         // }}
+                            //     />
+                            //     // <KonvaLine
+                            //     //     key={segNode1.id+segNode2.id}
+                            //     //     points={[
+                            //     //         w.nodes[segNode1.id].position.x,
+                            //     //         w.nodes[segNode1.id].position.y,
+                            //     //         w.nodes[segNode2.id].position.x,
+                            //     //         w.nodes[segNode2.id].position.y  
+                            //     //     ]}
+                            //     //     stroke={colorsForTesting.shift()}
+                            //     //     strokeWidth={w.width}
+                            //     // />
+                            // );
                         })
 
                         // segments.map((seg, _) => {
@@ -401,7 +412,7 @@ const Plan: React.FC = () => {
             //     )
             // }
         }
-    },[toggleSelectPlanElement, moveUpPlanElement, planIsDragging, scaling, dispatch, pointerStartPos, movingWall]);
+    },[toggleSelectPlanElement, moveUpPlanElement, planIsDragging, scaling, pointerStartPos, movingWall]);
 
     const unselectAllPlanElements = useCallback(() => {
         //doesnt work well on desktop:

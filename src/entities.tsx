@@ -14,7 +14,7 @@ export class PlanProps {
     // } 
 }
 
-export enum PlanMode { AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
+export enum PlanMode { AddWall, AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
 
 // export class PlanElementsHelper{
 //     static planElementsSeparatedBySelection(planElements:PlanElement[]): [PlanElement[], PlanElement[]]{
@@ -700,302 +700,303 @@ export const iconDataArr:IconData[] = [
         //for each segment
         //sideline1 with sideline1 of next segment
     
-    
-        const segNodesAndPoints: [[WallNode, WallNode], Position[]][] = [];
-    
-        for(const nodeAndSegments of nodesAndTheirClockwiseSortedSegments){
-          const node = nodeAndSegments[0];
-          const segments = nodeAndSegments[1];
-          
-          for(let i=0; i < segments.length; i++){
-            // if(i>0) break; //for testing
-            const seg = segments[i];
-            const offset = 1;
-            const minimumValue = 0;
-            const modulus = segments.length;
-            const nextSegIndex = (i - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
-            const prevSegIndex = i > 0? i - 1 : segments.length - 1;
-    
-            const nextSeg = segments[nextSegIndex];
-            const prevSeg = segments[prevSegIndex];
-            // console.log("i",i)
-            // console.log("nextSegIndex",nextSegIndex)
-            // console.log("prevSegIndex",prevSegIndex)
-    
-            // console.log("\n\n")
-    
-            //next point intersection
-    
-            let sl:[Position, Position] = seg.sideline2Points;
-            const nextSegSl:[Position, Position] = nextSeg.sideline1Points;
-    
-            let l1p1 = sl[0];
-            let l1p2 = sl[1];
-    
-            let l2p1 = nextSegSl[0];
-            let l2p2 = nextSegSl[1];
-    
-            const BIG_NUMBER = 10000;
+        const wallsJointPoints: {[id:string]: [Position[], Position[]]} = {};
 
-
-            let m1 = l1p2.x - l1p1.x != 0 ? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
-            let m2 = l2p2.x - l2p1.x != 0 ? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
-
-            let b1 = l1p1.y - m1 * l1p1.x;
-            let b2 = l2p1.y - m2 * l2p1.x;
-    
-            //y = m1 * x + b1
-            //y = m2 * x + b2
-            
-            //m1 * x + b1 = m2 * x + b2
-            //m1 * x - m2 * x = b2 - b1
-            //m1 * x - m2 * x = b2 - b1
-            //x (m1 - m2) = b2 - b1
-
-            let x = m1 - m2 != 0 ? (b2 - b1) / (m1 - m2) : BIG_NUMBER;
-            let y = m1 * x + b1;
-    
-            const intersectionPointWithNextSegLine = new Position(x, y);
-
-            //prev point intersection
-    
-            sl = seg.sideline1Points;
-            const prevSegSl:[Position, Position] = prevSeg.sideline2Points;
-    
-            l1p1 = sl[0];
-            l1p2 = sl[1];
-    
-            l2p1 = prevSegSl[0];
-            l2p2 = prevSegSl[1];
-    
-
-    
-            m1 = l1p2.x - l1p1.x != 0? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
-            m2 = l2p2.x - l2p1.x != 0? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
-    
-            b1 = l1p1.y - m1 * l1p1.x;
-            b2 = l2p1.y - m2 * l2p1.x;
-    
-  
-            x = m1 - m2 != 0 ? (b2 - b1) / (m1 - m2) : BIG_NUMBER;
-            y = m1 * x + b1;
-    
-            const intersectionPointWithPreviousSegLine = new Position(x, y);
-
-            const p1 = seg.sideline1Points[0];
-            const p2 = seg.sideline1Points[1];
-            const p3 = seg.sideline2Points[1];
-            const p4 = seg.sideline2Points[0];
-    
-    
-    
-            //check if segment position is valid, if not valid segment appears simply with its 4 points
-            //position is valid if the farthest segment intersects prev and next side segments
-    
-    
-            let isValid = true;
-            //draw for testing
-    
-              const prevSegClosestSidePoints = prevSeg.sideline2Points;
-              const nextSegClosestSidePoints = nextSeg.sideline1Points;
-              const segBase = [p2 , p3];
-              const prevSegBase = [prevSeg.sideline1Points[1], prevSeg.sideline2Points[1]];
-              const nextSegBase = [nextSeg.sideline1Points[1], nextSeg.sideline2Points[1]];
-    
-              const segSideClosestToPrevSegSide = [p1 , p2];
-              const segSideClosestToNextSegSide = [p3 , p4];
-    
-    
-              const segBaseFormated = {
-                "p1": {"x":segBase[0].x, "y":segBase[0].y}, 
-                "p2": {"x":segBase[1].x, "y":segBase[1].y}, 
-              };
-              const segSideClosestToPrevSegSideFormated = {
-                "p1": {"x":segSideClosestToPrevSegSide[0].x, "y":segSideClosestToPrevSegSide[0].y}, 
-                "p2": {"x":segSideClosestToPrevSegSide[1].x, "y":segSideClosestToPrevSegSide[1].y}, 
-              };
-    
-              const segSideClosestToNextSegSideFormated = {
-                "p1": {"x":segSideClosestToNextSegSide[0].x, "y":segSideClosestToNextSegSide[0].y}, 
-                "p2": {"x":segSideClosestToNextSegSide[1].x, "y":segSideClosestToNextSegSide[1].y}, 
-              };
-    
-    
-              const prevSegBaseFormated = {
-                "p1": {"x":prevSegBase[0].x, "y":prevSegBase[0].y}, 
-                "p2": {"x":prevSegBase[1].x, "y":prevSegBase[1].y}, 
-              };
-              const prevSegClosestSidePointsFormated = {
-                "p1": {"x":prevSegClosestSidePoints[0].x, "y":prevSegClosestSidePoints[0].y}, 
-                "p2": {"x":prevSegClosestSidePoints[1].x, "y":prevSegClosestSidePoints[1].y}, 
-              };
-    
-              const nextSegBaseFormated = {
-                "p1": {"x":nextSegBase[0].x, "y":nextSegBase[0].y}, 
-                "p2": {"x":nextSegBase[1].x, "y":nextSegBase[1].y}, 
-              };
-              const nextSegClosestSidePointsFormated = {
-                "p1": {"x":nextSegClosestSidePoints[0].x, "y":nextSegClosestSidePoints[0].y}, 
-                "p2": {"x":nextSegClosestSidePoints[1].x, "y":nextSegClosestSidePoints[1].y}, 
-              };
-    
-    
-              if(
-                doSegmentsIntersect(segBaseFormated, prevSegClosestSidePointsFormated) 
-                || doSegmentsIntersect(segBaseFormated, nextSegClosestSidePointsFormated)
-                || doSegmentsIntersect(prevSegBaseFormated, segSideClosestToPrevSegSideFormated)
-                || doSegmentsIntersect(nextSegBaseFormated, segSideClosestToNextSegSideFormated)
-    
-                ){
-                  isValid = false;
-              }
-            
-    
-            //if reflex angle node,
-            //if left reflex angle node
-            //points are the two extremity points, 
-            //if right reflex angle node
-    
-            //otherwise
-            //points are the two extremity points, first intersection point, node point, second intersection point
-    
-    
-            let points:Position[] = [];
-            if(isValid){
-    
-    
-              //check if reflex angle :
-    
-    
-              const pi1 = intersectionPointWithNextSegLine;
-              const pi2 = intersectionPointWithPreviousSegLine;
-
-            //   console.log("pi1",pi1)
-            //   console.log("pi2",pi2)
-
-
-
-              if(pi1.x === BIG_NUMBER){
-                points = [p2, p3, p4, node.position, pi2];
-
-              }
-              else if(pi2.x === BIG_NUMBER){
-                points = [p1, p2, p3, pi1, node.position];
-              }
-              else{
-                points = [pi1, p3, p2, pi2, node.position];
-              }
-    
-            //   const reflexAngleLinkedNodes = node.getReflexAngleLinkedNodes();
-            //   if(reflexAngleLinkedNodes && 
-            //     (
-            //       seg.nodes[0].id === reflexAngleLinkedNodes[0].id || 
-            //       seg.nodes[0].id === reflexAngleLinkedNodes[1].id || 
-            //       seg.nodes[1].id === reflexAngleLinkedNodes[0].id || 
-            //       seg.nodes[1].id === reflexAngleLinkedNodes[1].id
-            //       )
-            //   ){ 
-            //     points = [pi1, p2, p3, pi2 as Position, node.position];
-            //   }
-            //   else{
-            //     points = [pi1, p3, p2, pi2, node.position];
-            //   }
-    
-            }
-            else{
-              points = [p1, p2, p3, p4];
-    
+        for(const nodeId in this.nodes){
+            const node = this.nodes[nodeId];
+            const sortedLinkedNodes = node.getClockwiseSortedLinkedNodes();
+            const segments:Segment[] = []
+            for(const linkedNode of sortedLinkedNodes){
+                segments.push(new Segment([node, linkedNode]));
             }
 
-            //sort point to be consecutive
-            sortPointsClockwise(points);
-            const segNodes:[WallNode, WallNode] = [seg.nodes[0], seg.nodes[1]];
-            segNodesAndPoints.push([segNodes, points]);
-          
-    
-          }
-        }
+            for(let i=0; i<segments.length; i++){
+                const seg = segments[i];
+                const offset = 1;
+                const minimumValue = 0;
+                const modulus = segments.length;
+                const nextSegIndex = (i - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
+                const prevSegIndex = i > 0? i - 1 : segments.length - 1;
+        
+                const nextSeg = segments[nextSegIndex];
+                const prevSeg = segments[prevSegIndex];
 
-        return segNodesAndPoints;
-    }
-    // getSegmentTips(node:WallNode): [Position, Position, Position]{
-    //     const p1: Position = node.position;
-    //     const p2: Position = node.position;
-    //     const p3: Position = node.position;
-    //     const p4: Position = node.position;
+                let sl:[Position, Position] = seg.sideline2Points;
+                const nextSegSl:[Position, Position] = nextSeg.sideline1Points;
+        
+                let l1p1 = sl[0];
+                let l1p2 = sl[1];
+        
+                let l2p1 = nextSegSl[0];
+                let l2p2 = nextSegSl[1];
+        
+                const BIG_NUMBER = 10000;
 
-    //     return [p1, p2, p3, p4];
+                const precision = 4;
+                let m1 = l1p2.x - l1p1.x != 0 ? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
+                m1 = parseFloat(m1.toPrecision(precision));
+                let m2 = l2p2.x - l2p1.x != 0 ? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
+                m2 = parseFloat(m2.toPrecision(precision));
 
-    // }
+                // console.log("m1",m1)
+                // console.log("m2",m2)
 
-    // getSegmentsJoinedWithNode(node:WallNode){
-    //     const segments: Segment[] = [];
-    //     for(const linkedNode of node.linkedNodes){
-    //         segments.push(new Segment([node, linkedNode]));
-    //     }
-    //     return segments;
-    // }
+                // console.log("l1p1.x",l1p1.x)
+                // console.log("l1p1.y",l1p1.y)
 
-    // getSegmentsJoinedToNodeAndSortedClockwise(node:WallNode){
-    //     const segments: Segment[] = this.getSegmentsJoinedWithNode(node);
-    //     const angles: [Segment, number][] = [];
+                // console.log("l1p2.x",l1p2.x)
+                // console.log("l1p2.y",l1p2.y)
 
-    //     for(const seg of segments){
-    //         // console.log("seg.nodes[0].id = "+ seg.nodes[0].id +", seg.nodes[1].id = "+ seg.nodes[1].id)
+                // console.log("\n");
 
-    //         const p1: Position = seg.nodes[0].position;
-    //         const p2: Position = seg.nodes[1].position;
+                // console.log("l2p1.x",l2p1.x)
+                // console.log("l2p1.y",l2p1.y)
 
-    //         const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-    //         angles.push([seg, p1p2Angle]);
-    //         // console.log("node.id = "+ node.id +", p1p2Angle = "+p1p2Angle+"\n\n\n")
+                // console.log("l2p2.x",l2p2.x)
+                // console.log("l2p2.y",l2p2.y)
 
-    //     }
+                let b1 = l1p1.y - m1 * l1p1.x;
+                let b2 = l2p1.y - m2 * l2p1.x;
+        
+                //y = m1 * x + b1
+                //y = m2 * x + b2
+                
+                //m1 * x + b1 = m2 * x + b2
+                //m1 * x - m2 * x = b2 - b1
+                //m1 * x - m2 * x = b2 - b1
+                //x (m1 - m2) = b2 - b1
 
-    //     const clockwiseSortedSegments: Segment[] = angles.sort((v1, v2) => v1[1] - v2[1]).map(v => v[0]);
+                let intersectionPointWithNextSegLine:Position;
 
-    //     const biggestArcNodes:Segment
+                if(m1 - m2 != 0){
+                    let x = (b2 - b1) / (m1 - m2);
+                    let y = m1 * x + b1;
+                    intersectionPointWithNextSegLine = new Position(x, y);
+                }
+                else{
+                    const p = node.position;
+                    const slope = m1;
+                    let b = b1;
+                    const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+                    const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
+                    const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+                    const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+                    intersectionPointWithNextSegLine = new Position(projectionX, projectionY);
+                }
 
-    //     for(let i=0; i < clockwiseSortedSegments.length; i++){
-    //         let offset = 1;
-    //         let minimumValue = 0;
-    //         let modulus = clockwiseSortedSegments.length;
-    //         const nextSegIndex = (i - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
-    
-    //         console.log("nextSegIndex = ",nextSegIndex);
-
-
-    //         //determining adding before or after startingFromPoint
-    //         const p0 = node.position;
-    //         const p1 = clockwiseSortedSegments[i].nodes[1].position;
-    //         const p2 = clockwiseSortedSegments[nextSegIndex].nodes[1].position;
-    
-    //         // console.log("p1.x = "+p1.x+", p1.y = "+p1.y);
-    //         // console.log("p2.x = "+p2.x+", p2.y = "+p2.y);
-
-
-    //         const p0p1Angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-    //         const p0p2Angle = Math.atan2(p2.y - p0.y, p2.x - p0.x);
-
-    //         // console.log("p0p1Angle = "+p0p1Angle+", p0p2Angle = "+p0p2Angle);
-
-    //         let diff = p0p1Angle - p0p2Angle;
-    //         diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
-
-    //         console.log("node1 = "+ clockwiseSortedSegments[i].nodes[1].id +", node2 = "+ clockwiseSortedSegments[nextSegIndex].nodes[1].id)
-    //         console.log("diff angle = ",diff);
-
-    //         if(diff>0){
-
-    //         }
-
-    //     }
-
-
+                //prev point intersection
+        
+                sl = seg.sideline1Points;
+                const prevSegSl:[Position, Position] = prevSeg.sideline2Points;
+        
+                l1p1 = sl[0];
+                l1p2 = sl[1];
+        
+                l2p1 = prevSegSl[0];
+                l2p2 = prevSegSl[1];
         
 
-    //     console.log("\n\n\n\n\n\n")
-    // }
+                m1 = l1p2.x - l1p1.x != 0? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
+                m1 = parseFloat(m1.toPrecision(precision));
+                m2 = l2p2.x - l2p1.x != 0? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
+                m2 = parseFloat(m2.toPrecision(precision));
+        
+                b1 = l1p1.y - m1 * l1p1.x;
+                b2 = l2p1.y - m2 * l2p1.x;
+        
+    
+                // x = m1 - m2 != 0 ? (b2 - b1) / (m1 - m2) : BIG_NUMBER;
+                // y = m1 * x + b1;
+        
+                // const intersectionPointWithPreviousSegLine = new Position(x, y);
+
+
+                let intersectionPointWithPreviousSegLine:Position;
+
+                if(m1 - m2 != 0){
+                    let x = (b2 - b1) / (m1 - m2);
+                    let y = m2 * x + b2;
+                    intersectionPointWithPreviousSegLine = new Position(x, y);
+                }
+                else{
+
+                    const p = node.position;
+                    const slope = m2;
+                    let b = b2;
+                    const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+                    const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
+                    const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+                    const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+                    intersectionPointWithPreviousSegLine = new Position(projectionX, projectionY);
+                }
+
+
+                // console.log("\n\n")
+
+
+                const p1 = seg.sideline1Points[0];
+                const p2 = seg.sideline1Points[1];
+                const p3 = seg.sideline2Points[1];
+                const p4 = seg.sideline2Points[0];
+        
+        
+        
+                //check if segment position is valid, if not valid segment appears simply with its 4 points
+                //position is valid if the farthest segment intersects prev and next side segments
+        
+        
+                let isValid = true;
+                //draw for testing
+        
+                const prevSegClosestSidePoints = prevSeg.sideline2Points;
+                const nextSegClosestSidePoints = nextSeg.sideline1Points;
+                const segBase = [p2 , p3];
+                const prevSegBase = [prevSeg.sideline1Points[1], prevSeg.sideline2Points[1]];
+                const nextSegBase = [nextSeg.sideline1Points[1], nextSeg.sideline2Points[1]];
+        
+                const segSideClosestToPrevSegSide = [p1 , p2];
+                const segSideClosestToNextSegSide = [p3 , p4];
+        
+        
+                const segBaseFormated = {
+                    "p1": {"x":segBase[0].x, "y":segBase[0].y}, 
+                    "p2": {"x":segBase[1].x, "y":segBase[1].y}, 
+                };
+                const segSideClosestToPrevSegSideFormated = {
+                    "p1": {"x":segSideClosestToPrevSegSide[0].x, "y":segSideClosestToPrevSegSide[0].y}, 
+                    "p2": {"x":segSideClosestToPrevSegSide[1].x, "y":segSideClosestToPrevSegSide[1].y}, 
+                };
+        
+                const segSideClosestToNextSegSideFormated = {
+                    "p1": {"x":segSideClosestToNextSegSide[0].x, "y":segSideClosestToNextSegSide[0].y}, 
+                    "p2": {"x":segSideClosestToNextSegSide[1].x, "y":segSideClosestToNextSegSide[1].y}, 
+                };
+        
+        
+                const prevSegBaseFormated = {
+                    "p1": {"x":prevSegBase[0].x, "y":prevSegBase[0].y}, 
+                    "p2": {"x":prevSegBase[1].x, "y":prevSegBase[1].y}, 
+                };
+                const prevSegClosestSidePointsFormated = {
+                    "p1": {"x":prevSegClosestSidePoints[0].x, "y":prevSegClosestSidePoints[0].y}, 
+                    "p2": {"x":prevSegClosestSidePoints[1].x, "y":prevSegClosestSidePoints[1].y}, 
+                };
+        
+                const nextSegBaseFormated = {
+                    "p1": {"x":nextSegBase[0].x, "y":nextSegBase[0].y}, 
+                    "p2": {"x":nextSegBase[1].x, "y":nextSegBase[1].y}, 
+                };
+                const nextSegClosestSidePointsFormated = {
+                    "p1": {"x":nextSegClosestSidePoints[0].x, "y":nextSegClosestSidePoints[0].y}, 
+                    "p2": {"x":nextSegClosestSidePoints[1].x, "y":nextSegClosestSidePoints[1].y}, 
+                };
+        
+        
+                if(
+                    doSegmentsIntersect(segBaseFormated, prevSegClosestSidePointsFormated) 
+                    || doSegmentsIntersect(segBaseFormated, nextSegClosestSidePointsFormated)
+                    || doSegmentsIntersect(prevSegBaseFormated, segSideClosestToPrevSegSideFormated)
+                    || doSegmentsIntersect(nextSegBaseFormated, segSideClosestToNextSegSideFormated)
+        
+                    ){
+                    isValid = false;
+                }
+                
+        
+                //if reflex angle node,
+                //if left reflex angle node
+                //points are the two extremity points, 
+                //if right reflex angle node
+        
+                //otherwise
+                //points are the two extremity points, first intersection point, node point, second intersection point
+        
+        
+                // let points:Position[] = [];
+                const jointPointsNode1: Position[] = [];
+                const jointPointsNode2: Position[] = [p2, p3]; //Node2 is linked Node 
+
+                if(isValid){
+        
+                    const pi1 = intersectionPointWithNextSegLine;
+                    const pi2 = intersectionPointWithPreviousSegLine;
+                    
+
+
+                    // //farthest from central node points are p2 and p3
+                    // if(pi1.x === BIG_NUMBER){
+                    //     points = [p2, p3, p4, node.position, pi2];
+                    //     jointPointsNode1.push(p4, node.position, pi2);
+
+                    // }
+                    // else if(pi2.x === BIG_NUMBER){
+                    //     points = [p1, p2, p3, pi1, node.position];
+                    //     jointPointsNode1.push(p1, pi1, node.position);
+
+                    // }
+                    // else{
+                    //     points = [pi1, p3, p2, pi2, node.position];
+                    //     jointPointsNode1.push(pi1, pi2, node.position);
+                    // }
+                    
+                    // points = [pi1.x === BIG_NUMBER ? p4 : pi1, p3, p2, pi2.x === BIG_NUMBER ? p1 : pi2, node.position];
+                    jointPointsNode1.push(pi1.x === BIG_NUMBER ? p4 : pi1, pi2.x === BIG_NUMBER ? p1 : pi2, node.position);
+                }
+                else{ //if not valid (superposition with other segments)
+                    // points = [p1, p2, p3, p4];
+                    jointPointsNode1.push(p1, p4);
+                }
+
+                // //sort points
+                // sortPointsClockwise(points);
+                
+                // const segNodes:[WallNode, WallNode] = [seg.nodes[0], seg.nodes[1]];
+                
+                // segNodesAndPoints.push([segNodes, points]);
+            
+                const wallJointPoints:[Position[], Position[]] = [jointPointsNode1, jointPointsNode2];
+                wallsJointPoints[seg.nodes[0].id+"_"+seg.nodes[1].id] = wallJointPoints;
+            }
+        }
+
+        const result: [[WallNode, WallNode], Position[]][] = [];
+
+        const memo: {[id:string]: boolean} = {};
+        
+        for(const wallJointPointsId in wallsJointPoints){
+            let points:Position[] = [];
+
+            const wallJointPoints = wallsJointPoints[wallJointPointsId];
+            const nodesIds = wallJointPointsId.split('_');
+
+            if(nodesIds.length != 2) continue; //todo : throw error
+
+            const reverseWallJointPointsId = nodesIds[1] + "_" + nodesIds[0];
+            if(memo.hasOwnProperty(reverseWallJointPointsId)) continue; //already done
+
+            points = points.concat(wallJointPoints[0]);
+
+            if(wallsJointPoints.hasOwnProperty(reverseWallJointPointsId)){
+                points = points.concat(wallsJointPoints[reverseWallJointPointsId][0]);                
+            }
+            else{
+                points = points.concat(wallJointPoints[1]);
+            }
+            memo[wallJointPointsId] = true;
+
+            sortPointsClockwise(points);
+
+            result.push(
+                [
+                    [this.nodes[nodesIds[0]], this.nodes[nodesIds[1]]],
+                    points
+                ]
+            );
+
+
+        }
+        return result;
+    }
 
 
     selectWall(nodesIds:[string, string]){
@@ -1105,58 +1106,71 @@ export class WallNode {
         return angles.sort((v1, v2) => v1[1] - v2[1]).map(v => v[0]);
     }
 
-    getReflexAngleLinkedNodes(): [WallNode, WallNode] | null{
-        const clockwiseSortedSegments: Segment[] = this.getClockwiseSortedSegment();
+    getClockwiseSortedLinkedNodes(): WallNode[]{
+        const angles: [WallNode, number][] = [];
 
-        for(let i=0; i < clockwiseSortedSegments.length; i++){
-            const offset = 1;
-            const minimumValue = 0;
-            const modulus = clockwiseSortedSegments.length;
-            const nextSegIndex = (i - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
+        for(const linkedNode of this.linkedNodes){
+            const p1: Position = this.position;
+            const p2: Position = linkedNode.position;
+
+            const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            angles.push([linkedNode, p1p2Angle]);
+        }
+        return angles.sort((v1, v2) => v1[1] - v2[1]).map(v => v[0]);
+    }
+
+    // getReflexAngleLinkedNodes(): [WallNode, WallNode] | null{
+    //     const clockwiseSortedSegments: Segment[] = this.getClockwiseSortedSegment();
+
+    //     for(let i=0; i < clockwiseSortedSegments.length; i++){
+    //         const offset = 1;
+    //         const minimumValue = 0;
+    //         const modulus = clockwiseSortedSegments.length;
+    //         const nextSegIndex = (i - minimumValue + (offset % modulus) + modulus) % modulus + minimumValue;
     
-            // console.log("nextSegIndex = ",nextSegIndex);
+    //         // console.log("nextSegIndex = ",nextSegIndex);
 
 
-            //determining adding before or after startingFromPoint
-            const p0 = this.position;
-            const p1 = clockwiseSortedSegments[i].nodes[1].position;
-            const p2 = clockwiseSortedSegments[nextSegIndex].nodes[1].position;
+    //         //determining adding before or after startingFromPoint
+    //         const p0 = this.position;
+    //         const p1 = clockwiseSortedSegments[i].nodes[1].position;
+    //         const p2 = clockwiseSortedSegments[nextSegIndex].nodes[1].position;
     
-            // console.log("p1.x = "+p1.x+", p1.y = "+p1.y);
-            // console.log("p2.x = "+p2.x+", p2.y = "+p2.y);
+    //         // console.log("p1.x = "+p1.x+", p1.y = "+p1.y);
+    //         // console.log("p2.x = "+p2.x+", p2.y = "+p2.y);
 
 
-            const p0p1Angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-            const p0p2Angle = Math.atan2(p2.y - p0.y, p2.x - p0.x);
+    //         const p0p1Angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    //         const p0p2Angle = Math.atan2(p2.y - p0.y, p2.x - p0.x);
 
-            // console.log("p0p1Angle = "+p0p1Angle+", p0p2Angle = "+p0p2Angle);
+    //         // console.log("p0p1Angle = "+p0p1Angle+", p0p2Angle = "+p0p2Angle);
 
-            let diff = p0p1Angle - p0p2Angle;
-            // if(Math.abs(diff) === Math.PI){
-            //     console.log("OOOOOK")
+    //         let diff = p0p1Angle - p0p2Angle;
+    //         // if(Math.abs(diff) === Math.PI){
+    //         //     console.log("OOOOOK")
 
-            // }
-            // console.log("p0p1Angle",p0p1Angle)
-            // console.log("p0p2Angle",p0p2Angle)
-            // console.log("diff",diff)
-            // console.log("\n\n")
+    //         // }
+    //         // console.log("p0p1Angle",p0p1Angle)
+    //         // console.log("p0p2Angle",p0p2Angle)
+    //         // console.log("diff",diff)
+    //         // console.log("\n\n")
 
   
-            diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
+    //         diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
 
-            // console.log("node1 = "+ clockwiseSortedSegments[i].nodes[1].id +", node2 = "+ clockwiseSortedSegments[nextSegIndex].nodes[1].id)
-            // console.log("diff angle = ",diff);
-            if (diff>0) {
-                return [clockwiseSortedSegments[i].nodes[1], clockwiseSortedSegments[nextSegIndex].nodes[1]];
-            }
+    //         // console.log("node1 = "+ clockwiseSortedSegments[i].nodes[1].id +", node2 = "+ clockwiseSortedSegments[nextSegIndex].nodes[1].id)
+    //         // console.log("diff angle = ",diff);
+    //         if (diff>0) {
+    //             return [clockwiseSortedSegments[i].nodes[1], clockwiseSortedSegments[nextSegIndex].nodes[1]];
+    //         }
 
-        }
+    //     }
 
-        // console.log("\n\n\n\n\n\n")
+    //     // console.log("\n\n\n\n\n\n")
 
-        return null;
+    //     return null;
 
-    }
+    // }
 
     // getIntersectionOfTwoConsecutiveSegments(linkedNodes:[WallNode, WallNode]){ //inner intersection, outer intersection
     //     const p0 = this.position;
