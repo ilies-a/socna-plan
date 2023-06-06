@@ -4,7 +4,7 @@ import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D, JoinedWalls, WallNode, TestPoint, AddWallSession } from "@/entities";
 import { setAddWallSession, setAddingPointLineIdPointId, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectAddWallSession, selectAddingPointLineIdPointId, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
-import { cloneArray, doSegmentsIntersect } from "@/utils";
+import { cloneArray, doSegmentsIntersect, getNodePositionWithMagnet } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, Text } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
@@ -438,7 +438,7 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         y = {node.position.y}
         radius = {node.radius * 1 / planProps.scale}
         opacity={0}
-        listening
+        listening = {!addWallSession}
         draggable
         onClick={e => {
           e.cancelBubble = true;
@@ -463,9 +463,6 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
           // console.log("point onPointerUp")
           e.cancelBubble = true;
           setVisible(false);
-          if(addWallSession){
-            dispatch(setAddWallSession(null));
-          }
         //   handleOnPointerUp();
         }}
         onMouseEnter={_ =>{
@@ -498,120 +495,11 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         }}
         onDragMove={e => {
             e.cancelBubble = true;
-
             if(!magnetActivated){
               updateNodePosition(new Position(e.target.position().x, e.target.position().y));
               return;
             }
-
-            let lockHorizontally: WallNode | null = null;
-            let lockVertically: WallNode | null = null;
-            let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
-            let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
-
-            for(const linkedNode of node.linkedNodes){
-              const angle = Math.atan2(linkedNode.position.y - e.target.position().y, linkedNode.position.x - e.target.position().x);
-              const maxOffsetAngle = 0.08;
-
-              if(!lockHorizontally){              
-                lockHorizontally = 
-                (angle > 0 ?
-                  angle < Math.PI /2 ?
-                    angle < maxOffsetAngle 
-                    :
-                    angle > Math.PI - maxOffsetAngle 
-                  :
-                  angle > - Math.PI /2? 
-                    angle > - maxOffsetAngle
-                    :
-                    angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
-              }
-
-              if(!lockVertically){
-                lockVertically = 
-                (Math.abs(angle) > Math.PI / 2 ? //if right
-                  angle > 0 ? //if top
-                    //if top right
-                    angle < Math.PI / 2 + maxOffsetAngle
-                  :
-                  //if bottom right
-                  angle > - Math.PI / 2 - maxOffsetAngle
-                : //if left
-                  angle > 0 ? //if top
-                  //if top left
-                  angle > Math.PI / 2 - maxOffsetAngle
-                  :
-                  //if bottom left
-                  angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
-              }
-
-
-              if(node.linkedNodes.length === 1){
-                if(!lockDiagonallyTopLeftBottomRight && !lockDiagonallyTopRightBottomLeft){
-                  lockDiagonallyTopLeftBottomRight = 
-                  (angle > Math.PI / 4 || angle <  - Math.PI * (3/4) ? //if right
-                    angle > 0 ? //if top
-                      //if top right
-                      angle < Math.PI / 4 + maxOffsetAngle
-                    :
-                    //if bottom right
-                    angle > - Math.PI * (3/4) - maxOffsetAngle
-                  : //if left
-                    angle > 0 ? //if top
-                    //if top left
-                    angle > Math.PI / 4 - maxOffsetAngle
-                    :
-                    //if bottom left
-                    angle < - Math.PI * (3/4) + maxOffsetAngle) ? linkedNode : null;
-                }
-                if(!lockDiagonallyTopRightBottomLeft && !lockDiagonallyTopLeftBottomRight){
-                  lockDiagonallyTopRightBottomLeft = 
-                  (angle > Math.PI * (3/4) || angle <  - Math.PI / 4 ? //if right
-                    angle > 0 ? //if top
-                      //if top right
-                      angle < Math.PI * (3/4) + maxOffsetAngle
-                    :
-                    //if bottom right
-                    angle > - Math.PI / 4 - maxOffsetAngle
-                  : //if left
-                    angle > 0 ? //if top
-                    //if top left
-                    angle > Math.PI * (3/4) - maxOffsetAngle
-                    :
-                    //if bottom left
-                    angle < - Math.PI * (1/4) + maxOffsetAngle) ? linkedNode : null;
-                }
-
-              }
-                
-            }
-            let newX;
-            let newY;
-
-            if(lockVertically || lockHorizontally){
-              newX = lockVertically ? lockVertically.position.x : e.target.position().x;
-              newY = lockHorizontally ? lockHorizontally.position.y : e.target.position().y;
-            }
-            else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
-              const linkedNode = node.linkedNodes[0];
-              const p = e.target.position();
-              const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
-              let b = linkedNode.position.y - slope * linkedNode.position.x;
-              const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
-              const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
-              const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
-              const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
-
-              newX = projectionX;
-              newY = projectionY;
-
-            }
-            else{
-              newX = e.target.position().x;
-              newY = e.target.position().y;
-            }
-
-            updateNodePosition(new Position(newX, newY));
+            updateNodePosition(getNodePositionWithMagnet(node, e.target.position()));
         }}
         onDragEnd={e => {
             e.cancelBubble = true;

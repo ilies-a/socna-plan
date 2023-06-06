@@ -2,12 +2,12 @@
 import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
-import { AddWallSession, Dimensions, JoinedWalls, PlanElementSheetData, PlanElementSheetTypeName, PlanMode, PlanProps, Position, TestPoint, Vector2D, Wall, WallNode, iconDataArr } from "@/entities";
+import { AddWallSession, Dimensions, JoinedWalls, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Wall, WallNode, iconDataArr } from "@/entities";
 import { Path } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
-import { setAddWallSession, setPlanElementSheetData, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
+import { setAddWallSession, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
 import { JoinedWallsAndWallNodes } from "../plan/plan.component";
-import { selectPlanElementSheetData, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
+import { selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
 import { getOrthogonalProjection } from "@/utils";
 import { v4 } from 'uuid';
 
@@ -31,6 +31,7 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
     const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
     const planMode: PlanMode = useSelector(selectPlanMode);
     const planProps:PlanProps = useSelector(selectPlanProps);
+    const planElements: PlanElement[] = useSelector(selectPlanElements);
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
         const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
@@ -58,6 +59,7 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
             onPointerDown={e => {
                 // setPreventPointerUpOnPlan(true);
                 if(planMode === PlanMode.AddWall){
+                    dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
                     const pointerPos = getCursorPosWithEventPos(e, false);
                     const pointOnWallMiddleLine = getOrthogonalProjection(wall.nodes[0].position, wall.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
                     const addedWall = w.addWall(wall, [pointOnWallMiddleLine, pointerPos]);
@@ -68,6 +70,14 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
                         )
                     ));
                     dispatch(updatePlanElement(w));
+                    if(!sheetData) return; //should throw error
+                    const newSheetData:PlanElementSheetData = {
+                        planElementId: sheetData.planElementId, 
+                        wallId:addedWall.id, 
+                        typeName:sheetData.typeName, 
+                        numero:sheetData.numero
+                    };
+                    dispatch(setPlanElementSheetData(newSheetData))
                 }else{
                     setPointingOnWall(true);
                     // const nodesIds:[string, string] = [nodes[0].id, nodes[1].id];

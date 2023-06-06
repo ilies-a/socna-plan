@@ -3,11 +3,11 @@ import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, Wall, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler, Line, JoinedWalls, TestPoint, WallNode, AddWallSession } from "@/entities";
-import { cloneArray } from "@/utils";
+import { cloneArray, getNodePositionWithMagnet } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddWallSession, setAddingPointLineIdPointId, setLineToAdd, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddWallSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAddWallSession, setAddingPointLineIdPointId, setLineToAdd, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddWallSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import LineAddPoint from "../line-add-point/line-add-point.component";
 import { LEFT_MENU_WIDTH, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
@@ -76,8 +76,9 @@ const Plan: React.FC = () => {
     const removeLineIfNoPoints = useRemLine();
     const testPoints: TestPoint[] = useSelector(selectTestPoints);
     const [preventUnselectAllElements, setPreventUnselectAllElements] = useState<boolean>(false);
-    const addWallSession: AddWallSession = useSelector(selectAddWallSession);
+    const addWallSession: AddWallSession | null = useSelector(selectAddWallSession);
     const magnetActivated: boolean = useSelector(selectMagnetActivated);
+    const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
 
 
     // const [preventPointerUpOnPlan, setPreventPointerUpOnPlan] = useState<boolean>(false);
@@ -457,9 +458,14 @@ const Plan: React.FC = () => {
         // for(const el of planElementsCopy){
         //     el.unselect();
         // }
-        PlanElementsHelper.unselectAllElements(planElements);
-        dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
-        dispatch(setPlanElementSheetData(null));
+        if(!preventUnselectAllElements){
+            PlanElementsHelper.unselectAllElements(planElements);
+            dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+            dispatch(setPlanElementSheetData(null));
+        }else{
+            setPreventUnselectAllElements(false);
+        }
+
 
         // if(!preventPointerUpOnPlan){
         //     const planElementsCopy = PlanElementsHelper.clone(planElements);
@@ -473,15 +479,16 @@ const Plan: React.FC = () => {
 
         // }
 
-    }, [dispatch, planElements]);
+    }, [dispatch, planElements, preventUnselectAllElements]);
     
     const handleClick = useCallback(()=>{
-        if(!preventUnselectAllElements){
-            unselectAllPlanElements();
-        }else{
-            setPreventUnselectAllElements(false);
-        }
-    }, [preventUnselectAllElements, unselectAllPlanElements]);
+        // if(!preventUnselectAllElements){
+        //     unselectAllPlanElements();
+        // }else{
+        //     setPreventUnselectAllElements(false);
+        // }
+        unselectAllPlanElements();
+    }, [unselectAllPlanElements]);
 
     const getPlanElements = () => {
         // const planElementsSBS: [PlanElement[], PlanElement[]] = [[], []];
@@ -684,11 +691,24 @@ const Plan: React.FC = () => {
             setPointingOnWall(false);
             setPreventUnselectAllElements(true);
         }
-        //pointerUp on node but just in in case
+        // //pointerUp on node but just in in case
+        // if(addWallSession){
+        //     dispatch(setAddWallSession(null));
+        // }
         if(addWallSession){
+            addWallSession.joinedWalls.selectWall(addWallSession.wall.id);
+
+            if(!planElementsSnapshot) return; //should throw error
+            const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+            savePlan(planElementsSnapshot, nextPlanElementsClone);
+            dispatch(setPlanElementsSnapshot(null));
+            
             dispatch(setAddWallSession(null));
-        }
-    }, [addPoint, addWallSession, addingPointLineIdPointId, dispatch, pointingOnWall, saveIfMovingWall]);
+            dispatch(setPlanMode(PlanMode.Move));
+            setPreventUnselectAllElements(true);
+
+          }
+    }, [addPoint, addWallSession, addingPointLineIdPointId, dispatch, planElements, planElementsSnapshot, pointingOnWall, saveIfMovingWall, savePlan]);
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
@@ -778,140 +798,21 @@ const Plan: React.FC = () => {
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     // dispatch(setPlanCursorPos(newCursorPos));
 
-                    handleMovingWall(newCursorPos);
 
                     if(addWallSession){
                         const node = addWallSession.wall.nodes[1];
-                        // node.position = new Position(newCursorPos.x, newCursorPos.y);
-                        // dispatch(updatePlanElement(addWallSession.joinedWalls));
-
-
-
-
-
-                        const updateNodePosition = (p:Position) =>{
-                            node.position = p;
-                            dispatch(updatePlanElement(addWallSession.joinedWalls));
-                          };
-
-
                         
                         if(!magnetActivated){
-                            updateNodePosition(new Position(newCursorPos.x, newCursorPos.y));
+                            node.position = new Position(newCursorPos.x, newCursorPos.y);
+                            dispatch(updatePlanElement(addWallSession.joinedWalls));
                             return;
                         }
             
-                        let lockHorizontally: WallNode | null = null;
-                        let lockVertically: WallNode | null = null;
-                        let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
-                        let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
-            
-                        for(const linkedNode of node.linkedNodes){
-                            const angle = Math.atan2(linkedNode.position.y - e.target.position().y, linkedNode.position.x - e.target.position().x);
-                            const maxOffsetAngle = 0.08;
-            
-                            if(!lockHorizontally){              
-                            lockHorizontally = 
-                            (angle > 0 ?
-                                angle < Math.PI /2 ?
-                                angle < maxOffsetAngle 
-                                :
-                                angle > Math.PI - maxOffsetAngle 
-                                :
-                                angle > - Math.PI /2? 
-                                angle > - maxOffsetAngle
-                                :
-                                angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
-                            }
-            
-                            if(!lockVertically){
-                            lockVertically = 
-                            (Math.abs(angle) > Math.PI / 2 ? //if right
-                                angle > 0 ? //if top
-                                //if top right
-                                angle < Math.PI / 2 + maxOffsetAngle
-                                :
-                                //if bottom right
-                                angle > - Math.PI / 2 - maxOffsetAngle
-                            : //if left
-                                angle > 0 ? //if top
-                                //if top left
-                                angle > Math.PI / 2 - maxOffsetAngle
-                                :
-                                //if bottom left
-                                angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
-                            }
-            
-            
-                            if(node.linkedNodes.length === 1){
-                            if(!lockDiagonallyTopLeftBottomRight && !lockDiagonallyTopRightBottomLeft){
-                                lockDiagonallyTopLeftBottomRight = 
-                                (angle > Math.PI / 4 || angle <  - Math.PI * (3/4) ? //if right
-                                angle > 0 ? //if top
-                                    //if top right
-                                    angle < Math.PI / 4 + maxOffsetAngle
-                                :
-                                //if bottom right
-                                angle > - Math.PI * (3/4) - maxOffsetAngle
-                                : //if left
-                                angle > 0 ? //if top
-                                //if top left
-                                angle > Math.PI / 4 - maxOffsetAngle
-                                :
-                                //if bottom left
-                                angle < - Math.PI * (3/4) + maxOffsetAngle) ? linkedNode : null;
-                            }
-                            if(!lockDiagonallyTopRightBottomLeft && !lockDiagonallyTopLeftBottomRight){
-                                lockDiagonallyTopRightBottomLeft = 
-                                (angle > Math.PI * (3/4) || angle <  - Math.PI / 4 ? //if right
-                                angle > 0 ? //if top
-                                    //if top right
-                                    angle < Math.PI * (3/4) + maxOffsetAngle
-                                :
-                                //if bottom right
-                                angle > - Math.PI / 4 - maxOffsetAngle
-                                : //if left
-                                angle > 0 ? //if top
-                                //if top left
-                                angle > Math.PI * (3/4) - maxOffsetAngle
-                                :
-                                //if bottom left
-                                angle < - Math.PI * (1/4) + maxOffsetAngle) ? linkedNode : null;
-                            }
-            
-                            }
-                            
-                        }
-                        let newX;
-                        let newY;
-            
-                        if(lockVertically || lockHorizontally){
-                            newX = lockVertically ? lockVertically.position.x : newCursorPos.x;
-                            newY = lockHorizontally ? lockHorizontally.position.y : newCursorPos.y;
-                        }
-                        else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
-                            const linkedNode = node.linkedNodes[0];
-                            const p = newCursorPos;
-                            const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
-                            let b = linkedNode.position.y - slope * linkedNode.position.x;
-                            const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
-                            const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
-                            const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
-                            const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
-            
-                            newX = projectionX;
-                            newY = projectionY;
-            
-                        }
-                        else{
-                            newX = newCursorPos.x;
-                            newY = newCursorPos.y;
-                        }
-                        
-                        updateNodePosition(new Position(newX, newY));
-
-
-
+                        node.position = getNodePositionWithMagnet(node, newCursorPos);              
+                        dispatch(updatePlanElement(addWallSession.joinedWalls));
+                    }
+                    else{
+                        handleMovingWall(newCursorPos);
                     }
                 }}
                 onTouchMove={e => {

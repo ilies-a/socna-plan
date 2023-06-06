@@ -41,8 +41,9 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
     for(const planElements of planElementsRecords.records){
       const elIdx = PlanElementsHelper.findElementIndexById(planElements, data.planElementId);
       if(elIdx === -1) continue;
-      if(isWall){
-        (planElements[elIdx] as JoinedWalls).walls[data.wallId!].numero = newNumero;
+      const wall = (planElements[elIdx] as JoinedWalls).walls[data.wallId!];
+      if(isWall && wall){
+        wall.numero = newNumero;
       }
     }
 

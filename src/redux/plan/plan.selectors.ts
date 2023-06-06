@@ -81,3 +81,8 @@ export const selectAddWallSession= createSelector(
   [selectPlan],
   (plan) => plan.addWallSession
 );
+
+export const selectPlanElementsSnapshot= createSelector(
+  [selectPlan],
+  (plan) => plan.planElementsSnapshot
+);

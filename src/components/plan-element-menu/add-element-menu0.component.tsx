@@ -25,15 +25,15 @@ const AddElementMenu: React.FC = () => {
     setWallStroke(parseFloat(e.currentTarget.value));
   },[]);
 
-  const setPlanElementToAddToWall = useCallback(() =>{
-    const wall = new Wall(v4(), [], wallStroke);
-    dispatch(setLineToAdd(wall));
-  },[dispatch, wallStroke]);
+  // const setPlanElementToAddToWall = useCallback(() =>{
+  //   const wall = new Wall(v4(), [], wallStroke);
+  //   dispatch(setLineToAdd(wall));
+  // },[dispatch, wallStroke]);
 
   
-  useEffect(()=>{
-    setPlanElementToAddToWall();
-  },[setPlanElementToAddToWall]);
+  // useEffect(()=>{
+  //   setPlanElementToAddToWall();
+  // },[setPlanElementToAddToWall]);
 
   const handleOnClick = useCallback(() =>{
 
@@ -54,7 +54,7 @@ const AddElementMenu: React.FC = () => {
                             max={WALL_STROKE_MAX} 
                             value={wallStroke}
                             onChange={handleWallStrokeInputOnChange}/>
-        <PlanMenuButton iconFileName="wall.png" handleOnClick={setPlanElementToAddToWall} active= {isActive(PlanElementTypeName.Wall)} available wallStrokeWidth={wallStroke}/>
+        {/* <PlanMenuButton iconFileName="wall.png" handleOnClick={setPlanElementToAddToWall} active= {isActive(PlanElementTypeName.Wall)} available wallStrokeWidth={wallStroke}/> */}
       </div>
       <PlanMenuButton iconFileName="canal-eau-pluv.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
       <PlanMenuButton iconFileName="gout.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>

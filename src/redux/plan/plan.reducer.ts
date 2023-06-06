@@ -10,7 +10,7 @@ const INITIAL_STATE = {
   // planIsScaling: false,
   planIsDragging: false,
   planElements: initialPlanElements as PlanElement[],
-  planElementsTemp: [] as PlanElement[],
+  planElementsSnapshot: null as PlanElement[] | null,
   planMode: PlanMode.MovePoint,
   selectingPlanElement: false,
   unselectAllOnPlanMouseUp: true,
@@ -123,6 +123,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
       return {
         ...state,
         addWallSession: action.payload
+      };
+    case PlanActionTypes.SET_PLAN_ELEMENT_SNAPSHOT:
+      return {
+        ...state,
+        planElementsSnapshot: action.payload
       };
     default:
       return state;

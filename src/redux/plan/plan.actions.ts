@@ -95,3 +95,8 @@ export const setAddWallSession= (addWallSession: AddWallSession | null) => ({
   type: PlanActionTypes.SET_ADD_WALL_SESSION,
   payload: addWallSession,
 });
+
+export const setPlanElementsSnapshot= (planElements: PlanElement[] | null) => ({
+  type: PlanActionTypes.SET_PLAN_ELEMENT_SNAPSHOT,
+  payload: planElements,
+});

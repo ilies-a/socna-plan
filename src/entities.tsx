@@ -1054,6 +1054,8 @@ export const iconDataArr:IconData[] = [
         this.nodes[newWallNode2.id] = newWallNode2;
 
         this.setWalls();
+        // console.log("", this.walls[newWallNode1.id+newWallNode2.id])
+        // console.log("", this.walls[newWallNode2.id+newWallNode1.id])
 
         return new Wall([newWallNode1, newWallNode2]);
     }

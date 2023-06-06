@@ -1,4 +1,4 @@
-import { Position, Vector2D } from "./entities";
+import { Position, Vector2D, WallNode } from "./entities";
 import { BIG_NUMBER } from "./global";
 
 const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
@@ -130,4 +130,119 @@ export const getOrthogonalProjection = (lp1:Vector2D, lp2:Vector2D, p:Vector2D):
   const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
   const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
   return new Position(projectionX, projectionY);
+}
+
+export const getNodePositionWithMagnet = (node:WallNode, p:Vector2D) => {
+  // node.position = new Position(newCursorPos.x, newCursorPos.y);
+  // dispatch(updatePlanElement(addWallSession.joinedWalls));
+
+
+
+
+  let lockHorizontally: WallNode | null = null;
+  let lockVertically: WallNode | null = null;
+  let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
+  let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
+
+  for(const linkedNode of node.linkedNodes){
+      const angle = Math.atan2(linkedNode.position.y - p.y, linkedNode.position.x - p.x);
+      const maxOffsetAngle = 0.08;
+
+      if(!lockHorizontally){              
+      lockHorizontally = 
+      (angle > 0 ?
+          angle < Math.PI /2 ?
+          angle < maxOffsetAngle 
+          :
+          angle > Math.PI - maxOffsetAngle 
+          :
+          angle > - Math.PI /2? 
+          angle > - maxOffsetAngle
+          :
+          angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
+      }
+
+      if(!lockVertically){
+      lockVertically = 
+      (Math.abs(angle) > Math.PI / 2 ? //if right
+          angle > 0 ? //if top
+          //if top right
+          angle < Math.PI / 2 + maxOffsetAngle
+          :
+          //if bottom right
+          angle > - Math.PI / 2 - maxOffsetAngle
+      : //if left
+          angle > 0 ? //if top
+          //if top left
+          angle > Math.PI / 2 - maxOffsetAngle
+          :
+          //if bottom left
+          angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
+      }
+
+
+      if(node.linkedNodes.length === 1){
+      if(!lockDiagonallyTopLeftBottomRight && !lockDiagonallyTopRightBottomLeft){
+          lockDiagonallyTopLeftBottomRight = 
+          (angle > Math.PI / 4 || angle <  - Math.PI * (3/4) ? //if right
+          angle > 0 ? //if top
+              //if top right
+              angle < Math.PI / 4 + maxOffsetAngle
+          :
+          //if bottom right
+          angle > - Math.PI * (3/4) - maxOffsetAngle
+          : //if left
+          angle > 0 ? //if top
+          //if top left
+          angle > Math.PI / 4 - maxOffsetAngle
+          :
+          //if bottom left
+          angle < - Math.PI * (3/4) + maxOffsetAngle) ? linkedNode : null;
+      }
+      if(!lockDiagonallyTopRightBottomLeft && !lockDiagonallyTopLeftBottomRight){
+          lockDiagonallyTopRightBottomLeft = 
+          (angle > Math.PI * (3/4) || angle <  - Math.PI / 4 ? //if right
+          angle > 0 ? //if top
+              //if top right
+              angle < Math.PI * (3/4) + maxOffsetAngle
+          :
+          //if bottom right
+          angle > - Math.PI / 4 - maxOffsetAngle
+          : //if left
+          angle > 0 ? //if top
+          //if top left
+          angle > Math.PI * (3/4) - maxOffsetAngle
+          :
+          //if bottom left
+          angle < - Math.PI * (1/4) + maxOffsetAngle) ? linkedNode : null;
+      }
+
+      }
+      
+  }
+  let newX;
+  let newY;
+
+  if(lockVertically || lockHorizontally){
+      newX = lockVertically ? lockVertically.position.x : p.x;
+      newY = lockHorizontally ? lockHorizontally.position.y : p.y;
+  }
+  else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
+      const linkedNode = node.linkedNodes[0];
+      const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
+      let b = linkedNode.position.y - slope * linkedNode.position.x;
+      const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+      const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
+      const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+      const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+
+      newX = projectionX;
+      newY = projectionY;
+
+  }
+  else{
+      newX = p.x;
+      newY = p.y;
+  }
+  return new Position(newX, newY)
 }
