@@ -1,0 +1,20 @@
+@import "../../styles/variables";
+
+.main{
+    .table{
+        display: flex;
+        flex-direction: row;
+        .label{
+            border: 1px solid $button-border-color-grey;
+            background-color: $button-background-color-grey;
+            padding: 5px;
+            width: 30%;
+        }
+        .content{
+            border: 1px solid $button-border-color-grey;
+            width: 70%;
+            padding-left: 5px;
+        }
+    }
+
+}

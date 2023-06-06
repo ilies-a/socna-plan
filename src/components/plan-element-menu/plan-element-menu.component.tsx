@@ -1,149 +1,106 @@
-import { Line, LinePointMode, PlanElement, PlanElementTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
-import { addPlanElement, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
-import styles from './plan-element-menu.module.scss';
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
-import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
-import { cloneArray } from "@/utils";
-import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
-import AddElementMenu from "../add-element-menu/add-element-menu.component";
-const {v4} = require("uuid");
+import { useCallback, useEffect, useState } from "react";
+import styles from './plan-element-menu.module.scss';
+import { setLineToAdd, setPlanElementSheetData, setPlanElements, setPlanMode } from "@/redux/plan/plan.actions";
+import { Dimensions, Line, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementTypeName, PlanElementsHelper, PlanMode, Wall } from "@/entities";
+import { v4 } from 'uuid';
+import { selectLineToAdd, selectPlanElementSheetData, selectPlanElements } from "@/redux/plan/plan.selectors";
+import { LEFT_MENU_WIDTH } from "@/global";
+import PlanElementSheet from "../plan-element-sheet/plan-element-sheet.component";
+import PlanElementButton from "../plan-element-button/plan-element-button.component";
 
 const PlanElementMenu: React.FC = () => {
-  const planProps:PlanProps = useSelector(selectPlanProps);
-  const planElements: PlanElement[] = useSelector(selectPlanElements);
-  const planMode: PlanMode = useSelector(selectPlanMode);
-  const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
-  const savePlan = useSavePlan();
   const dispatch = useDispatch();
+  const WALL_STROKE_MIN = 10;
+  const WALL_STROKE_MAX = 50;
+  const WALL_STROKE_DEFAULT = 30;
+  const [wallStroke, setWallStroke] = useState<number>(WALL_STROKE_DEFAULT);
+  const lineToAdd:Line | null = useSelector(selectLineToAdd);
+  // const [showSheet, setShowSheet] = useState<PlanElementSheetData | null>(null);
+  const planElements: PlanElement[] = useSelector(selectPlanElements);
+  const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
 
-  // const selectMenu = useCallback(() =>{
-  //   const el = planElements.find(el => el.getSelected());
-  //   if(!el) return null;
-  //   switch(el.typeName){
-  //     case(PlanElementTypeName.Line): {
-  //       return <LineMenu line={el as Line}/>;
-  //     }
-  //     default: {
-  //       return null
-  //     }
-  //   }
-  // },[planElements]);
+  useEffect(()=>{
+    return ()=>{
+      dispatch(setLineToAdd(null));
+    };
+  },[dispatch]);
 
-  // const addLine = useCallback(()=>{
-  //   console.log("addLine")
-  //   for(const elId in planElements){
-  //     console.log("elId", elId)
+  const handleWallStrokeInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    setWallStroke(parseFloat(e.currentTarget.value));
+  },[]);
 
-  //   }
-  //   const lineLenghtMaxWhenAdded = 100;
-  //   let lineLength = planProps.dimensions.w * 0.3;
-  //   lineLength = lineLength < lineLenghtMaxWhenAdded ? lineLength : lineLenghtMaxWhenAdded;
+  // const setPlanElementToAddToWall = useCallback(() =>{
+  //   const wall = new Wall(v4(), [], wallStroke);
+  //   dispatch(setLineToAdd(wall));
+  // },[dispatch, wallStroke]);
 
-  //   const p1x = (planProps.dimensions.w * 0.5 - planProps.position.x) * 1/planProps.scale - lineLength * 0.5;
-  //   const p1y = (planProps.dimensions.h * 0.5 - planProps.position.y) * 1/planProps.scale;
-  //   const p2x = p1x + lineLength;
-  //   const p2y = p1y;
-
-  //   const newElement:PlanElement = new Line(v4(), [new Point(v4(), p1x,p1y), new Point(v4(), p2x, p2y)], 25);
-  //   dispatch(addPlanElement(newElement));
-  // },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
-
-  const setPlanModeToAddElement= useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.AddPlanElement));
-  }, [dispatch]);
-  const setPlanModeToMove = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.MovePoint));
-  }, [dispatch]);
-  const setPlanModeToAddPoint = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.AddPoint));
-  }, [dispatch]);
-  const setPlanModeToRemovePointThenJoin = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.RemovePointThenJoin));
-  }, [dispatch]);
-  const setPlanModeToRemovePointNoJoin = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.RemovePointNoJoin));
-  }, [dispatch]);
-
-  const removeSelectedPlanElements = useCallback(()=>{
-    let elementsRemoved: boolean = false; 
-    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-    for(const el of planElements){
-        if(!el.getSelected()) continue;
-        elementsRemoved = true;
-        const planElementToRemoveIndex = nextPlanElementsClone.findIndex((iterEl) => iterEl.id === el.id);
-        if(planElementToRemoveIndex === -1) continue;
-        nextPlanElementsClone.splice(planElementToRemoveIndex, 1);
-    }
-    if(!elementsRemoved) return;
-    savePlan(currentPlanElementsClone, nextPlanElementsClone);
-
-  }, [planElements, savePlan]);
-
-  const toPreviousRecord = useCallback(()=>{
-    if(planElementsRecords.currentRecordIndex === 0 ) return;
-    const newPlanElementsRecords:PlanElementsRecordsHandler = planElementsRecords.clone();
-    newPlanElementsRecords.currentRecordIndex --;
-
-    PlanElementsHelper.unselectAllElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]);
-
-    dispatch(setPlanElementsRecords(newPlanElementsRecords));
-    dispatch(setPlanElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]));
-    console.log("\n\n\n\n\n\n\n\n\n\n\n\n")
-    console.log("record index = ",newPlanElementsRecords.currentRecordIndex);
-    console.log("record last index = ",newPlanElementsRecords.records.length - 1);
-    console.log("\n\n\n\n\n\n\n\n\n\n\n\n")
-  }, [dispatch, planElementsRecords]);
-
-  const toNextRecord = useCallback(()=>{
-    if(planElementsRecords.currentRecordIndex === planElementsRecords.records.length - 1) return;
-    const newPlanElementsRecords:PlanElementsRecordsHandler = planElementsRecords.clone();
-
-    newPlanElementsRecords.currentRecordIndex ++;
-
-    PlanElementsHelper.unselectAllElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]);
-
-    dispatch(setPlanElementsRecords(newPlanElementsRecords));
-    dispatch(setPlanElements(newPlanElementsRecords.records[newPlanElementsRecords.currentRecordIndex]));
-
-    console.log("\n\n\n\n\n\n\n\n\n\n\n\n")
-    console.log("record index = ",newPlanElementsRecords.currentRecordIndex);
-    console.log("record last index = ",newPlanElementsRecords.records.length - 1);
-    console.log("\n\n\n\n\n\n\n\n\n\n\n\n")
-  }, [dispatch, planElementsRecords]);
-
-  const hasPreviousRecords:boolean = useMemo(()=>{
-    return planElementsRecords.currentRecordIndex > 0; 
-  }, [planElementsRecords.currentRecordIndex]);
-
-  const hasNextRecords:boolean = useMemo(()=>{
-    // console.log("hasNextRecords planElementsRecords.currentRecordIndex",planElementsRecords.currentRecordIndex)
-    // console.log("hasNextRecords planElementsRecords.records.length",planElementsRecords.records.length)
-    return planElementsRecords.currentRecordIndex < planElementsRecords.records.length - 1; 
-  }, [planElementsRecords.currentRecordIndex, planElementsRecords.records.length]);
   
+  // useEffect(()=>{
+  //   setPlanElementToAddToWall();
+  // },[setPlanElementToAddToWall]);
+
+  const handleClickOnAddWall = useCallback(() =>{
+    const newJoinedWallsId = v4();
+    const sheetData:PlanElementSheetData = {planElementId:newJoinedWallsId, wallId:null, typeName: PlanElementSheetTypeName.Wall, numero:""};
+    dispatch(setPlanElementSheetData(sheetData));
+    dispatch(setPlanMode(PlanMode.AddWall));
+  },[dispatch]);
+
+  const isActive = useCallback((typeName: PlanElementTypeName):boolean=>{
+    if(!lineToAdd) return false;
+    return typeName === lineToAdd.typeName;
+  }, [lineToAdd]);
+
+  const goBack = useCallback(()=>{
+    dispatch(setPlanElementSheetData(null));
+    PlanElementsHelper.unselectAllElements(planElements);
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+    dispatch(setPlanMode(PlanMode.Move));
+
+  }, [dispatch, planElements]);
 
   return (
-    <div className={styles['main']}>
-      <div className={styles['mode-buttons']}>
-        <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="add-el.png" handleOnClick={setPlanModeToAddElement} active={planMode === PlanMode.AddPlanElement} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)} wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords} wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords} wallStrokeWidth={null}/>
-      </div>
-      {
-      planMode === PlanMode.AddPlanElement?
-        <AddElementMenu/>
-        :null
+    <div className={styles['main']}
+      style={{"width":""+LEFT_MENU_WIDTH+"px", "maxWidth":""+LEFT_MENU_WIDTH+"px"}}
+    >
+      <button className={`${styles['back-button']} ${sheetData? styles['active']: null}`} onClick={goBack}>&#8592;</button>
+      {sheetData ?
+        <PlanElementSheet data={sheetData as PlanElementSheetData} />
+        :
+        <div className={styles['linears-wrapper']}>
+          <div className={styles['linears-header']}>LINEAIRES</div>
+          <div className={styles['linears-body']}>
+            <PlanElementButton name="Ajouter un mur" onClick={handleClickOnAddWall}/>
+          </div>
+        </div>
       }
+
+
+{/* 
+      <div className={styles['wall-buttons-wrapper']}>
+        <input className={`${styles['wall-stroke-input']}`} 
+                            name="wall-stroke-input" 
+                            type="range" 
+                            min={WALL_STROKE_MIN} 
+                            max={WALL_STROKE_MAX} 
+                            value={wallStroke}
+                            onChange={handleWallStrokeInputOnChange}/>
+        <PlanMenuButton iconFileName="wall.png" handleOnClick={setPlanElementToAddToWall} active= {isActive(PlanElementTypeName.Wall)} available wallStrokeWidth={wallStroke}/>
+      </div>
+      <PlanMenuButton iconFileName="canal-eau-pluv.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="gout.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="alim-eau-pot.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="canal-eau-use.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="compass.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="compt-eau.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="eau-pluv.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="fosse.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="puit.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="regards.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="text.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/>
+      <PlanMenuButton iconFileName="vanne-aep.png" handleOnClick={handleOnClick} active= {false} available wallStrokeWidth={null}/> */}
     </div>
   )
 };

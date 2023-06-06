@@ -3,6 +3,19 @@
     justify-content: center; //change to space-between for the pwa (the pwa won't have the search bar that causes render issues)
     align-items: center;
     flex-shrink: 1;
+    width: 100vw;
+    max-width: 100vw;
     height: 100vh;
+    max-height: 100vh;
     flex-direction: column;
+    border: 2px solid blue;
+    // overflow: hidden; //uncomment for the release version
+    .menu-and-plan-wrapper{
+        display: flex;
+        justify-content: center; //change to space-between for the pwa (the pwa won't have the search bar that causes render issues)
+        align-items: center;
+        flex-direction: row;
+        border: 1px solid red;
+        height: 100%;
+    }
 }

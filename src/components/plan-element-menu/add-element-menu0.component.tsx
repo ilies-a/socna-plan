@@ -30,6 +30,7 @@ const AddElementMenu: React.FC = () => {
     dispatch(setLineToAdd(wall));
   },[dispatch, wallStroke]);
 
+  
   useEffect(()=>{
     setPlanElementToAddToWall();
   },[setPlanElementToAddToWall]);

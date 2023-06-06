@@ -1,9 +1,9 @@
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
-import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D, JoinedWalls, WallNode, Segment, TestPoint } from "@/entities";
-import { setAddingPointLineIdPointId, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAddingPointLineIdPointId, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D, JoinedWalls, WallNode, TestPoint, AddWallSession } from "@/entities";
+import { setAddWallSession, setAddingPointLineIdPointId, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
+import { selectAddWallSession, selectAddingPointLineIdPointId, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { cloneArray, doSegmentsIntersect } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, Text } from "react-konva";
@@ -20,7 +20,11 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
   const savePlan = useSavePlan();
   const planElements: PlanElement[] = useSelector(selectPlanElements);
   const [dragStartPos, setDragStartPos] = useState<Position | null>(null);
+  const planProps:PlanProps = useSelector(selectPlanProps);
   const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
+  const [visible, setVisible] = useState<boolean>(false); 
+  const magnetActivated: boolean = useSelector(selectMagnetActivated);
+  const addWallSession: AddWallSession = useSelector(selectAddWallSession);
 
   const updateNodePosition = useCallback((p:Position) =>{
         node.position = p;
@@ -384,10 +388,10 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
       <Circle
           x = {node.position.x}
           y = {node.position.y}
-          radius = {node.radius}
-
-          stroke= 'black'
-          strokeWidth = {1}
+          radius = {node.radius * 1 / planProps.scale}
+          fill="#428BCA"
+          opacity={visible || addWallSession && addWallSession.wall.nodes[1].id === node.id ? 1 : 0} //(addWallSession && addWallSession.wall.nodes[1].id === node.id) condition is just a fix
+          listening = {false}
           // onClick={handleOnClick}
           
           // onMouseDown = { handleOnMouseDown}
@@ -432,10 +436,9 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
       <Circle
         x = {node.position.x}
         y = {node.position.y}
-        radius = {node.radius}
-
-        stroke= 'red'
-        strokeWidth = {1}
+        radius = {node.radius * 1 / planProps.scale}
+        opacity={0}
+        listening
         draggable
         onClick={e => {
           e.cancelBubble = true;
@@ -445,11 +448,35 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         //   alert("ooksss")
         //   e.cancelBubble = true;
         // }}
-        onPointerUp={e => {
+        onPointerDown={e => {
+          // console.log("point onPointerUp")
+          e.cancelBubble = true;
+          setVisible(true);
+        //   handleOnPointerUp();
+        }}
+        onPointerMove={e => {
           // console.log("point onPointerUp")
           e.cancelBubble = true;
         //   handleOnPointerUp();
         }}
+        onPointerUp={e => {
+          // console.log("point onPointerUp")
+          e.cancelBubble = true;
+          setVisible(false);
+          if(addWallSession){
+            dispatch(setAddWallSession(null));
+          }
+        //   handleOnPointerUp();
+        }}
+        onMouseEnter={_ =>{
+          setVisible(true);
+        }}
+        onMouseOut={_ =>{
+          setVisible(false);
+        }}
+        // onPointerOut={_ =>{
+        //   setVisible(false);
+        // }}
         // draggable
         // dragBoundFunc = {function (pos) {
 
@@ -465,13 +492,18 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         // }}
         onDragStart={e => {
             e.cancelBubble = true;
-
             //save position at start
             setDragStartPos(new Position(e.target.position().x, e.target.position().y));
 
         }}
         onDragMove={e => {
             e.cancelBubble = true;
+
+            if(!magnetActivated){
+              updateNodePosition(new Position(e.target.position().x, e.target.position().y));
+              return;
+            }
+
             let lockHorizontally: WallNode | null = null;
             let lockVertically: WallNode | null = null;
             let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
@@ -479,7 +511,7 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
 
             for(const linkedNode of node.linkedNodes){
               const angle = Math.atan2(linkedNode.position.y - e.target.position().y, linkedNode.position.x - e.target.position().x);
-              const maxOffsetAngle = 0.1;
+              const maxOffsetAngle = 0.08;
 
               if(!lockHorizontally){              
                 lockHorizontally = 
@@ -583,6 +615,8 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         }}
         onDragEnd={e => {
             e.cancelBubble = true;
+            setVisible(false);
+
             // dispatch(setTestPoints([new Point("", e.target.position().x, e.target.position().y)]))
             e.currentTarget.setPosition(node.position);
 

@@ -1,9 +1,9 @@
 import PlanActionTypes from "./plan.types";
-import { Line, PlanElement, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
+import { AddWallSession, Line, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { setPlanPointerUpActionsHandler } from "./plan.actions";
 import { v4 } from "uuid";
-import { initialPlanElements } from "@/global";
+import { initialPlanElements } from "@/global-for-tests";
 
 const INITIAL_STATE = {
   planProps: new PlanProps(),
@@ -21,7 +21,10 @@ const INITIAL_STATE = {
   // planElementsRecords: [] as PlanElement[][],
   // currentPlanElementRecordIndex: -1
   lineToAdd: null as Line | null,
-  testPoints: [new TestPoint("", 100, 100, "")] as Point[]
+  testPoints: [new TestPoint("", 100, 100, "")] as Point[],
+  planElementSheetData: null as PlanElementSheetData | null,
+  magnetActivated: true,
+  addWallSession: null as AddWallSession | null,
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -101,10 +104,25 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
         ...state,
         lineToAdd: action.payload
       };
+    case PlanActionTypes.SET_PLAN_ELEMENT_SHEET_DATA:
+      return {
+        ...state,
+        planElementSheetData: action.payload
+      };
     case PlanActionTypes.SET_TEST_POINTS:
       return {
         ...state,
         testPoints: action.payload
+      };
+    case PlanActionTypes.SET_MAGNET_ACTIVATED:
+      return {
+        ...state,
+        magnetActivated: action.payload
+      };
+    case PlanActionTypes.SET_ADD_WALL_SESSION:
+      return {
+        ...state,
+        addWallSession: action.payload
       };
     default:
       return state;

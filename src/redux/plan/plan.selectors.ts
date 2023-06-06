@@ -62,8 +62,22 @@ export const selectLineToAdd = createSelector(
   (plan) => plan.lineToAdd
 );
 
+export const selectPlanElementSheetData = createSelector(
+  [selectPlan],
+  (plan) => plan.planElementSheetData
+);
 
 export const selectTestPoints = createSelector(
   [selectPlan],
   (plan) => plan.testPoints
+);
+
+export const selectMagnetActivated= createSelector(
+  [selectPlan],
+  (plan) => plan.magnetActivated
+);
+
+export const selectAddWallSession= createSelector(
+  [selectPlan],
+  (plan) => plan.addWallSession
 );

@@ -1,0 +1,11 @@
+@import "../../styles/variables";
+
+.button{
+    text-align: center;
+    border: 1px solid $button-border-color-grey;
+    width: 100%;
+    padding: 10px;
+    &:hover{
+        background-color: $button-background-color-grey;
+    }
+}

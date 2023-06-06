@@ -1,16 +1,17 @@
+@import "../../styles/variables";
+
 .button{
-    $size: 50px;
+    // $size: 60px;
     font-size: 1em;
-    border:1px solid black;
-    width:$size;
-    height:$size;
-    border-radius: 50%;
+    // border:1px solid black;
+    // width:$size;
+    // height:$size;
     opacity:0.5;
-    min-width: $size;
-    min-height: $size;
+    // min-width: $size;
+    // min-height: $size;
     -webkit-tap-highlight-color: transparent;
     // background-color: white;
-    margin: 5px;
+    // margin: 5px;
 
     .icon-wrapper{
         position: relative;
@@ -19,13 +20,13 @@
         justify-content: center;
     }
 
-    .wall-icon{
-        position: absolute;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: grey;
-        width: $size * 0.7;
-    }
+    // .wall-icon{
+    //     position: absolute;
+    //     left: 50%;
+    //     transform: translate(-50%, -50%);
+    //     background-color: grey;
+    //     width: $size * 0.7;
+    // }
 
 
     &.available{
@@ -33,15 +34,13 @@
     }
 
     &:active, &.active{
-        border-width: 2px;
         font-weight: bold;
-        background-color: rgba(255, 255, 255, 0.8);
+        background-color: $button-background-color-grey;
     }
 
     @media(pointer: fine){
         &:hover {
-            border-width: 2px;
-            font-weight: bold;
+            background-color: $button-background-color-grey;
         }
     }
 

@@ -1,3 +1,5 @@
+import { Position, Vector2D } from "./entities";
+import { BIG_NUMBER } from "./global";
 
 const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
     return Object.keys(obj).map(key => obj[key]);
@@ -118,3 +120,14 @@ export function doSegmentsIntersect(seg1: ISegment, seg2: ISegment): boolean {
       return angleA - angleB;
     });
   }
+
+
+export const getOrthogonalProjection = (lp1:Vector2D, lp2:Vector2D, p:Vector2D): Vector2D =>{
+  const slope = lp2.x - lp1.x != 0 ? (lp2.y - lp1.y) / (lp2.x - lp1.x) : BIG_NUMBER;
+  const b = lp1.y - slope * lp1.x;
+  const orthogonalSlope = slope != 0 ? -1 / slope : BIG_NUMBER; // Calculate the slope of the orthogonal line
+  const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
+  const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+  const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+  return new Position(projectionX, projectionY);
+}

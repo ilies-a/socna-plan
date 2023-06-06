@@ -1,5 +1,16 @@
+@import "../../styles/variables";
+
+// .main{
+//     border: 2px solid blue;
+//     // flex-shrink: 1;
+//     height: inherit;
+//     // width: inherit;
+//     .plan{
+//         background-color: rgb(238, 238, 238);
+//     }
+// }
 .plan{
-    background-color: rgb(238, 238, 238);
+    background-color: $non-dazzling-white;
 }
 
 // .plan-wrapper{

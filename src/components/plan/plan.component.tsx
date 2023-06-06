@@ -2,14 +2,14 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Wall, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler, Line, JoinedWalls, TestPoint, WallNode } from "@/entities";
+import { Dimensions, Wall, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler, Line, JoinedWalls, TestPoint, WallNode, AddWallSession } from "@/entities";
 import { cloneArray } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddingPointLineIdPointId, setLineToAdd, setPlanCursorPos, setPlanElements, setPlanElementsRecords, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddingPointLineIdPointId, selectLineToAdd, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAddWallSession, setAddingPointLineIdPointId, setLineToAdd, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddWallSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import LineAddPoint from "../line-add-point/line-add-point.component";
-import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO } from "@/global";
+import { LEFT_MENU_WIDTH, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
@@ -47,6 +47,7 @@ const Plan: React.FC = () => {
     const scaleMin = 1/9;
 
     const stageRef = useRef<any>();
+
     // const [stageScale, setStageScale] = useState<{ x: number; y: number; }>({x:1, y:1});
     // const [stagePosition, setStagePosition] = useState<{ x: number; y: number; }>({x:1, y:1});
 
@@ -67,12 +68,17 @@ const Plan: React.FC = () => {
     const [planElementsAtDragStart, setPlanElementsAtDragStart] = useState<PlanElement[] | null>(null);
 
     const [movingWall, setMovingWall] = useState<JoinedWallsAndWallNodes | null>(null);
+    const [pointingOnWall, setPointingOnWall] = useState<boolean>(false);
 
 
     const addPoint = useAddPoint();
     const savePlan = useSavePlan();
     const removeLineIfNoPoints = useRemLine();
     const testPoints: TestPoint[] = useSelector(selectTestPoints);
+    const [preventUnselectAllElements, setPreventUnselectAllElements] = useState<boolean>(false);
+    const addWallSession: AddWallSession = useSelector(selectAddWallSession);
+    const magnetActivated: boolean = useSelector(selectMagnetActivated);
+
 
     // const [preventPointerUpOnPlan, setPreventPointerUpOnPlan] = useState<boolean>(false);
 
@@ -127,10 +133,35 @@ const Plan: React.FC = () => {
         }
     }, [dblClick]);    
 
+
+    // useEffect(()=>{    
+    //     if(!planWrapperRef) return;
+    
+    //     // dispatch(setPlanStateSpace( 
+    //     //   new StateSpace(
+    //     //     screenSize[0] * KONVA_WIDTH_SCALE, 
+    //     //     screenSize[1] * KONVA_HEIGHT_SCALE, 
+    //     //     planWrapperRef.getBoundingClientRect().left, 
+    //     //     planWrapperRef.getBoundingClientRect().top,
+    //     //   )
+    //     // ));
+
+    //     const newPlanProps = new PlanProps();
+    //     console.log("planWrapperRef.getBoundingClientRect().width", planWrapperRef.getBoundingClientRect().width);
+    //     console.log("planWrapperRef.getBoundingClientRect().height", planWrapperRef.getBoundingClientRect().height);
+
+    //     newPlanProps.dimensions = new Dimensions(planWrapperRef.getBoundingClientRect().width, planWrapperRef.getBoundingClientRect().height);
+    //     dispatch(updatePlanProps(newPlanProps));
+
+    //   },[dispatch, planWrapperRef])
+
     useEffect(()=>{
         const handleResize = ()=>{
+            console.log("resize")
             const newPlanProps = new PlanProps();
-            newPlanProps.dimensions = new Dimensions(window.innerWidth - PLAN_HORIZONTAL_MARGIN, window.innerHeight - PLAN_MARGIN_BOTTOM);
+            // newPlanProps.dimensions = new Dimensions(planWrapperRef.getBoundingClientRect().width, planWrapperRef.getBoundingClientRect().height);
+
+            newPlanProps.dimensions = new Dimensions(window.innerWidth - LEFT_MENU_WIDTH, window.innerHeight - TOP_MENU_HEIGHT);
             dispatch(updatePlanProps(newPlanProps));
         }
         window.addEventListener('resize', handleResize);
@@ -189,61 +220,61 @@ const Plan: React.FC = () => {
 
     const getPlanElement = useCallback((el:PlanElement)=> {
         switch(el.typeName){
-            case(PlanElementTypeName.Wall): {
-                const l = el as Wall;
-                const path = l.path;
-                // return <Path
-                //     key={el.id}
-                //     x= {50}
-                //     y= {40}
-                //     data= 'M213.1,6.7c-32.4-14.4-73.7,0-88.1,30.6C110.6,4.9,67.5-9.5,36.9,6.7C2.8,22.9-13.4,62.4,13.5,110.9C33.3,145.1,67.5,170.3,125,217c59.3-46.7,93.5-71.9,111.5-106.1C263.4,64.2,247.2,22.9,213.1,6.7z'
-                //     fill= 'green'
-                //     scaleX= {0.5}
-                //     scaleY= {0.5}
-                // />
-                return  (
-                    <Group key={l.id}>
-                    <Path
-                        data= {
-                            (():string => {
-                                let s:string = "";
-                                s += "M";
-                                for(const point of path){
-                                    s += " " + point.x + " " + point.y + " ";
-                                }
-                                s += l.pathIsClose ? "Z":"";
-                                return s
-                            })()
-                        }
-                        fillEnabled = {false}
-                        stroke="grey"
-                        // dash={[33, 10]}
-                        strokeWidth={l.width}
-                        onClick={e => {
-                            e.cancelBubble = true;
-                            console.log("selectPlanElement");
-                            toggleSelectPlanElement(el);
-                            moveUpPlanElement(el);
-                        }}
-                        onTap={_ => {
-                            console.log("selectPlanElement");
-                            toggleSelectPlanElement(el);
-                            moveUpPlanElement(el);
-                        }}
-                    />
-                    {                    
-                        path.map((p, _) => {
-                            return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id && !planIsDragging && !scaling}/>
-                        })
-                    }
-                    </Group>
-                );
-            };
+            // case(PlanElementTypeName.Wall): {
+            //     const l = el as Wall;
+            //     const path = l.path;
+            //     // return <Path
+            //     //     key={el.id}
+            //     //     x= {50}
+            //     //     y= {40}
+            //     //     data= 'M213.1,6.7c-32.4-14.4-73.7,0-88.1,30.6C110.6,4.9,67.5-9.5,36.9,6.7C2.8,22.9-13.4,62.4,13.5,110.9C33.3,145.1,67.5,170.3,125,217c59.3-46.7,93.5-71.9,111.5-106.1C263.4,64.2,247.2,22.9,213.1,6.7z'
+            //     //     fill= 'green'
+            //     //     scaleX= {0.5}
+            //     //     scaleY= {0.5}
+            //     // />
+            //     return  (
+            //         <Group key={l.id}>
+            //         <Path
+            //             data= {
+            //                 (():string => {
+            //                     let s:string = "";
+            //                     s += "M";
+            //                     for(const point of path){
+            //                         s += " " + point.x + " " + point.y + " ";
+            //                     }
+            //                     s += l.pathIsClose ? "Z":"";
+            //                     return s
+            //                 })()
+            //             }
+            //             fillEnabled = {false}
+            //             stroke="grey"
+            //             // dash={[33, 10]}
+            //             strokeWidth={l.width}
+            //             onClick={e => {
+            //                 e.cancelBubble = true;
+            //                 console.log("selectPlanElement");
+            //                 toggleSelectPlanElement(el);
+            //                 moveUpPlanElement(el);
+            //             }}
+            //             onTap={_ => {
+            //                 console.log("selectPlanElement");
+            //                 toggleSelectPlanElement(el);
+            //                 moveUpPlanElement(el);
+            //             }}
+            //         />
+            //         {                    
+            //             path.map((p, _) => {
+            //                 return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id && !planIsDragging && !scaling}/>
+            //             })
+            //         }
+            //         </Group>
+            //     );
+            // };
             case(PlanElementTypeName.JoinedWalls): {
                 const w = el as JoinedWalls;
                 const nodes = w.nodes;
-                const segments = w.getSegments();
-                const wallsNodesAndPoints = w.getPointsBySegment();
+                const walls = w.walls;
+                const wallsNodesAndPoints = w.getPointsByWall();
                 const colorsForTesting = ["green","orange","blue","violet"];
 
                 // console.log("pointsBySegment.length", pointsBySegment.length)
@@ -264,10 +295,15 @@ const Plan: React.FC = () => {
                         wallsNodesAndPoints.map((nodesAndPoints, _) => {
                             const nodes = nodesAndPoints[0];
                             const points = nodesAndPoints[1];
-                            const wallIndex = w.wallIsSelected([nodes[0].id, nodes[1].id]);
-                            const wallIsSelected = wallIndex != null ? true:false;
+                            const sortedNodeIds = [nodes[0].id, nodes[1].id].sort();
+                            const wallId = sortedNodeIds[0] + sortedNodeIds[1];
+                            const wall = walls[wallId];
+                            const wallIsSelected = w.wallIsSelected(wallId);
                             return <WallComponent 
                                 key={v4()}
+                                id={wallId}
+                                wall={wall}
+                                numero={wall.numero}
                                 w={w}
                                 points={points}
                                 wallIsSelected={wallIsSelected}
@@ -275,6 +311,7 @@ const Plan: React.FC = () => {
                                 pointerStartPos={pointerStartPos}
                                 movingWall={movingWall} 
                                 setMovingWall={setMovingWall}
+                                setPointingOnWall= {setPointingOnWall}
                                 />
                             // return (
                             //     <Path
@@ -412,7 +449,7 @@ const Plan: React.FC = () => {
             //     )
             // }
         }
-    },[toggleSelectPlanElement, moveUpPlanElement, planIsDragging, scaling, pointerStartPos, movingWall]);
+    },[pointerStartPos, movingWall]);
 
     const unselectAllPlanElements = useCallback(() => {
         //doesnt work well on desktop:
@@ -421,7 +458,9 @@ const Plan: React.FC = () => {
         //     el.unselect();
         // }
         PlanElementsHelper.unselectAllElements(planElements);
-        dispatch(setPlanElements(planElements));
+        dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+        dispatch(setPlanElementSheetData(null));
+
         // if(!preventPointerUpOnPlan){
         //     const planElementsCopy = PlanElementsHelper.clone(planElements);
         //     for(const el of planElementsCopy){
@@ -437,8 +476,12 @@ const Plan: React.FC = () => {
     }, [dispatch, planElements]);
     
     const handleClick = useCallback(()=>{
-        unselectAllPlanElements();
-    }, [unselectAllPlanElements]);
+        if(!preventUnselectAllElements){
+            unselectAllPlanElements();
+        }else{
+            setPreventUnselectAllElements(false);
+        }
+    }, [preventUnselectAllElements, unselectAllPlanElements]);
 
     const getPlanElements = () => {
         // const planElementsSBS: [PlanElement[], PlanElement[]] = [[], []];
@@ -472,14 +515,14 @@ const Plan: React.FC = () => {
                     onDragEnd={e => {
                         if(!dragStartPos) return;
                         const dragDxy = new Position(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
-                        for(const el of selectedElements){
-                            if(!(el.typeName === PlanElementTypeName.Wall)) continue;
-                            const l = el as Wall;
-                                for(const p of l.path){
-                                    p.x += dragDxy.x;
-                                    p.y += dragDxy.y;
-                                }
-                        }
+                        // for(const el of selectedElements){
+                        //     if(!(el.typeName === PlanElementTypeName.Wall)) continue;
+                        //     const l = el as Wall;
+                        //         for(const p of l.path){
+                        //             p.x += dragDxy.x;
+                        //             p.y += dragDxy.y;
+                        //         }
+                        // }
 
                         const currentPlanElementsClone = planElementsAtDragStart as PlanElement[];
                         const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
@@ -497,14 +540,14 @@ const Plan: React.FC = () => {
                     })
                 }
                 </Group>
-                {   
+                {/* {   
                     //property l.addingPointFrom
                     //l.addingPoint ?
                     //<LineAddPoint line={l} position={cursorPosOnPlan}/>
                     addingPointLineIdPointId?
                     <LineAddPoint line={PlanElementsHelper.findElementById(planElements, addingPointLineIdPointId[0]) as Wall} position={planCursorPos}/>
                     :null
-                }
+                } */}
             </>
     }
 
@@ -537,13 +580,13 @@ const Plan: React.FC = () => {
           if(addingPointLineIdPointId){
             const lineIndex = PlanElementsHelper.findElementIndexById(planElements, addingPointLineIdPointId[0]);
             if(lineIndex > -1){
-                const line = planElements[lineIndex] as Wall;
-                // removeLineIfNoPoints(lineIndex)
-                if(line.path.length < 2){ //if line has only one point we remove the line
-                    const clone = PlanElementsHelper.clone(planElements);
-                    clone.splice(lineIndex, 1);
-                    dispatch(setPlanElements(clone));
-                }
+                // const line = planElements[lineIndex] as Wall;
+                // // removeLineIfNoPoints(lineIndex)
+                // if(line.path.length < 2){ //if line has only one point we remove the line
+                //     const clone = PlanElementsHelper.clone(planElements);
+                //     clone.splice(lineIndex, 1);
+                //     dispatch(setPlanElements(clone));
+                // }
             }
             dispatch(setAddingPointLineIdPointId(null));
           }
@@ -637,7 +680,15 @@ const Plan: React.FC = () => {
         }
         saveIfMovingWall();
         setPointerStartPos(null);
-    }, [addPoint, addingPointLineIdPointId, saveIfMovingWall]);
+        if(pointingOnWall){
+            setPointingOnWall(false);
+            setPreventUnselectAllElements(true);
+        }
+        //pointerUp on node but just in in case
+        if(addWallSession){
+            dispatch(setAddWallSession(null));
+        }
+    }, [addPoint, addWallSession, addingPointLineIdPointId, dispatch, pointingOnWall, saveIfMovingWall]);
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
@@ -680,8 +731,10 @@ const Plan: React.FC = () => {
                 height={planProps.dimensions.h}
                 position={planProps.position}
                 scale={{x:planProps.scale, y:planProps.scale}}
-                style={{"marginTop":""+PLAN_MARGIN_TOP+"px"}}
+                // style={{"marginTop":""+PLAN_MARGIN_TOP+"px"}}
+                // style={{"width":"inherit", "height":"100vm"}}
                 onClick={handleClick}
+                // style={{"backgroundColor":"rgb(250, 250, 250)"}}
                 // onClick={_ => {
                 //     console.log("click on plan")
                 //     endAddPointSession();
@@ -725,7 +778,141 @@ const Plan: React.FC = () => {
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     // dispatch(setPlanCursorPos(newCursorPos));
 
-                    handleMovingWall(newCursorPos);                    
+                    handleMovingWall(newCursorPos);
+
+                    if(addWallSession){
+                        const node = addWallSession.wall.nodes[1];
+                        // node.position = new Position(newCursorPos.x, newCursorPos.y);
+                        // dispatch(updatePlanElement(addWallSession.joinedWalls));
+
+
+
+
+
+                        const updateNodePosition = (p:Position) =>{
+                            node.position = p;
+                            dispatch(updatePlanElement(addWallSession.joinedWalls));
+                          };
+
+
+                        
+                        if(!magnetActivated){
+                            updateNodePosition(new Position(newCursorPos.x, newCursorPos.y));
+                            return;
+                        }
+            
+                        let lockHorizontally: WallNode | null = null;
+                        let lockVertically: WallNode | null = null;
+                        let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
+                        let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
+            
+                        for(const linkedNode of node.linkedNodes){
+                            const angle = Math.atan2(linkedNode.position.y - e.target.position().y, linkedNode.position.x - e.target.position().x);
+                            const maxOffsetAngle = 0.08;
+            
+                            if(!lockHorizontally){              
+                            lockHorizontally = 
+                            (angle > 0 ?
+                                angle < Math.PI /2 ?
+                                angle < maxOffsetAngle 
+                                :
+                                angle > Math.PI - maxOffsetAngle 
+                                :
+                                angle > - Math.PI /2? 
+                                angle > - maxOffsetAngle
+                                :
+                                angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
+                            }
+            
+                            if(!lockVertically){
+                            lockVertically = 
+                            (Math.abs(angle) > Math.PI / 2 ? //if right
+                                angle > 0 ? //if top
+                                //if top right
+                                angle < Math.PI / 2 + maxOffsetAngle
+                                :
+                                //if bottom right
+                                angle > - Math.PI / 2 - maxOffsetAngle
+                            : //if left
+                                angle > 0 ? //if top
+                                //if top left
+                                angle > Math.PI / 2 - maxOffsetAngle
+                                :
+                                //if bottom left
+                                angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
+                            }
+            
+            
+                            if(node.linkedNodes.length === 1){
+                            if(!lockDiagonallyTopLeftBottomRight && !lockDiagonallyTopRightBottomLeft){
+                                lockDiagonallyTopLeftBottomRight = 
+                                (angle > Math.PI / 4 || angle <  - Math.PI * (3/4) ? //if right
+                                angle > 0 ? //if top
+                                    //if top right
+                                    angle < Math.PI / 4 + maxOffsetAngle
+                                :
+                                //if bottom right
+                                angle > - Math.PI * (3/4) - maxOffsetAngle
+                                : //if left
+                                angle > 0 ? //if top
+                                //if top left
+                                angle > Math.PI / 4 - maxOffsetAngle
+                                :
+                                //if bottom left
+                                angle < - Math.PI * (3/4) + maxOffsetAngle) ? linkedNode : null;
+                            }
+                            if(!lockDiagonallyTopRightBottomLeft && !lockDiagonallyTopLeftBottomRight){
+                                lockDiagonallyTopRightBottomLeft = 
+                                (angle > Math.PI * (3/4) || angle <  - Math.PI / 4 ? //if right
+                                angle > 0 ? //if top
+                                    //if top right
+                                    angle < Math.PI * (3/4) + maxOffsetAngle
+                                :
+                                //if bottom right
+                                angle > - Math.PI / 4 - maxOffsetAngle
+                                : //if left
+                                angle > 0 ? //if top
+                                //if top left
+                                angle > Math.PI * (3/4) - maxOffsetAngle
+                                :
+                                //if bottom left
+                                angle < - Math.PI * (1/4) + maxOffsetAngle) ? linkedNode : null;
+                            }
+            
+                            }
+                            
+                        }
+                        let newX;
+                        let newY;
+            
+                        if(lockVertically || lockHorizontally){
+                            newX = lockVertically ? lockVertically.position.x : newCursorPos.x;
+                            newY = lockHorizontally ? lockHorizontally.position.y : newCursorPos.y;
+                        }
+                        else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
+                            const linkedNode = node.linkedNodes[0];
+                            const p = newCursorPos;
+                            const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
+                            let b = linkedNode.position.y - slope * linkedNode.position.x;
+                            const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+                            const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
+                            const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+                            const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+            
+                            newX = projectionX;
+                            newY = projectionY;
+            
+                        }
+                        else{
+                            newX = newCursorPos.x;
+                            newY = newCursorPos.y;
+                        }
+                        
+                        updateNodePosition(new Position(newX, newY));
+
+
+
+                    }
                 }}
                 onTouchMove={e => {
                     // var touchPos = e.target.getStage()?.getPointerPosition();
@@ -745,7 +932,7 @@ const Plan: React.FC = () => {
 
                 }}
                 // onMouseUp={handleMouseUp}
-                draggable = {!scaling && !movingWall && !addingPointLineIdPointId} //&& planMode !== PlanMode.AddPoint}
+                draggable = {!scaling && !pointingOnWall && !addingPointLineIdPointId && !addWallSession} //&& planMode !== PlanMode.AddPoint}
                 onDragStart={e => {
                     dispatch(setPlanIsDragging(true));
                     // dispatch(setUnselectAllOnPlanMouseUp(false));
@@ -777,7 +964,7 @@ const Plan: React.FC = () => {
                     //     return getPlanElement(el);
                     // })
                 }
-                {                 
+                {/* {                 
 
                     testPoints.map((p, _) => {
                         return(
@@ -800,7 +987,7 @@ const Plan: React.FC = () => {
                             </Group>
                         );
                     })
-                }
+                } */}
                 </Layer>
             </Stage>
         {/* <div style={{"position":"absolute"}}>{msg}</div> */}

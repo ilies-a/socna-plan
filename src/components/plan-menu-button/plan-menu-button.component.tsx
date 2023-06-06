@@ -3,6 +3,7 @@ import { MouseEventHandler, ReactNode, useCallback } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
 import { Dimensions, iconDataArr } from "@/entities";
+import { TOP_MENU_HEIGHT } from "@/global";
 
 type Props = {
     iconFileName: string,
@@ -19,8 +20,9 @@ const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, a
     for(const iconData of iconDataArr){
       if(iconData.fileName === iconFileName){
         return(
-          !wallStrokeWidth?
-          <div className={styles['icon-wrapper']} >
+          <div className={styles['icon-wrapper']} 
+            style={{"width":""+TOP_MENU_HEIGHT+"px", "height":""+TOP_MENU_HEIGHT+"px"}}
+          >
             <Image 
               src={`/img/${iconData.fileName}`} 
               alt={""} 
@@ -30,16 +32,28 @@ const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, a
               height={iconData.dimensions.h * 0.5}
             />
           </div>
-          :
-          <div
-            className={styles['wall-icon']}
-            style={{"height":""+wallStrokeWidth+"px"}}
-          >
-          </div>
+
+          // !wallStrokeWidth?
+          // <div className={styles['icon-wrapper']} >
+          //   <Image 
+          //     src={`/img/${iconData.fileName}`} 
+          //     alt={""} 
+          //     priority 
+          //     className={styles['icon']} 
+          //     width={iconData.dimensions.w * 0.5}
+          //     height={iconData.dimensions.h * 0.5}
+          //   />
+          // </div>
+          // :
+          // <div
+          //   className={styles['wall-icon']}
+          //   style={{"height":""+wallStrokeWidth+"px"}}
+          // >
+          // </div>
         );
       }
     }
-  },[iconFileName, wallStrokeWidth]);
+  },[iconFileName]);
 
 
   return (

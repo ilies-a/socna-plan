@@ -1,7 +1,9 @@
 import { v4 } from 'uuid';
 import { cloneArray, doSegmentsIntersect, sortPointsClockwise } from './utils';
+import { BIG_NUMBER, WALL_WIDTH } from './global';
 
 export enum PlanElementTypeName {Line, Wall, JoinedWalls};
+
 
 export class PlanProps {
     dimensions:Dimensions = new Dimensions(0,0);
@@ -14,7 +16,7 @@ export class PlanProps {
     // } 
 }
 
-export enum PlanMode { AddWall, AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
+export enum PlanMode { Move, AddWall, AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
 
 // export class PlanElementsHelper{
 //     static planElementsSeparatedBySelection(planElements:PlanElement[]): [PlanElement[], PlanElement[]]{
@@ -506,36 +508,36 @@ export abstract class Line extends PlanElement {
     }
 }
 
-export class Wall extends Line {
-    typeName: PlanElementTypeName = PlanElementTypeName.Wall;
+// export class Wall extends Line {
+//     typeName: PlanElementTypeName = PlanElementTypeName.Wall;
 
-    override clone():Wall{
-        // path:Point[];
-        // pathIsClose:boolean = false;
-        // defaultLinePointMode:LinePointMode = LinePointMode.MovePoint;
-        // linePointMode:LinePointMode = this.defaultLinePointMode;
-        // // selectedPointIndex:number | null = null;
-        // selectedPointId:string | null = null;
-        // addPointSession:AddPointSession | null = null;
-        // // pointIndexCursorIsOver:number | null = null;
-        // pointIdCursorIsOver:string | null = null;
-        // pointIdPointingDownOn:string | null = null;
-        // pointRadius = 20;
-        // memoizedMoveOrAddMode:LinePointMode = this.defaultLinePointMode;
-        // width:number;
+//     override clone():Wall{
+//         // path:Point[];
+//         // pathIsClose:boolean = false;
+//         // defaultLinePointMode:LinePointMode = LinePointMode.MovePoint;
+//         // linePointMode:LinePointMode = this.defaultLinePointMode;
+//         // // selectedPointIndex:number | null = null;
+//         // selectedPointId:string | null = null;
+//         // addPointSession:AddPointSession | null = null;
+//         // // pointIndexCursorIsOver:number | null = null;
+//         // pointIdCursorIsOver:string | null = null;
+//         // pointIdPointingDownOn:string | null = null;
+//         // pointRadius = 20;
+//         // memoizedMoveOrAddMode:LinePointMode = this.defaultLinePointMode;
+//         // width:number;
 
 
-        const lineClone:Wall = new Wall(this.id, this.cloneLinePath(), this.width);
-        lineClone.pathIsClose = this.pathIsClose;
-        lineClone.selected = this.selected;
-        // lineClone.linePointMode = this.linePointMode;
-        lineClone.selectedPointId = this.selectedPointId;
-        lineClone.pointIdCursorIsOver = this.pointIdCursorIsOver;
-        lineClone.pointIdPointingDownOn = this.pointIdPointingDownOn;
-        // lineClone.memoizedMoveOrAddMode = this.memoizedMoveOrAddMode;
-        return lineClone;
-    }
-}
+//         const lineClone:Wall = new Wall(this.id, this.cloneLinePath(), this.width);
+//         lineClone.pathIsClose = this.pathIsClose;
+//         lineClone.selected = this.selected;
+//         // lineClone.linePointMode = this.linePointMode;
+//         lineClone.selectedPointId = this.selectedPointId;
+//         lineClone.pointIdCursorIsOver = this.pointIdCursorIsOver;
+//         lineClone.pointIdPointingDownOn = this.pointIdPointingDownOn;
+//         // lineClone.memoizedMoveOrAddMode = this.memoizedMoveOrAddMode;
+//         return lineClone;
+//     }
+// }
 
 class AddPointSession{
     lineId:string;
@@ -637,19 +639,21 @@ export const iconDataArr:IconData[] = [
     new IconData("vanne-aep.png", new Dimensions(50,50)),
     new IconData("arrow-prev.png", new Dimensions(50,50)),
     new IconData("arrow-next.png", new Dimensions(50,50)),
-  ];
+    new IconData("magnet.png", new Dimensions(50,50)),
 
-  const WALL_WIDTH:number = 30;
+  ];
 
   export class JoinedWalls extends PlanElement {
     nodes: {[nodeId: string]: WallNode;};
+    walls: {[id:string]:Wall;};
     width: number = WALL_WIDTH;
     color: string = "grey";
-    selectedWallNodesIds:[string, string][] = []; 
+    selectedWallId:string | null = null;
 
     constructor(id: string, nodes: {[nodeId: string]: WallNode;}){
         super(id, PlanElementTypeName.JoinedWalls);
         this.nodes = nodes;
+        this.walls = this.getWalls();
     }
 
     addNode(node:WallNode){
@@ -660,17 +664,23 @@ export const iconDataArr:IconData[] = [
         this.nodes[node.id] = node;
     }
 
-    getSegments(): Segment[] {
-        const segments: Segment[] = [];
+    getWalls(): {[id:string]:Wall;} {
+        const segments: {[id:string]:Wall;} = {};
         const segmentsDone: {[id: string]: boolean;} = {};
         
         for(const nodeId in this.nodes){
             const node = this.nodes[nodeId];
             for(const linkedNode of node.linkedNodes){
-                const linkedNodeId = linkedNode.id;
-                if(segmentsDone[nodeId+linkedNodeId] || segmentsDone[linkedNodeId+nodeId]) continue;
-                segments.push(new Segment([node, linkedNode]));
-                segmentsDone[nodeId+linkedNodeId] = true;
+                const sortedNodesById: [WallNode, WallNode] = ([node, linkedNode] as [WallNode, WallNode]).sort((a, b) => { 
+                    const sortedIds = [a.id, b.id].sort();
+                    const aIdIndex = sortedIds.findIndex(id => id === a.id);
+                    const bIdIndex = sortedIds.findIndex(id => id === b.id);
+                    return aIdIndex - bIdIndex;
+                });
+                const sortedConcatenatedIds = sortedNodesById[0].id + sortedNodesById[1].id;
+                if(segmentsDone[sortedConcatenatedIds]) continue;
+                segments[sortedConcatenatedIds] = (new Wall([sortedNodesById[0], sortedNodesById[1]]));
+                segmentsDone[sortedConcatenatedIds] = true;
             }
         }
         // for(const nodeId in this.nodes){
@@ -685,17 +695,21 @@ export const iconDataArr:IconData[] = [
         return segments;
     }
 
-    getPointsBySegment(): [[WallNode, WallNode], Position[]] []{
+    setWalls(){
+        this.walls = this.getWalls();
+    }
+
+    getPointsByWall(): [[WallNode, WallNode], Position[]] []{
     
         //intersection part
     
         //calculating intersection points
-        const nodesAndTheirClockwiseSortedSegments: [WallNode, Segment[]][] = [];
-        for(const nodeId in this.nodes){
-          const node = this.nodes[nodeId];
-          if(node.linkedNodes.length < 2) continue; //we want nodes with 2 linked nodes at least
-          nodesAndTheirClockwiseSortedSegments.push([node, node.getClockwiseSortedSegment()]);
-        }
+        // const nodesAndTheirClockwiseSortedSegments: [WallNode, Segment[]][] = [];
+        // for(const nodeId in this.nodes){
+        //   const node = this.nodes[nodeId];
+        //   if(node.linkedNodes.length < 2) continue; //we want nodes with 2 linked nodes at least
+        //   nodesAndTheirClockwiseSortedSegments.push([node, node.getClockwiseSortedSegment()]);
+        // }
     
         //for each segment
         //sideline1 with sideline1 of next segment
@@ -705,9 +719,9 @@ export const iconDataArr:IconData[] = [
         for(const nodeId in this.nodes){
             const node = this.nodes[nodeId];
             const sortedLinkedNodes = node.getClockwiseSortedLinkedNodes();
-            const segments:Segment[] = []
+            const segments:Wall[] = []
             for(const linkedNode of sortedLinkedNodes){
-                segments.push(new Segment([node, linkedNode]));
+                segments.push(new Wall([node, linkedNode]));
             }
 
             for(let i=0; i<segments.length; i++){
@@ -730,8 +744,6 @@ export const iconDataArr:IconData[] = [
                 let l2p1 = nextSegSl[0];
                 let l2p2 = nextSegSl[1];
         
-                const BIG_NUMBER = 10000;
-
                 const precision = 4;
                 let m1 = l1p2.x - l1p1.x != 0 ? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
                 m1 = parseFloat(m1.toPrecision(precision));
@@ -774,10 +786,11 @@ export const iconDataArr:IconData[] = [
                     intersectionPointWithNextSegLine = new Position(x, y);
                 }
                 else{
+                    
                     const p = node.position;
                     const slope = m1;
                     let b = b1;
-                    const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+                    const orthogonalSlope = slope != 0 ? -1 / slope : BIG_NUMBER; // Calculate the slope of the orthogonal line
                     const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
                     const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
                     const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
@@ -823,7 +836,7 @@ export const iconDataArr:IconData[] = [
                     const p = node.position;
                     const slope = m2;
                     let b = b2;
-                    const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+                    const orthogonalSlope = slope != 0 ? -1 / slope : BIG_NUMBER; // Calculate the slope of the orthogonal line
                     const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
                     const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
                     const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
@@ -999,37 +1012,73 @@ export const iconDataArr:IconData[] = [
     }
 
 
-    selectWall(nodesIds:[string, string]){
-        if(this.wallIsSelected(nodesIds) != null) return;
-        this.selectedWallNodesIds.push(nodesIds);
+    selectWall(wallId:string){
+        // if(this.wallIsSelected(nodesIds) != null) return;
+        this.selectedWallId = wallId;
     }
-    unselectWall(nodesIds:[string, string]){
-        const selectedWallIndex = this.wallIsSelected(nodesIds);
-        if(selectedWallIndex === null) return;
-        this.selectedWallNodesIds.splice(selectedWallIndex, 1);
-        console.log("unselectWall selectedWallIndex", selectedWallIndex);
+    unselectWall(){
+        this.selectedWallId = null;
+        // const selectedWallIndex = this.wallIsSelected(nodesIds);
+        // if(selectedWallIndex === null) return;
+        // this.selectedWallNodesIds.splice(selectedWallIndex, 1);
+        // console.log("unselectWall selectedWallIndex", selectedWallIndex);
 
     }
-    wallIsSelected(nodesIds:[string, string]):number | null{ //returns the index of wall if selected
-        for(let i=0; i<this.selectedWallNodesIds.length; i++ ){
-            const currentSelectedWallNodesIds = this.selectedWallNodesIds[i];
-            if(
-                (nodesIds[0] === currentSelectedWallNodesIds[0] && nodesIds[1] === currentSelectedWallNodesIds[1]) ||
-                (nodesIds[0] === currentSelectedWallNodesIds[1] && nodesIds[1] === currentSelectedWallNodesIds[0])
-                ){
-                    return i;
-                }
-        }
-        return null;
+    wallIsSelected(wallId:string):boolean{ //returns the index of wall if selected
+        return this.selectedWallId === wallId;
     }
 
-    unselectAllWalls(){
-        this.selectedWallNodesIds = [];
+    addWall(startingWall:Wall, nodesPositions:[Vector2D, Vector2D]):Wall{
+        const startingWallNode1 = startingWall.nodes[0];
+        const startingWallNode2 = startingWall.nodes[1];
+
+        //nodesPositions[0] is the point on wallNode1-wallNode2 segment
+
+        const newWallNode1 = new WallNode(v4(), nodesPositions[0], []);
+        const newWallNode2 = new WallNode(v4(), nodesPositions[1], []);
+
+        newWallNode1.linkedNodes = newWallNode1.linkedNodes.concat([startingWallNode1, startingWallNode2, newWallNode2]);
+        newWallNode2.linkedNodes = newWallNode2.linkedNodes.concat([newWallNode1]);
+
+        const startingWallNode1Node1UpdatedLinkedNodes = startingWallNode1.linkedNodes.filter(node => node.id != startingWallNode2.id);
+        const startingWallNode2UpdatedLinkedNodes = startingWallNode2.linkedNodes.filter(node => node.id != startingWallNode1.id);
+
+        startingWallNode1Node1UpdatedLinkedNodes.push(newWallNode1);
+        startingWallNode2UpdatedLinkedNodes.push(newWallNode1);
+
+        startingWallNode1.linkedNodes = startingWallNode1Node1UpdatedLinkedNodes;
+        startingWallNode2.linkedNodes = startingWallNode2UpdatedLinkedNodes;
+
+
+        this.nodes[newWallNode1.id] = newWallNode1;
+        this.nodes[newWallNode2.id] = newWallNode2;
+
+        this.setWalls();
+
+        return new Wall([newWallNode1, newWallNode2]);
     }
+
+
+    // wallIsSelected(nodesIds:[string, string]):number | null{ //returns the index of wall if selected
+    //     for(let i=0; i<this.selectedWallNodesIds.length; i++ ){
+    //         const currentSelectedWallNodesIds = this.selectedWallNodesIds[i];
+    //         if(
+    //             (nodesIds[0] === currentSelectedWallNodesIds[0] && nodesIds[1] === currentSelectedWallNodesIds[1]) ||
+    //             (nodesIds[0] === currentSelectedWallNodesIds[1] && nodesIds[1] === currentSelectedWallNodesIds[0])
+    //             ){
+    //                 return i;
+    //             }
+    //     }
+    //     return null;
+    // }
+
+    // unselectAllWalls(){
+    //     this.selectedWallNodesIds = [];
+    // }
 
     override unselect(){
         this.setSelected(false);
-        this.unselectAllWalls();
+        this.unselectWall();
     }
 
 
@@ -1057,12 +1106,22 @@ export const iconDataArr:IconData[] = [
             }
         }
 
-        const jwClone:JoinedWalls = new JoinedWalls(this.id, cloneNodes);
-
-        for(const nodeIds of this.selectedWallNodesIds){
-            jwClone.selectedWallNodesIds.push([nodeIds[0], nodeIds[1]]);
+        const cloneWalls: {[nodeId: string]: Wall;} = {};
+        for(const wallId in this.walls){
+            const wallToClone = this.walls[wallId];
+            const wallClone = this.walls[wallId].cloneWithoutNodes();
+            wallClone.nodes = [cloneNodes[wallToClone.nodes[0].id], cloneNodes[wallToClone.nodes[1].id]];
+            cloneWalls[wallId] = wallClone;
         }
 
+        const jwClone:JoinedWalls = new JoinedWalls(this.id, cloneNodes);
+        jwClone.walls = cloneWalls;
+        
+        // for(const nodeIds of this.selectedWallNodesIds){
+        //     jwClone.selectedWallNodesIds.push([nodeIds[0], nodeIds[1]]);
+        // }
+
+        jwClone.selectedWallId = this.selectedWallId;
         return jwClone;
     }
   }
@@ -1071,7 +1130,7 @@ export class WallNode {
     id: string;
     position: Position;
     linkedNodes: WallNode[];
-    radius: number = 20;
+    radius: number = WALL_WIDTH / 2;
 
     constructor(id:string, position:Position, linkedNodes:WallNode[]){
         this.id = id;
@@ -1080,16 +1139,16 @@ export class WallNode {
     }
 
     getSegmentsJoinedWithNode(){
-        const segments: Segment[] = [];
+        const segments: Wall[] = [];
         for(const linkedNode of this.linkedNodes){
-            segments.push(new Segment([this, linkedNode]));
+            segments.push(new Wall([this, linkedNode]));
         }
         return segments;
     }
 
-    getClockwiseSortedSegment(): Segment[]{
-        const segments: Segment[] = this.getSegmentsJoinedWithNode();
-        const angles: [Segment, number][] = [];
+    getClockwiseSortedSegment(): Wall[]{
+        const segments: Wall[] = this.getSegmentsJoinedWithNode();
+        const angles: [Wall, number][] = [];
 
         for(const seg of segments){
             // console.log("seg.nodes[0].id = "+ seg.nodes[0].id +", seg.nodes[1].id = "+ seg.nodes[1].id)
@@ -1225,15 +1284,29 @@ export class WallNode {
     }
 }
 
-export class Segment {
+export class Wall {
+    id: string;
+    numero: string = "";
     nodes: [WallNode, WallNode];
     sideline1Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
     sideline2Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
 
     constructor(nodes:[WallNode, WallNode]){
+        // this.nodes = nodes.sort((a, b) => { 
+        //     const sortedIds = [a.id, b.id].sort();
+        //     const aIdIndex = sortedIds.findIndex(id => id === a.id);
+        //     const bIdIndex = sortedIds.findIndex(id => id === b.id);
+        //     return aIdIndex - bIdIndex;
+        // });
         this.nodes = nodes;
+        this.id = this.nodes[0].id + this.nodes[1].id;
         this.setSidelinesPoints();
     }
+
+    sortUUIDs(uuid1: string, uuid2: string): [string, string] {
+        const sortedUUIDs = [uuid1, uuid2].sort();
+        return [sortedUUIDs[0], sortedUUIDs[1]];
+      }
 
     setSidelinesPoints(){
         const p1 = this.nodes[0].position;
@@ -1285,6 +1358,21 @@ export class Segment {
         this.sideline1Points = [sl1p1, sl1p2];
         this.sideline2Points = [sl2p1, sl2p2];
     }
+
+    cloneWithoutNodes():Wall{
+        const segmentClone = new Wall(this.nodes);
+        segmentClone.id = this.id;
+        segmentClone.numero = this.numero;
+        segmentClone.sideline1Points = [
+            new Position(this.sideline1Points[0].x, this.sideline1Points[0].y),
+            new Position(this.sideline1Points[1].x, this.sideline1Points[1].y),
+        ];
+        segmentClone.sideline2Points = [
+            new Position(this.sideline2Points[0].x, this.sideline2Points[0].y),
+            new Position(this.sideline2Points[1].x, this.sideline2Points[1].y),
+        ];
+        return segmentClone;
+    }
 }
 
 
@@ -1300,4 +1388,23 @@ export class TestPoint{
         this.y = y;
         this.color = color;
     } 
+}
+
+export enum PlanElementSheetTypeName {Wall, REP};
+export interface PlanElementSheetData{
+    planElementId: string,
+    wallId: string | null,
+    typeName: PlanElementSheetTypeName,
+    numero:string
+  }
+  
+
+export class AddWallSession{
+    joinedWalls:JoinedWalls;
+    wall:Wall;
+
+    constructor(joinedWalls:JoinedWalls, wall:Wall){
+        this.joinedWalls = joinedWalls;
+        this.wall = wall;
+    }
 }
