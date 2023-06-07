@@ -1,4 +1,4 @@
-import { AddWallSession, Line, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
+import { AddWallSession, Line, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
 
 export const updatePlanProps = (planProps: PlanProps) => ({
@@ -86,9 +86,9 @@ export const setTestPoints= (testPoints: TestPoint[]) => ({
   payload: testPoints,
 });
 
-export const setMagnetActivated= (magnetActivated: boolean) => ({
-  type: PlanActionTypes.SET_MAGNET_ACTIVATED,
-  payload: magnetActivated,
+export const setMagnetData= (magnetData: MagnetData) => ({
+  type: PlanActionTypes.SET_MAGNET_DATA,
+  payload: magnetData,
 });
 
 export const setAddWallSession= (addWallSession: AddWallSession | null) => ({

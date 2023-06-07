@@ -1,5 +1,5 @@
 import { v4 } from 'uuid';
-import { cloneArray, doSegmentsIntersect, sortPointsClockwise } from './utils';
+import { cloneArray, doSegmentsIntersect, getDistance, isPointInPolygon, sortPointsClockwise } from './utils';
 import { BIG_NUMBER, WALL_WIDTH } from './global';
 
 export enum PlanElementTypeName {Line, Wall, JoinedWalls};
@@ -664,6 +664,15 @@ export const iconDataArr:IconData[] = [
         this.nodes[node.id] = node;
     }
 
+    sortNodesByIdInAlphabeticOrder(nodes:[WallNode, WallNode]) {
+        (nodes as [WallNode, WallNode]).sort((a, b) => { 
+            const sortedIds = [a.id, b.id].sort();
+            const aIdIndex = sortedIds.findIndex(id => id === a.id);
+            const bIdIndex = sortedIds.findIndex(id => id === b.id);
+            return aIdIndex - bIdIndex;
+        });
+    }
+
     getWalls(): {[id:string]:Wall;} {
         const segments: {[id:string]:Wall;} = {};
         const segmentsDone: {[id: string]: boolean;} = {};
@@ -671,12 +680,8 @@ export const iconDataArr:IconData[] = [
         for(const nodeId in this.nodes){
             const node = this.nodes[nodeId];
             for(const linkedNode of node.linkedNodes){
-                const sortedNodesById: [WallNode, WallNode] = ([node, linkedNode] as [WallNode, WallNode]).sort((a, b) => { 
-                    const sortedIds = [a.id, b.id].sort();
-                    const aIdIndex = sortedIds.findIndex(id => id === a.id);
-                    const bIdIndex = sortedIds.findIndex(id => id === b.id);
-                    return aIdIndex - bIdIndex;
-                });
+                const sortedNodesById:[WallNode, WallNode] = [node, linkedNode];
+                this.sortNodesByIdInAlphabeticOrder(sortedNodesById);
                 const sortedConcatenatedIds = sortedNodesById[0].id + sortedNodesById[1].id;
                 if(segmentsDone[sortedConcatenatedIds]) continue;
                 segments[sortedConcatenatedIds] = (new Wall([sortedNodesById[0], sortedNodesById[1]]));
@@ -696,24 +701,19 @@ export const iconDataArr:IconData[] = [
     }
 
     setWalls(){
-        this.walls = this.getWalls();
+        const updatedWalls = this.getWalls();
+
+        //walls may have some data binded like a numero we need to copy it:
+        for(const wallId in this.walls){
+            if(updatedWalls.hasOwnProperty(wallId)){
+                updatedWalls[wallId].numero = this.walls[wallId].numero;
+            }
+        }
+
+        this.walls = updatedWalls;
     }
 
-    getPointsByWall(): [[WallNode, WallNode], Position[]] []{
-    
-        //intersection part
-    
-        //calculating intersection points
-        // const nodesAndTheirClockwiseSortedSegments: [WallNode, Segment[]][] = [];
-        // for(const nodeId in this.nodes){
-        //   const node = this.nodes[nodeId];
-        //   if(node.linkedNodes.length < 2) continue; //we want nodes with 2 linked nodes at least
-        //   nodesAndTheirClockwiseSortedSegments.push([node, node.getClockwiseSortedSegment()]);
-        // }
-    
-        //for each segment
-        //sideline1 with sideline1 of next segment
-    
+    setWallsPoints() {    
         const wallsJointPoints: {[id:string]: [Position[], Position[]]} = {};
 
         for(const nodeId in this.nodes){
@@ -750,33 +750,8 @@ export const iconDataArr:IconData[] = [
                 let m2 = l2p2.x - l2p1.x != 0 ? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
                 m2 = parseFloat(m2.toPrecision(precision));
 
-                // console.log("m1",m1)
-                // console.log("m2",m2)
-
-                // console.log("l1p1.x",l1p1.x)
-                // console.log("l1p1.y",l1p1.y)
-
-                // console.log("l1p2.x",l1p2.x)
-                // console.log("l1p2.y",l1p2.y)
-
-                // console.log("\n");
-
-                // console.log("l2p1.x",l2p1.x)
-                // console.log("l2p1.y",l2p1.y)
-
-                // console.log("l2p2.x",l2p2.x)
-                // console.log("l2p2.y",l2p2.y)
-
                 let b1 = l1p1.y - m1 * l1p1.x;
                 let b2 = l2p1.y - m2 * l2p1.x;
-        
-                //y = m1 * x + b1
-                //y = m2 * x + b2
-                
-                //m1 * x + b1 = m2 * x + b2
-                //m1 * x - m2 * x = b2 - b1
-                //m1 * x - m2 * x = b2 - b1
-                //x (m1 - m2) = b2 - b1
 
                 let intersectionPointWithNextSegLine:Position;
 
@@ -915,17 +890,7 @@ export const iconDataArr:IconData[] = [
                     isValid = false;
                 }
                 
-        
-                //if reflex angle node,
-                //if left reflex angle node
-                //points are the two extremity points, 
-                //if right reflex angle node
-        
-                //otherwise
-                //points are the two extremity points, first intersection point, node point, second intersection point
-        
-        
-                // let points:Position[] = [];
+ 
                 const jointPointsNode1: Position[] = [];
                 const jointPointsNode2: Position[] = [p2, p3]; //Node2 is linked Node 
 
@@ -934,45 +899,17 @@ export const iconDataArr:IconData[] = [
                     const pi1 = intersectionPointWithNextSegLine;
                     const pi2 = intersectionPointWithPreviousSegLine;
                     
-
-
-                    // //farthest from central node points are p2 and p3
-                    // if(pi1.x === BIG_NUMBER){
-                    //     points = [p2, p3, p4, node.position, pi2];
-                    //     jointPointsNode1.push(p4, node.position, pi2);
-
-                    // }
-                    // else if(pi2.x === BIG_NUMBER){
-                    //     points = [p1, p2, p3, pi1, node.position];
-                    //     jointPointsNode1.push(p1, pi1, node.position);
-
-                    // }
-                    // else{
-                    //     points = [pi1, p3, p2, pi2, node.position];
-                    //     jointPointsNode1.push(pi1, pi2, node.position);
-                    // }
-                    
-                    // points = [pi1.x === BIG_NUMBER ? p4 : pi1, p3, p2, pi2.x === BIG_NUMBER ? p1 : pi2, node.position];
                     jointPointsNode1.push(pi1.x === BIG_NUMBER ? p4 : pi1, pi2.x === BIG_NUMBER ? p1 : pi2, node.position);
                 }
                 else{ //if not valid (superposition with other segments)
-                    // points = [p1, p2, p3, p4];
                     jointPointsNode1.push(p1, p4);
                 }
-
-                // //sort points
-                // sortPointsClockwise(points);
-                
-                // const segNodes:[WallNode, WallNode] = [seg.nodes[0], seg.nodes[1]];
-                
-                // segNodesAndPoints.push([segNodes, points]);
             
                 const wallJointPoints:[Position[], Position[]] = [jointPointsNode1, jointPointsNode2];
                 wallsJointPoints[seg.nodes[0].id+"_"+seg.nodes[1].id] = wallJointPoints;
             }
         }
 
-        const result: [[WallNode, WallNode], Position[]][] = [];
 
         const memo: {[id:string]: boolean} = {};
         
@@ -999,17 +936,14 @@ export const iconDataArr:IconData[] = [
 
             sortPointsClockwise(points);
 
-            result.push(
-                [
-                    [this.nodes[nodesIds[0]], this.nodes[nodesIds[1]]],
-                    points
-                ]
-            );
+            const sortedNodeIds = [this.nodes[nodesIds[0]].id, this.nodes[nodesIds[1]].id].sort();
+            const wallId = sortedNodeIds[0] + sortedNodeIds[1];
 
+            this.walls[wallId].points = points;
 
         }
-        return result;
     }
+
 
 
     selectWall(wallId:string){
@@ -1028,7 +962,7 @@ export const iconDataArr:IconData[] = [
         return this.selectedWallId === wallId;
     }
 
-    addWall(startingWall:Wall, nodesPositions:[Vector2D, Vector2D]):Wall{
+    addWallFromWall(startingWall:Wall, nodesPositions:[Vector2D, Vector2D]):Wall{
         const startingWallNode1 = startingWall.nodes[0];
         const startingWallNode2 = startingWall.nodes[1];
 
@@ -1057,26 +991,113 @@ export const iconDataArr:IconData[] = [
         // console.log("", this.walls[newWallNode1.id+newWallNode2.id])
         // console.log("", this.walls[newWallNode2.id+newWallNode1.id])
 
-        return new Wall([newWallNode1, newWallNode2]);
+
+        // const newWall = new Wall([newWallNode1, newWallNode2]);
+        
+        const sortedNodesIds = [newWallNode1.id, newWallNode2.id].sort();
+
+        // newWall.id = sortedNodesIds[0] + sortedNodesIds[1];
+
+        return this.walls[sortedNodesIds[0] + sortedNodesIds[1]];
     }
 
+    addWallFromNode(startingNode:WallNode, endingNodePosition:Vector2D):Wall{
+        const endingNode = new WallNode(v4(), endingNodePosition, [startingNode]);
+        startingNode.linkedNodes.push(endingNode);
+        this.nodes[endingNode.id] = endingNode;
+        this.setWalls();
+        console.log("startingNode.id",startingNode.id)
+        console.log("endingNode.id",endingNode.id)
+        console.log("")
+        const sortedNodesIds = [startingNode.id, endingNode.id].sort();
+        console.log("sortedNodesIds[0]",sortedNodesIds[0])
+        console.log("sortedNodesIds[1]",sortedNodesIds[1])
+        console.log("")
+        return this.walls[sortedNodesIds[0] + sortedNodesIds[1]];
+    }
 
-    // wallIsSelected(nodesIds:[string, string]):number | null{ //returns the index of wall if selected
-    //     for(let i=0; i<this.selectedWallNodesIds.length; i++ ){
-    //         const currentSelectedWallNodesIds = this.selectedWallNodesIds[i];
-    //         if(
-    //             (nodesIds[0] === currentSelectedWallNodesIds[0] && nodesIds[1] === currentSelectedWallNodesIds[1]) ||
-    //             (nodesIds[0] === currentSelectedWallNodesIds[1] && nodesIds[1] === currentSelectedWallNodesIds[0])
-    //             ){
-    //                 return i;
-    //             }
-    //     }
-    //     return null;
-    // }
+    getNodeOrWallPenetratedByPoint(p:Vector2D, penetratingNode:WallNode):WallNode | Wall | null{
 
-    // unselectAllWalls(){
-    //     this.selectedWallNodesIds = [];
-    // }
+        //must be ignored : linked nodes, linked nodes of linked nodes, and walls joigning these nodes.
+        const nodeIdsToIgnore:{[nodeId:string]:boolean;} = {};
+        const linkedNodesOfPenetratingNode:{[nodeId:string]:boolean;} = {};
+
+        for(const n1 of penetratingNode.linkedNodes){
+            nodeIdsToIgnore[n1.id] = true;
+            linkedNodesOfPenetratingNode[n1.id] = true;
+            for(const n2 of n1.linkedNodes){
+                nodeIdsToIgnore[n2.id] = true;
+            }
+        }
+    
+        const visitedNodes: {[nodeId:string]:boolean;} = {};
+
+        for(const wallId in this.walls){
+            const wall = this.walls[wallId];
+
+            //check nodes
+            const node1 = wall.nodes[0];
+            const node2 = wall.nodes[1];
+
+            if(!nodeIdsToIgnore.hasOwnProperty(node1.id) && !visitedNodes.hasOwnProperty(node1.id)){
+                if(getDistance(node1.position, p) < node1.radius) return node1;
+                visitedNodes[node1.id] = true;
+            }
+            if(!nodeIdsToIgnore.hasOwnProperty(node2.id) && !visitedNodes.hasOwnProperty(node2.id)){
+                if(getDistance(node2.position, p) < node2.radius) return node2;
+                visitedNodes[node2.id] = true;
+            }
+            //check wall
+            if(
+                (
+                    nodeIdsToIgnore.hasOwnProperty(wall.nodes[0].id) 
+                    && nodeIdsToIgnore.hasOwnProperty(wall.nodes[1].id)
+                ) 
+                &&
+                (
+                    linkedNodesOfPenetratingNode.hasOwnProperty(wall.nodes[0].id) 
+                    || linkedNodesOfPenetratingNode.hasOwnProperty(wall.nodes[1].id)
+                )
+            ) continue;
+
+            if(isPointInPolygon(p, wall.points)){
+                return wall;
+            }
+            
+        }
+        return null;
+    }
+
+    joinNodes(node1:WallNode, node2:WallNode){
+        for(const linkedNode of node2.linkedNodes){
+            node1.linkedNodes.push(linkedNode); //no need to check if already has linkedNode it's theorically impossible
+            linkedNode.linkedNodes.push(node1);
+
+            const linkedNodeNode2Idx = linkedNode.linkedNodes.findIndex((node) => node.id === node2.id);
+            linkedNode.linkedNodes.splice(linkedNodeNode2Idx, 1);
+        }
+
+        delete this.nodes[node2.id];
+
+        this.setWalls();
+    }
+
+    joinDraggedNodeAndCreatedNode(node:WallNode, wall:Wall){
+        const wallNode1 = wall.nodes[0];
+        const wallNode2 = wall.nodes[1];
+
+        node.linkedNodes.push(wallNode1); //no need to check if already has wallNode1 it's theorically impossible
+        node.linkedNodes.push(wallNode2); //no need to check if already has wallNode2 it's theorically impossible
+        wallNode1.linkedNodes.push(node); //no need to check if already has node it's theorically impossible
+        wallNode2.linkedNodes.push(node); //no need to check if already has node it's theorically impossible
+
+        const linkedNodeWallNode2Idx = wallNode1.linkedNodes.findIndex((node) => node.id === wallNode2.id);
+        wallNode1.linkedNodes.splice(linkedNodeWallNode2Idx, 1);
+        const linkedNodeWallNode1Idx = wallNode2.linkedNodes.findIndex((node) => node.id === wallNode1.id);
+        wallNode2.linkedNodes.splice(linkedNodeWallNode1Idx, 1);
+
+        this.setWalls();
+    }
 
     override unselect(){
         this.setSelected(false);
@@ -1292,6 +1313,7 @@ export class Wall {
     nodes: [WallNode, WallNode];
     sideline1Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
     sideline2Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
+    points: Vector2D[] = [];
 
     constructor(nodes:[WallNode, WallNode]){
         // this.nodes = nodes.sort((a, b) => { 
@@ -1404,9 +1426,18 @@ export interface PlanElementSheetData{
 export class AddWallSession{
     joinedWalls:JoinedWalls;
     wall:Wall;
+    draggingNode:WallNode;
 
-    constructor(joinedWalls:JoinedWalls, wall:Wall){
+    constructor(joinedWalls:JoinedWalls, wall:Wall, draggingNode:WallNode){
         this.joinedWalls = joinedWalls;
         this.wall = wall;
+        this.draggingNode = draggingNode;
     }
+}
+
+
+export interface MagnetData{
+    activeOnAxes: boolean,
+    node:WallNode | null,
+    wall: Wall | null,
 }

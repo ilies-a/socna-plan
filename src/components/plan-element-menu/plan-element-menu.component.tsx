@@ -27,6 +27,10 @@ const PlanElementMenu: React.FC = () => {
     };
   },[dispatch]);
 
+  // useEffect(()=>{
+  //   console.log("sheetData updated")
+  // },[sheetData]);
+
   const handleWallStrokeInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
     setWallStroke(parseFloat(e.currentTarget.value));
   },[]);

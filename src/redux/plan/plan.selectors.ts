@@ -72,9 +72,9 @@ export const selectTestPoints = createSelector(
   (plan) => plan.testPoints
 );
 
-export const selectMagnetActivated= createSelector(
+export const selectMagnetData= createSelector(
   [selectPlan],
-  (plan) => plan.magnetActivated
+  (plan) => plan.magnetData
 );
 
 export const selectAddWallSession= createSelector(

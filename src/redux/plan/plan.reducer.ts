@@ -1,5 +1,5 @@
 import PlanActionTypes from "./plan.types";
-import { AddWallSession, Line, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
+import { AddWallSession, Line, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { setPlanPointerUpActionsHandler } from "./plan.actions";
 import { v4 } from "uuid";
@@ -23,7 +23,7 @@ const INITIAL_STATE = {
   lineToAdd: null as Line | null,
   testPoints: [new TestPoint("", 100, 100, "")] as Point[],
   planElementSheetData: null as PlanElementSheetData | null,
-  magnetActivated: true,
+  magnetData: {activeOnAxes:true, node:null, wall:null} as MagnetData,
   addWallSession: null as AddWallSession | null,
 };
 
@@ -114,10 +114,10 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
         ...state,
         testPoints: action.payload
       };
-    case PlanActionTypes.SET_MAGNET_ACTIVATED:
+    case PlanActionTypes.SET_MAGNET_DATA:
       return {
         ...state,
-        magnetActivated: action.payload
+        magnetData: action.payload
       };
     case PlanActionTypes.SET_ADD_WALL_SESSION:
       return {

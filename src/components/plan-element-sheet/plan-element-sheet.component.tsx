@@ -19,6 +19,12 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
 
   const [inputNumero, setInputNumero] = useState<string | null>(null);
 
+  
+  // useEffect(()=>{
+  //   console.log("render data", data)
+  // },[data]);
+
+
   useEffect(()=>{
     setInputNumero(null);
   },[data.planElementId, data.wallId])
@@ -28,29 +34,29 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
     setInputNumero(newNumero);
 
     const el = PlanElementsHelper.findElementById(planElements, data.planElementId);
-    if(!el) return;
-    const isWall = data.wallId;
-    if(isWall){ //then its a wall
-      const wall = (el as JoinedWalls).walls[data.wallId!];
-      if (!wall) return;
-      wall.numero = newNumero;
-    }
-    dispatch(updatePlanElement(el));
-
-    //todo: update planElements saves with the updated numero
-    for(const planElements of planElementsRecords.records){
-      const elIdx = PlanElementsHelper.findElementIndexById(planElements, data.planElementId);
-      if(elIdx === -1) continue;
-      const wall = (planElements[elIdx] as JoinedWalls).walls[data.wallId!];
-      if(isWall && wall){
+    if(el){
+      const isWall = data.wallId;
+      if(isWall){ //then its a wall
+        const wall = (el as JoinedWalls).walls[data.wallId!];
+        if (!wall) return;
         wall.numero = newNumero;
       }
+      dispatch(updatePlanElement(el));
+
+      //todo: update planElements saves with the updated numero
+      for(const planElements of planElementsRecords.records){
+        const elIdx = PlanElementsHelper.findElementIndexById(planElements, data.planElementId);
+        if(elIdx === -1) continue;
+        const wall = (planElements[elIdx] as JoinedWalls).walls[data.wallId!];
+        if(isWall && wall){
+          wall.numero = newNumero;
+        }
+      }
+      dispatch(setPlanElementsRecords(planElementsRecords.clone()));
     }
-
-    dispatch(setPlanElementsRecords(planElementsRecords.clone()));
-
     const sheetData:PlanElementSheetData = {planElementId:data.planElementId , wallId:data.wallId, typeName: data.typeName, numero:e.currentTarget.value};
     dispatch(setPlanElementSheetData(sheetData));
+    
   },[data.planElementId, data.typeName, data.wallId, dispatch, planElements, planElementsRecords]);
 
   const convertTypeNameToString = useCallback(()=>{

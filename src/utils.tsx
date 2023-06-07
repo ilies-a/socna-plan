@@ -1,7 +1,7 @@
-import { Position, Vector2D, WallNode } from "./entities";
+import { MagnetData, Position, Vector2D, Wall, WallNode } from "./entities";
 import { BIG_NUMBER } from "./global";
 
-const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
+export const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
     return Object.keys(obj).map(key => obj[key]);
 };
 
@@ -18,6 +18,9 @@ export const cloneArray = (arr: any[]): any[] => {
     return result;
 }
 
+export const getDistance = (p1:Vector2D, p2:Vector2D): number=> {
+  return Math.sqrt( Math.pow(p2.x - p1.x ,2) +  Math.pow(p2.y - p1.y ,2));
+}
 
 
 interface Point {
@@ -132,117 +135,150 @@ export const getOrthogonalProjection = (lp1:Vector2D, lp2:Vector2D, p:Vector2D):
   return new Position(projectionX, projectionY);
 }
 
-export const getNodePositionWithMagnet = (node:WallNode, p:Vector2D) => {
+export const getMovingNodePositionWithMagnet = (fixedNode:WallNode, movingNodePosition:Vector2D, magnetData:MagnetData) => {
   // node.position = new Position(newCursorPos.x, newCursorPos.y);
   // dispatch(updatePlanElement(addWallSession.joinedWalls));
 
-
-
-
-  let lockHorizontally: WallNode | null = null;
-  let lockVertically: WallNode | null = null;
-  let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
-  let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
-
-  for(const linkedNode of node.linkedNodes){
-      const angle = Math.atan2(linkedNode.position.y - p.y, linkedNode.position.x - p.x);
-      const maxOffsetAngle = 0.08;
-
-      if(!lockHorizontally){              
-      lockHorizontally = 
-      (angle > 0 ?
-          angle < Math.PI /2 ?
-          angle < maxOffsetAngle 
-          :
-          angle > Math.PI - maxOffsetAngle 
-          :
-          angle > - Math.PI /2? 
-          angle > - maxOffsetAngle
-          :
-          angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
-      }
-
-      if(!lockVertically){
-      lockVertically = 
-      (Math.abs(angle) > Math.PI / 2 ? //if right
-          angle > 0 ? //if top
-          //if top right
-          angle < Math.PI / 2 + maxOffsetAngle
-          :
-          //if bottom right
-          angle > - Math.PI / 2 - maxOffsetAngle
-      : //if left
-          angle > 0 ? //if top
-          //if top left
-          angle > Math.PI / 2 - maxOffsetAngle
-          :
-          //if bottom left
-          angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
-      }
-
-
-      if(node.linkedNodes.length === 1){
-      if(!lockDiagonallyTopLeftBottomRight && !lockDiagonallyTopRightBottomLeft){
-          lockDiagonallyTopLeftBottomRight = 
-          (angle > Math.PI / 4 || angle <  - Math.PI * (3/4) ? //if right
-          angle > 0 ? //if top
-              //if top right
-              angle < Math.PI / 4 + maxOffsetAngle
-          :
-          //if bottom right
-          angle > - Math.PI * (3/4) - maxOffsetAngle
-          : //if left
-          angle > 0 ? //if top
-          //if top left
-          angle > Math.PI / 4 - maxOffsetAngle
-          :
-          //if bottom left
-          angle < - Math.PI * (3/4) + maxOffsetAngle) ? linkedNode : null;
-      }
-      if(!lockDiagonallyTopRightBottomLeft && !lockDiagonallyTopLeftBottomRight){
-          lockDiagonallyTopRightBottomLeft = 
-          (angle > Math.PI * (3/4) || angle <  - Math.PI / 4 ? //if right
-          angle > 0 ? //if top
-              //if top right
-              angle < Math.PI * (3/4) + maxOffsetAngle
-          :
-          //if bottom right
-          angle > - Math.PI / 4 - maxOffsetAngle
-          : //if left
-          angle > 0 ? //if top
-          //if top left
-          angle > Math.PI * (3/4) - maxOffsetAngle
-          :
-          //if bottom left
-          angle < - Math.PI * (1/4) + maxOffsetAngle) ? linkedNode : null;
-      }
-
-      }
-      
-  }
-  let newX;
-  let newY;
-
-  if(lockVertically || lockHorizontally){
-      newX = lockVertically ? lockVertically.position.x : p.x;
-      newY = lockHorizontally ? lockHorizontally.position.y : p.y;
-  }
-  else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
-      const linkedNode = node.linkedNodes[0];
-      const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
-      let b = linkedNode.position.y - slope * linkedNode.position.x;
-      const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
-      const orthogonalIntercept = p.y - orthogonalSlope * p.x; // Calculate the y-intercept of the orthogonal line
-      const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
-      const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
-
-      newX = projectionX;
-      newY = projectionY;
-
+  if(magnetData.node){
+      return new Position(magnetData.node.position.x, magnetData.node.position.y);
+  }else if(magnetData.wall){
+      const op = getOrthogonalProjection(magnetData.wall.nodes[0].position, magnetData.wall.nodes[1].position, movingNodePosition);
+      return new Position(op.x, op.y);
+  }else if(magnetData.activeOnAxes){
+    let lockHorizontally: WallNode | null = null;
+    let lockVertically: WallNode | null = null;
+    let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
+    let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
+  
+    for(const linkedNode of fixedNode.linkedNodes){
+        const angle = Math.atan2(linkedNode.position.y - movingNodePosition.y, linkedNode.position.x - movingNodePosition.x);
+        const maxOffsetAngle = 0.08;
+  
+        if(!lockHorizontally){              
+        lockHorizontally = 
+        (angle > 0 ?
+            angle < Math.PI /2 ?
+            angle < maxOffsetAngle 
+            :
+            angle > Math.PI - maxOffsetAngle 
+            :
+            angle > - Math.PI /2? 
+            angle > - maxOffsetAngle
+            :
+            angle <  - Math.PI + maxOffsetAngle) ? linkedNode : null;
+        }
+  
+        if(!lockVertically){
+        lockVertically = 
+        (Math.abs(angle) > Math.PI / 2 ? //if right
+            angle > 0 ? //if top
+            //if top right
+            angle < Math.PI / 2 + maxOffsetAngle
+            :
+            //if bottom right
+            angle > - Math.PI / 2 - maxOffsetAngle
+        : //if left
+            angle > 0 ? //if top
+            //if top left
+            angle > Math.PI / 2 - maxOffsetAngle
+            :
+            //if bottom left
+            angle < - Math.PI / 2 + maxOffsetAngle) ? linkedNode : null;
+        }
+  
+  
+        if(fixedNode.linkedNodes.length === 1){
+        if(!lockDiagonallyTopLeftBottomRight && !lockDiagonallyTopRightBottomLeft){
+            lockDiagonallyTopLeftBottomRight = 
+            (angle > Math.PI / 4 || angle <  - Math.PI * (3/4) ? //if right
+            angle > 0 ? //if top
+                //if top right
+                angle < Math.PI / 4 + maxOffsetAngle
+            :
+            //if bottom right
+            angle > - Math.PI * (3/4) - maxOffsetAngle
+            : //if left
+            angle > 0 ? //if top
+            //if top left
+            angle > Math.PI / 4 - maxOffsetAngle
+            :
+            //if bottom left
+            angle < - Math.PI * (3/4) + maxOffsetAngle) ? linkedNode : null;
+        }
+        if(!lockDiagonallyTopRightBottomLeft && !lockDiagonallyTopLeftBottomRight){
+            lockDiagonallyTopRightBottomLeft = 
+            (angle > Math.PI * (3/4) || angle <  - Math.PI / 4 ? //if right
+            angle > 0 ? //if top
+                //if top right
+                angle < Math.PI * (3/4) + maxOffsetAngle
+            :
+            //if bottom right
+            angle > - Math.PI / 4 - maxOffsetAngle
+            : //if left
+            angle > 0 ? //if top
+            //if top left
+            angle > Math.PI * (3/4) - maxOffsetAngle
+            :
+            //if bottom left
+            angle < - Math.PI * (1/4) + maxOffsetAngle) ? linkedNode : null;
+        }
+  
+        }
+        
+    }
+    let newX;
+    let newY;
+  
+    if(lockVertically || lockHorizontally){
+        newX = lockVertically ? lockVertically.position.x : movingNodePosition.x;
+        newY = lockHorizontally ? lockHorizontally.position.y : movingNodePosition.y;
+    }
+    else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
+        const linkedNode = fixedNode.linkedNodes[0];
+        const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
+        let b = linkedNode.position.y - slope * linkedNode.position.x;
+        const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+        const orthogonalIntercept = movingNodePosition.y - orthogonalSlope * movingNodePosition.x; // Calculate the y-intercept of the orthogonal line
+        const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+        const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+  
+        newX = projectionX;
+        newY = projectionY;
+  
+    }
+    else{
+        newX = movingNodePosition.x;
+        newY = movingNodePosition.y;
+    }
+    return new Position(newX, newY)
   }
   else{
-      newX = p.x;
-      newY = p.y;
+    return new Position(movingNodePosition.x, movingNodePosition.y); //default position (no magnet)
   }
-  return new Position(newX, newY)
 }
+
+
+export function isPointInPolygon (p:Vector2D, polygon:Point[]) {
+  const x = p.x; const y = p.y
+
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    throw new TypeError('Invalid latitude or longitude. Numbers are expected')
+  } else if (!polygon || !Array.isArray(polygon)) {
+    throw new TypeError('Invalid polygon. Array with locations expected')
+  } else if (polygon.length === 0) {
+    throw new TypeError('Invalid polygon. Non-empty Array expected')
+  }
+
+
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x; const yi = polygon[i].y
+    const xj = polygon[j].x; const yj = polygon[j].y
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+    if (intersect) inside = !inside
+  }
+
+  return inside
+};

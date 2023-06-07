@@ -2,12 +2,12 @@
 import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
-import { AddWallSession, Dimensions, JoinedWalls, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Wall, WallNode, iconDataArr } from "@/entities";
+import { AddWallSession, Dimensions, JoinedWalls, MagnetData, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Wall, WallNode, iconDataArr } from "@/entities";
 import { Path } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
-import { setAddWallSession, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
+import { setAddWallSession, setMagnetData, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
 import { JoinedWallsAndWallNodes } from "../plan/plan.component";
-import { selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
+import { selectAddWallSession, selectMagnetData, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
 import { getOrthogonalProjection } from "@/utils";
 import { v4 } from 'uuid';
 
@@ -32,6 +32,8 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
     const planMode: PlanMode = useSelector(selectPlanMode);
     const planProps:PlanProps = useSelector(selectPlanProps);
     const planElements: PlanElement[] = useSelector(selectPlanElements);
+    const addWallSession: AddWallSession = useSelector(selectAddWallSession);
+    const magnetData: MagnetData = useSelector(selectMagnetData);
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
         const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
@@ -62,22 +64,31 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
                     dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
                     const pointerPos = getCursorPosWithEventPos(e, false);
                     const pointOnWallMiddleLine = getOrthogonalProjection(wall.nodes[0].position, wall.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
-                    const addedWall = w.addWall(wall, [pointOnWallMiddleLine, pointerPos]);
+                    const addedWall = w.addWallFromWall(wall, [pointOnWallMiddleLine, pointerPos]);
+                    const orthogonalProjectionNode = 
+                    addedWall.nodes[0].position.x === pointOnWallMiddleLine.x
+                    && addedWall.nodes[0].position.y === pointOnWallMiddleLine.y ?
+                    addedWall.nodes[1] : addedWall.nodes[0];
+
                     dispatch(setAddWallSession(
                         new AddWallSession(
                             w,
-                            addedWall                        
+                            addedWall,
+                            orthogonalProjectionNode 
                         )
                     ));
-                    dispatch(updatePlanElement(w));
+
                     if(!sheetData) return; //should throw error
+                    addedWall.numero = sheetData.numero;
+                    dispatch(updatePlanElement(w));
+                    
                     const newSheetData:PlanElementSheetData = {
-                        planElementId: sheetData.planElementId, 
+                        planElementId: w.id, 
                         wallId:addedWall.id, 
                         typeName:sheetData.typeName, 
                         numero:sheetData.numero
                     };
-                    dispatch(setPlanElementSheetData(newSheetData))
+                    dispatch(setPlanElementSheetData(newSheetData));
                 }else{
                     setPointingOnWall(true);
                     // const nodesIds:[string, string] = [nodes[0].id, nodes[1].id];
@@ -102,6 +113,39 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
                         new Position(node2Clone.position.x, node2Clone.position.y)
                     ]
                 });
+
+                // dispatch(setMagnetData(
+                //     {
+                //         activeOnAxes: magnetData.activeOnAxes,
+                //         node: magnetData.node,
+                //         wall:wall
+                //     }
+                // ))
+            }}
+            onPointerUp={e=>{
+
+                if(addWallSession && addWallSession.wall.id != id){
+                    console.log("onPointerUp wall")
+                    const pointerPos = getCursorPosWithEventPos(e, false);
+                    console.log("onPointerUp wall pointerPos.x", pointerPos.x)
+                    const pointOnWallMiddleLine = getOrthogonalProjection(wall.nodes[0].position, wall.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
+
+
+                    dispatch(setMagnetData(
+                        {
+                            activeOnAxes: magnetData.activeOnAxes,
+                            node: magnetData.node,
+                            wall
+                        }
+                    ))
+                    
+                    // dispatch(setTestPoints([
+                    //     new TestPoint("", pointOnWallMiddleLine.x, pointOnWallMiddleLine.y, "blue")
+                    // ]))
+
+
+
+                }
             }}
         />
     )

@@ -1,6 +1,6 @@
-import { Line, LinePointMode, PlanElement, PlanElementTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
-import { addPlanElement, setMagnetActivated, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectMagnetActivated, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
+import { Line, LinePointMode, MagnetData, PlanElement, PlanElementTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
+import { addPlanElement, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
+import { selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +17,7 @@ const ActionMenu: React.FC = () => {
   const planElements: PlanElement[] = useSelector(selectPlanElements);
   const planMode: PlanMode = useSelector(selectPlanMode);
   const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
-  const magnetActivated: boolean = useSelector(selectMagnetActivated);
+  const magnetData: MagnetData = useSelector(selectMagnetData);
   const savePlan = useSavePlan();
   const dispatch = useDispatch();
 
@@ -130,8 +130,15 @@ const ActionMenu: React.FC = () => {
   }, [planElementsRecords.currentRecordIndex, planElementsRecords.records.length]);
 
   const toggleActivateMagnet = useCallback(()=>{
-    dispatch(setMagnetActivated(!magnetActivated));
-  }, [dispatch, magnetActivated]);
+    let newMagnetData; 
+    if(magnetData.activeOnAxes){
+      newMagnetData = {activeOnAxes: false, node: magnetData.node, wall: magnetData.wall };
+    }else{
+      newMagnetData = {activeOnAxes: true, node: magnetData.node, wall: magnetData.wall };
+    }
+    dispatch(setMagnetData(newMagnetData as MagnetData));
+
+  }, [dispatch, magnetData]);
 
   return (
     <div className={styles['main']}
@@ -146,7 +153,7 @@ const ActionMenu: React.FC = () => {
         <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available wallStrokeWidth={null}/> */}
         <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords} wallStrokeWidth={null}/>
         <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords} wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="magnet.png" handleOnClick={toggleActivateMagnet} active={magnetActivated} available={true} wallStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="magnet.png" handleOnClick={toggleActivateMagnet} active={magnetData.activeOnAxes} available={true} wallStrokeWidth={null}/>
       </div>
       {/* {
       planMode === PlanMode.AddPlanElement?

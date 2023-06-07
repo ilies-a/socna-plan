@@ -1,10 +1,10 @@
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
 import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
-import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D, JoinedWalls, WallNode, TestPoint, AddWallSession } from "@/entities";
-import { setAddWallSession, setAddingPointLineIdPointId, setPlanElements, setPlanElementsRecords, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAddWallSession, selectAddingPointLineIdPointId, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
-import { cloneArray, doSegmentsIntersect, getNodePositionWithMagnet } from "@/utils";
+import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D, JoinedWalls, WallNode, TestPoint, AddWallSession, PlanElementSheetData, MagnetData, Wall } from "@/entities";
+import { setAddWallSession, setAddingPointLineIdPointId, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
+import { selectAddWallSession, selectAddingPointLineIdPointId, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { cloneArray, doSegmentsIntersect, getMovingNodePositionWithMagnet, getOrthogonalProjection } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, Text } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
@@ -19,12 +19,15 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
   const dispatch = useDispatch();
   const savePlan = useSavePlan();
   const planElements: PlanElement[] = useSelector(selectPlanElements);
-  const [dragStartPos, setDragStartPos] = useState<Position | null>(null);
+  // const [dragStartPos, setDragStartPos] = useState<Position | null>(null);
   const planProps:PlanProps = useSelector(selectPlanProps);
   const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
   const [visible, setVisible] = useState<boolean>(false); 
-  const magnetActivated: boolean = useSelector(selectMagnetActivated);
+  const magnetData: MagnetData = useSelector(selectMagnetData);
   const addWallSession: AddWallSession = useSelector(selectAddWallSession);
+  const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
+  const planMode: PlanMode = useSelector(selectPlanMode);
+  const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
 
   const updateNodePosition = useCallback((p:Position) =>{
         node.position = p;
@@ -390,7 +393,7 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
           y = {node.position.y}
           radius = {node.radius * 1 / planProps.scale}
           fill="#428BCA"
-          opacity={visible || addWallSession && addWallSession.wall.nodes[1].id === node.id ? 1 : 0} //(addWallSession && addWallSession.wall.nodes[1].id === node.id) condition is just a fix
+          opacity={visible || addWallSession && addWallSession.draggingNode.id === node.id ? 1 : 0} //(addWallSession && addWallSession.wall.nodes[1].id === node.id) condition is just a fix
           listening = {false}
           // onClick={handleOnClick}
           
@@ -439,7 +442,7 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         radius = {node.radius * 1 / planProps.scale}
         opacity={0}
         listening = {!addWallSession}
-        draggable
+        draggable = {!addWallSession}
         onClick={e => {
           e.cancelBubble = true;
         }}
@@ -453,10 +456,45 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
           e.cancelBubble = true;
           setVisible(true);
         //   handleOnPointerUp();
+          dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
+
+
+
+          //REPETITION OF CODE IN WALL COMPONENT
+
+          if(planMode === PlanMode.AddWall){
+            const pointerPos = e.target.getPosition();
+            const addedWall = joinedWalls.addWallFromNode(node, pointerPos);
+            const draggingNode = 
+            addedWall.nodes[0].id === node.id ?
+            addedWall.nodes[1] : addedWall.nodes[0];
+
+            dispatch(setAddWallSession(
+                new AddWallSession(
+                  joinedWalls,
+                  addedWall,
+                  draggingNode 
+                )
+            ));
+
+            if(!sheetData) return; //should throw error
+            addedWall.numero = sheetData.numero;
+            dispatch(updatePlanElement(joinedWalls));
+            
+            const newSheetData:PlanElementSheetData = {
+                planElementId: joinedWalls.id, 
+                wallId:addedWall.id, 
+                typeName:sheetData.typeName, 
+                numero:sheetData.numero
+            };
+            dispatch(setPlanElementSheetData(newSheetData));
+            setVisible(false);
+
+          }
         }}
         onPointerMove={e => {
-          // console.log("point onPointerUp")
-          e.cancelBubble = true;
+          console.log("point onPointerUp")
+          // e.cancelBubble = true;
         //   handleOnPointerUp();
         }}
         onPointerUp={e => {
@@ -490,16 +528,64 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
         onDragStart={e => {
             e.cancelBubble = true;
             //save position at start
-            setDragStartPos(new Position(e.target.position().x, e.target.position().y));
-
+            // setDragStartPos(new Position(e.target.position().x, e.target.position().y));
         }}
         onDragMove={e => {
             e.cancelBubble = true;
-            if(!magnetActivated){
-              updateNodePosition(new Position(e.target.position().x, e.target.position().y));
-              return;
-            }
-            updateNodePosition(getNodePositionWithMagnet(node, e.target.position()));
+            // if(!magnetData){
+            //   updateNodePosition(new Position(e.target.position().x, e.target.position().y));
+            //   return;
+            // }
+
+
+            // console.log("e.target.position().x", e.target.position().x)
+            // console.log("e.target.position().y", e.target.position().y)
+
+            // console.log("node.position.x", node.position.x)
+            // console.log("node.position.y", node.position.y)
+
+            // console.log("")
+            const nodeOrWall: Wall | WallNode | null = joinedWalls.getNodeOrWallPenetratedByPoint(e.target.position(), node);
+            // console.log("nodeOrWall",nodeOrWall)
+
+            dispatch(setMagnetData(
+              {
+                activeOnAxes: magnetData.activeOnAxes,
+                node: nodeOrWall && nodeOrWall.id.length > 36? null: nodeOrWall as WallNode, //36 is uuid length, Wall id is 36*2
+                wall: nodeOrWall && nodeOrWall.id.length > 36? nodeOrWall as Wall: null,
+
+              }
+            ))
+
+
+            updateNodePosition(getMovingNodePositionWithMagnet(node, e.target.position(), magnetData));
+
+
+
+
+
+
+            //TESTS PART:
+            // const nodesToMark:{[nodeId:string]:boolean;} = {};
+
+            // for(const n1 of node.linkedNodes){
+            //     nodesToMark[n1.id] = true;
+            //     for(const n2 of n1.linkedNodes){
+            //       nodesToMark[n2.id] = true;
+            //     }
+            // }
+
+            // const testPoints: TestPoint[] = [];
+            
+            // for(const id in nodesToMark){
+            //     const node = joinedWalls.nodes[id];
+            //     testPoints.push(new TestPoint( id, node.position.x, node.position.y, "red") );
+            // }
+
+            // dispatch(setTestPoints(
+            //   testPoints
+            // ))
+    
         }}
         onDragEnd={e => {
             e.cancelBubble = true;
@@ -508,14 +594,25 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node}) => {
             // dispatch(setTestPoints([new Point("", e.target.position().x, e.target.position().y)]))
             e.currentTarget.setPosition(node.position);
 
+            //join nodes
+            if(magnetData.node){
+              joinedWalls.joinNodes(node, magnetData.node);              
+            }else if(magnetData.wall){
+              joinedWalls.joinDraggedNodeAndCreatedNode(node, magnetData.wall);
+            }
+            dispatch(setMagnetData({activeOnAxes:magnetData.activeOnAxes, node:null, wall:null}));
+
             //save
-            if(!dragStartPos) return;
-            const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+            // if(!dragStartPos) return;
+            if(!planElementsSnapshot) return;
+            // const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
             const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-            const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, joinedWalls.id);
-            (currentPlanElementsClone[jwIdx] as JoinedWalls).nodes[node.id].position = new Position(dragStartPos.x, dragStartPos.y);
-            savePlan(currentPlanElementsClone, nextPlanElementsClone);
-            setDragStartPos(null);
+            // const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, joinedWalls.id);
+            // (currentPlanElementsClone[jwIdx] as JoinedWalls).nodes[node.id].position = new Position(dragStartPos.x, dragStartPos.y);
+            
+            savePlan(PlanElementsHelper.clone(planElementsSnapshot), nextPlanElementsClone);
+
+            // setDragStartPos(null);
         }}
         />
       {/* <Text 

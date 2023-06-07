@@ -2,12 +2,12 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Wall, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler, Line, JoinedWalls, TestPoint, WallNode, AddWallSession } from "@/entities";
-import { cloneArray, getNodePositionWithMagnet } from "@/utils";
+import { Dimensions, Wall, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler, Line, JoinedWalls, TestPoint, WallNode, AddWallSession, MagnetData } from "@/entities";
+import { cloneArray, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddWallSession, setAddingPointLineIdPointId, setLineToAdd, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddWallSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetActivated, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAddWallSession, setAddingPointLineIdPointId, setLineToAdd, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddWallSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import LineAddPoint from "../line-add-point/line-add-point.component";
 import { LEFT_MENU_WIDTH, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
 import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
@@ -77,7 +77,7 @@ const Plan: React.FC = () => {
     const testPoints: TestPoint[] = useSelector(selectTestPoints);
     const [preventUnselectAllElements, setPreventUnselectAllElements] = useState<boolean>(false);
     const addWallSession: AddWallSession | null = useSelector(selectAddWallSession);
-    const magnetActivated: boolean = useSelector(selectMagnetActivated);
+    const magnetData: MagnetData = useSelector(selectMagnetData);
     const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
 
 
@@ -275,7 +275,7 @@ const Plan: React.FC = () => {
                 const w = el as JoinedWalls;
                 const nodes = w.nodes;
                 const walls = w.walls;
-                const wallsNodesAndPoints = w.getPointsByWall();
+                w.setWallsPoints();
                 const colorsForTesting = ["green","orange","blue","violet"];
 
                 // console.log("pointsBySegment.length", pointsBySegment.length)
@@ -293,22 +293,17 @@ const Plan: React.FC = () => {
                 return  (
                     <Group key={w.id}>
                     {    
-                        wallsNodesAndPoints.map((nodesAndPoints, _) => {
-                            const nodes = nodesAndPoints[0];
-                            const points = nodesAndPoints[1];
-                            const sortedNodeIds = [nodes[0].id, nodes[1].id].sort();
-                            const wallId = sortedNodeIds[0] + sortedNodeIds[1];
-                            const wall = walls[wallId];
-                            const wallIsSelected = w.wallIsSelected(wallId);
+                        objToArr(w.walls).map((wall:Wall, _) => {
+                            const wallIsSelected = w.wallIsSelected(wall.id);
                             return <WallComponent 
                                 key={v4()}
-                                id={wallId}
+                                id={wall.id}
                                 wall={wall}
                                 numero={wall.numero}
                                 w={w}
-                                points={points}
+                                points={wall.points}
                                 wallIsSelected={wallIsSelected}
-                                nodes={nodes}
+                                nodes={wall.nodes}
                                 pointerStartPos={pointerStartPos}
                                 movingWall={movingWall} 
                                 setMovingWall={setMovingWall}
@@ -696,8 +691,18 @@ const Plan: React.FC = () => {
         //     dispatch(setAddWallSession(null));
         // }
         if(addWallSession){
-            addWallSession.joinedWalls.selectWall(addWallSession.wall.id);
 
+            if(magnetData.node){
+                addWallSession.joinedWalls.joinNodes(addWallSession.draggingNode, magnetData.node);              
+              }else if(magnetData.wall){
+                addWallSession.joinedWalls.joinDraggedNodeAndCreatedNode(addWallSession.draggingNode, magnetData.wall);
+              }
+              dispatch(setMagnetData({activeOnAxes:magnetData.activeOnAxes, node:null, wall:null}));
+
+
+
+            addWallSession.joinedWalls.selectWall(addWallSession.wall.id);
+            // dispatch(updatePlanElement(addWallSession.joinedWalls));
             if(!planElementsSnapshot) return; //should throw error
             const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
             savePlan(planElementsSnapshot, nextPlanElementsClone);
@@ -708,7 +713,7 @@ const Plan: React.FC = () => {
             setPreventUnselectAllElements(true);
 
           }
-    }, [addPoint, addWallSession, addingPointLineIdPointId, dispatch, planElements, planElementsSnapshot, pointingOnWall, saveIfMovingWall, savePlan]);
+    }, [addPoint, addWallSession, addingPointLineIdPointId, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.wall, planElements, planElementsSnapshot, pointingOnWall, saveIfMovingWall, savePlan]);
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
@@ -737,6 +742,38 @@ const Plan: React.FC = () => {
         }
         dispatch(updatePlanElement(movingWall.joinedWalls));
     }, [dispatch, movingWall, pointerStartPos]);
+
+
+    const handleAddWallSessionAndMovingWall = useCallback((newCursorPos: Position) => {
+        if(addWallSession){
+            const node = addWallSession.draggingNode;
+            
+            // if(!magnetData){
+            //     node.position = new Position(newCursorPos.x, newCursorPos.y);
+            //     dispatch(updatePlanElement(addWallSession.joinedWalls));
+            //     return;
+            // }
+
+            const nodeOrWall: Wall | WallNode | null = addWallSession.joinedWalls.getNodeOrWallPenetratedByPoint(newCursorPos, node);
+            // console.log("nodeOrWall",nodeOrWall)
+
+            dispatch(setMagnetData(
+              {
+                activeOnAxes: magnetData.activeOnAxes,
+                node: nodeOrWall && nodeOrWall.id.length > 36? null: nodeOrWall as WallNode, //36 is uuid length, Wall id is 36*2
+                wall: nodeOrWall && nodeOrWall.id.length > 36? nodeOrWall as Wall: null,
+
+              }
+            ))
+            node.position = getMovingNodePositionWithMagnet(node, newCursorPos, magnetData);
+
+            // node.position = getMovingNodePositionWithMagnet(node, newCursorPos, magnetData);              
+            dispatch(updatePlanElement(addWallSession.joinedWalls));
+        }
+        else{
+            handleMovingWall(newCursorPos);
+        }
+    },[addWallSession, dispatch, handleMovingWall, magnetData])
 
     return (
         // <div onClick={e =>{console.log("Click on parent")}}>Parent
@@ -798,22 +835,7 @@ const Plan: React.FC = () => {
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     // dispatch(setPlanCursorPos(newCursorPos));
 
-
-                    if(addWallSession){
-                        const node = addWallSession.wall.nodes[1];
-                        
-                        if(!magnetActivated){
-                            node.position = new Position(newCursorPos.x, newCursorPos.y);
-                            dispatch(updatePlanElement(addWallSession.joinedWalls));
-                            return;
-                        }
-            
-                        node.position = getNodePositionWithMagnet(node, newCursorPos);              
-                        dispatch(updatePlanElement(addWallSession.joinedWalls));
-                    }
-                    else{
-                        handleMovingWall(newCursorPos);
-                    }
+                    handleAddWallSessionAndMovingWall(newCursorPos);
                 }}
                 onTouchMove={e => {
                     // var touchPos = e.target.getStage()?.getPointerPosition();
@@ -821,7 +843,7 @@ const Plan: React.FC = () => {
                     // setCursorPos(new Point(touchPos.x - e.currentTarget.getPosition().x, touchPos.y - e.currentTarget.getPosition().y));
                     const newCursorPos = getCursorPosWithEventPos(e, true);
                     dispatch(setPlanCursorPos(newCursorPos));
-                    handleMovingWall(newCursorPos);                  
+                    handleAddWallSessionAndMovingWall(newCursorPos);
                     e.evt.preventDefault(); //for pinch
                     handlePinchTouchMove(e.evt.touches);
                     dispatch(setUnselectAllOnPlanMouseUp(false));
@@ -865,7 +887,7 @@ const Plan: React.FC = () => {
                     //     return getPlanElement(el);
                     // })
                 }
-                {/* {                 
+                {                 
 
                     testPoints.map((p, _) => {
                         return(
@@ -888,7 +910,7 @@ const Plan: React.FC = () => {
                             </Group>
                         );
                     })
-                } */}
+                }
                 </Layer>
             </Stage>
         {/* <div style={{"position":"absolute"}}>{msg}</div> */}
