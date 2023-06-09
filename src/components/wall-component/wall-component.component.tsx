@@ -60,21 +60,24 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
             strokeWidth={wallIsSelected ? 2 : 0}
             onPointerDown={e => {
                 // setPreventPointerUpOnPlan(true);
+
                 if(planMode === PlanMode.AddWall){
+                    e.cancelBubble = true;
+
                     dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
                     const pointerPos = getCursorPosWithEventPos(e, false);
                     const pointOnWallMiddleLine = getOrthogonalProjection(wall.nodes[0].position, wall.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
-                    const addedWall = w.addWallFromWall(wall, [pointOnWallMiddleLine, pointerPos]);
-                    const orthogonalProjectionNode = 
-                    addedWall.nodes[0].position.x === pointOnWallMiddleLine.x
-                    && addedWall.nodes[0].position.y === pointOnWallMiddleLine.y ?
-                    addedWall.nodes[1] : addedWall.nodes[0];
+                    const [addedWall, draggingNode] = w.addWallFromWall(wall, [pointOnWallMiddleLine, pointerPos]);
+                    // const orthogonalProjectionNode = 
+                    // addedWall.nodes[0].position.x === pointOnWallMiddleLine.x
+                    // && addedWall.nodes[0].position.y === pointOnWallMiddleLine.y ?
+                    // addedWall.nodes[1] : addedWall.nodes[0];
 
                     dispatch(setAddWallSession(
                         new AddWallSession(
                             w,
                             addedWall,
-                            orthogonalProjectionNode 
+                            draggingNode 
                         )
                     ));
 
@@ -128,14 +131,15 @@ const WallComponent: React.FC<Props> = ({w, wall, id, numero, points, wallIsSele
                     console.log("onPointerUp wall")
                     const pointerPos = getCursorPosWithEventPos(e, false);
                     console.log("onPointerUp wall pointerPos.x", pointerPos.x)
-                    const pointOnWallMiddleLine = getOrthogonalProjection(wall.nodes[0].position, wall.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
+                    // const pointOnWallMiddleLine = getOrthogonalProjection(wall.nodes[0].position, wall.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
 
 
                     dispatch(setMagnetData(
                         {
                             activeOnAxes: magnetData.activeOnAxes,
                             node: magnetData.node,
-                            wall
+                            wall,
+                            linePoints:magnetData.linePoints
                         }
                     ))
                     

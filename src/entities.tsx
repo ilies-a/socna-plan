@@ -1,6 +1,6 @@
 import { v4 } from 'uuid';
 import { cloneArray, doSegmentsIntersect, getDistance, isPointInPolygon, sortPointsClockwise } from './utils';
-import { BIG_NUMBER, WALL_WIDTH } from './global';
+import { BIG_NUMBER, PRECISION, WALL_WIDTH } from './global';
 
 export enum PlanElementTypeName {Line, Wall, JoinedWalls};
 
@@ -182,6 +182,10 @@ export abstract class PlanElement {
     }
 
     unselect(){
+    }
+
+    delete(wallId?:string){
+
     }
 }
 
@@ -649,6 +653,7 @@ export const iconDataArr:IconData[] = [
     width: number = WALL_WIDTH;
     color: string = "grey";
     selectedWallId:string | null = null;
+    farthestNodes:WallNode[] = [];
 
     constructor(id: string, nodes: {[nodeId: string]: WallNode;}){
         super(id, PlanElementTypeName.JoinedWalls);
@@ -674,7 +679,7 @@ export const iconDataArr:IconData[] = [
     }
 
     getWalls(): {[id:string]:Wall;} {
-        const segments: {[id:string]:Wall;} = {};
+        const walls: {[id:string]:Wall;} = {};
         const segmentsDone: {[id: string]: boolean;} = {};
         
         for(const nodeId in this.nodes){
@@ -684,33 +689,329 @@ export const iconDataArr:IconData[] = [
                 this.sortNodesByIdInAlphabeticOrder(sortedNodesById);
                 const sortedConcatenatedIds = sortedNodesById[0].id + sortedNodesById[1].id;
                 if(segmentsDone[sortedConcatenatedIds]) continue;
-                segments[sortedConcatenatedIds] = (new Wall([sortedNodesById[0], sortedNodesById[1]]));
+                walls[sortedConcatenatedIds] = (new Wall([sortedNodesById[0], sortedNodesById[1]]));
                 segmentsDone[sortedConcatenatedIds] = true;
             }
         }
-        // for(const nodeId in this.nodes){
-        //     const node = this.nodes[nodeId];
-        //     if(node.linkedNodes.length < 3) continue;
-        //     const linkedNodes = node.getReflexAngleLinkedNodes();
-        //     // console.log("reflexAngle = ", linkedNodes);
-        //     if(!linkedNodes) continue;
-        //     node.getIntersectionOfTwoConsecutiveSegments(linkedNodes);
-        // }
-        
-        return segments;
-    }
 
-    setWalls(){
-        const updatedWalls = this.getWalls();
+
+
+
 
         //walls may have some data binded like a numero we need to copy it:
         for(const wallId in this.walls){
-            if(updatedWalls.hasOwnProperty(wallId)){
-                updatedWalls[wallId].numero = this.walls[wallId].numero;
+            if(walls.hasOwnProperty(wallId)){
+                walls[wallId].numero = this.walls[wallId].numero;
             }
         }
 
-        this.walls = updatedWalls;
+        // //if a node is between two nodes and the three nodes are aligned (so two walls in total) then the node is useless
+        // //we remove the node and simplify the two aligned walls into a single wall
+
+
+        // //if two walls are aligned and share a node
+        // //if true if this node has only two linked nodes (so one in each wall) then we remove it and join the two extreme nodes
+
+
+        // const alignedWalls: Wall[][]= [];
+
+        // const visitedWalls: {[wallId: string]: boolean;} = {};
+
+        // for(const wallId in walls){
+        //     if(visitedWalls.hasOwnProperty(wallId)) continue;
+        //     const wall = walls[wallId];
+        //     const wallNode1 = wall.nodes[0];
+        //     const wallNode2 = wall.nodes[1];
+
+            
+        //     visitedWalls[wallId] = true;
+
+        // }
+
+        // //END CHATGPT
+
+        return walls;
+    }
+
+    setWalls(){
+        this.walls = this.getWalls();
+    }
+
+    cleanWalls(){
+        this.setWalls();
+        const walls = this.walls;
+
+
+        // //CHATGPT
+
+
+
+
+        interface Point {
+            x: number;
+            y: number;
+          }
+          
+          interface Segment {
+            node1: { point: Point };
+            node2: { point: Point };
+          }
+          
+          function calculateSlope(p1: Point, p2: Point): number {
+            if (p1.x === p2.x) {
+              // Handle vertical line case to avoid division by zero
+              return Infinity;
+            }
+            // console.log("p2.y - p1.y", p2.y - p1.y)
+
+            return (p2.y - p1.y) / (p2.x - p1.x);
+          }
+
+
+        function groupAlignedWalls(walls:Wall[]): Wall[][]{
+            const alignedWalls: Wall[][] = [];
+
+            const tolerance = 0.05;
+            for (const wall of walls) {
+                let foundNewGroup = false;
+            
+                for (const group of alignedWalls) {
+                    const referenceWall = group[0];
+
+                    const referenceWallSlope = calculateSlope(referenceWall.nodes[0].position, referenceWall.nodes[1].position);
+                    const wallSlope = calculateSlope(wall.nodes[0].position, wall.nodes[1].position);
+                    
+                    // console.log("referenceWallSlope", referenceWallSlope)
+                    // console.log("wallSlope", wallSlope)
+
+                    if(
+                        (referenceWallSlope === Infinity && wallSlope === Infinity)
+                        ||
+                        (Math.abs(Math.abs(wallSlope) - Math.abs(referenceWallSlope)) < tolerance)
+                        ){
+                        // console.log("foundNewGroup !!");
+                        foundNewGroup = true;
+                        group.push(wall);
+                        break;
+                    }
+                }
+
+                if (!foundNewGroup) {
+                    alignedWalls.push([wall]);
+                }
+                // console.log("")
+
+            }
+
+
+
+            return alignedWalls;
+        }
+          
+
+        let wallsArr: Wall[] = [];
+
+        for(const wallId in walls){
+            wallsArr.push(walls[wallId]);
+        }
+
+
+        const alignedWallsGroups = groupAlignedWalls(wallsArr);
+
+        // console.log("")
+        // console.log("")
+
+
+
+
+
+
+
+
+
+
+
+
+        // function groupSegmentsByDirection(segments: Wall[]): Wall[][] {
+        //     const groupedSegments: Wall[][] = [];
+        //     const directions: { [key: string]: Wall[] } = {};
+          
+        //     for (const segment of segments) {
+        //       const direction = calculateDirection(segment);
+          
+        //       if (direction in directions) {
+        //         directions[direction].push(segment);
+        //       } else {
+        //         directions[direction] = [segment];
+        //       }
+        //     }
+          
+        //     for (const directionSegments of Object.values(directions)) {
+        //       groupedSegments.push(directionSegments);
+        //     }
+          
+        //     return groupedSegments;
+        //   }
+          
+        //   function calculateDirection(segment: Wall): string {
+        //     const node1 = segment.nodes[0];
+        //     const node2 = segment.nodes[1];
+          
+        //     const deltaX = node2.position.x - node1.position.x;
+        //     const deltaY = node2.position.y - node1.position.y;
+          
+        //     let slope: number;
+        //     let direction: number;
+          
+        //     if (deltaX !== 0) {
+        //       slope = deltaY / deltaX;
+        //       direction = Math.atan2(deltaY, deltaX);
+        //     } else {
+        //       // Special case for vertical direction
+        //       slope = Infinity;
+        //       direction = Math.PI / 2; // 90 degrees
+        //     }
+          
+        //     return `${slope}:${direction}`;
+        //   }
+
+
+
+        
+        function findFarthestNodes(nodes: WallNode[]): [WallNode, WallNode] | null {
+            if (nodes.length < 2) {
+            return null; // Not enough points to find a pair
+            }
+        
+            let maxDistance = 0;
+            let farthestPoints: [WallNode, WallNode] | null = null;
+        
+            for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const distance = getDistance(nodes[i].position, nodes[j].position);
+                if (distance > maxDistance) {
+                maxDistance = distance;
+                farthestPoints = [nodes[i], nodes[j]];
+                }
+            }
+            }
+        
+            return farthestPoints;
+        }
+
+
+        // type Segment = [string, string];
+        // type Chain = Wall[];
+
+        function findChainedWalls(walls: Wall[]): Wall[][] {
+        const chains: Wall[][] = [];
+        const visited: boolean[] = Array(walls.length).fill(false);
+
+        function dfs(wall: Wall, chain: Wall[]): void {
+            const nodeA = wall.nodes[0];
+            const nodeB = wall.nodes[1];
+            chain.push(wall);
+            visited[walls.indexOf(wall)] = true;
+
+            const nextSegments = walls.filter(
+            (w) =>
+                (w.nodes[0] === nodeA || w.nodes[1] === nodeA || w.nodes[0] === nodeB || w.nodes[1] === nodeB) &&
+                !visited[walls.indexOf(w)]
+            );
+
+            for (const nextSegment of nextSegments) {
+            dfs(nextSegment, chain);
+            }
+        }
+
+        for (const wall of walls) {
+            if (!visited[walls.indexOf(wall)]) {
+            const chain: Wall[] = [];
+            dfs(wall, chain);
+            chains.push(chain);
+            }
+        }
+
+        return chains;
+        }
+
+        this.farthestNodes = [];
+
+        let updateWalls = false;
+
+        // const chainedWallsGroupsInsideEachAlignedWallsGroup:Wall[][][] = []; 
+        for(const alignedWallsGroup of alignedWallsGroups){
+            // console.log("alignedWallsGroup.length", alignedWallsGroup.length)
+
+            if(alignedWallsGroup.length>1){
+                const alignedAndChainedWallsGroups = findChainedWalls(alignedWallsGroup);
+                // console.log("chainedWallsGroups.length inside alignedWallsGroup", chainedWallsGroups.length)
+                // chainedWallsGroupsInsideEachAlignedWallsGroup.push(chainedWallsGroups);
+
+
+                // const wallsAlignedAndSameDirectionGroups:Wall[] = [];
+                for(const alignedAndChainedWallsGroup of alignedAndChainedWallsGroups){
+                    //final part: find walls with nodes in successive position
+                    // console.log("alignedAndChainedWallsGroup", alignedAndChainedWallsGroup);
+                    // console.log("alignedAndChainedAndSameDirectionGroups.length", alignedAndChainedAndSameDirectionGroups.length);
+
+                    const nodesObj:{[nodeId:string]:WallNode;} = {};
+                    for(const w of alignedAndChainedWallsGroup){
+                        nodesObj[w.nodes[0].id] = w.nodes[0];
+                        nodesObj[w.nodes[1].id] = w.nodes[1];
+                    }
+
+                    const nodes:WallNode[] = [];
+
+                    for(const nodeId in nodesObj){
+                        nodes.push(nodesObj[nodeId]);
+                    }
+
+                    const farthestNodes = findFarthestNodes(nodes);
+                    // console.log("farthestNodes.length", farthestNodes?.length);
+                    if(farthestNodes){
+                        const nodesToDelete = nodes.filter(n =>{
+                            if(!(n.id != farthestNodes[0].id && n.id != farthestNodes[1].id)) return false;
+                            for(const linkedNode of n.linkedNodes){
+                                const found = nodes.find(m => m.id === linkedNode.id);
+                                if(!found) return false;
+                            }
+
+                            //at this point we know the node will be delete so we remove it from linkedNodes of farthestNodes
+                            for(let i=0; i<2; i++){
+                                const farthestNode = farthestNodes[i];
+                                for(let j=0; j<farthestNode.linkedNodes.length; j++){
+                                    if(farthestNode.linkedNodes[j].id === n.id){
+                                        farthestNode.linkedNodes.splice(j, 1);
+                                        // console.log('OK DELETE')
+                                    }   
+                                }
+                            }
+    
+                            return true;
+                            });
+                        // this.farthestNodes = this.farthestNodes.concat(nodesToDelete);
+
+                        if(nodesToDelete.length){
+                            updateWalls = true;
+                            for(let i=0; i<2; i++){
+                                const farthestNode = farthestNodes[i];
+                                const otherFarthestNode = farthestNodes[i==0 ? 1:0];
+                                const found = farthestNode.linkedNodes.find(n => n.id === otherFarthestNode.id);
+                                if(found) continue;
+                                farthestNode.linkedNodes.push(otherFarthestNode);
+                            }
+                        }
+
+                        for(const nodeToDelete of nodesToDelete){
+                            delete this.nodes[nodeToDelete.id];
+                        }
+                    }
+                }
+            }
+        }
+        if(updateWalls) this.setWalls();
+
     }
 
     setWallsPoints() {    
@@ -744,11 +1045,10 @@ export const iconDataArr:IconData[] = [
                 let l2p1 = nextSegSl[0];
                 let l2p2 = nextSegSl[1];
         
-                const precision = 4;
                 let m1 = l1p2.x - l1p1.x != 0 ? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
-                m1 = parseFloat(m1.toPrecision(precision));
+                m1 = parseFloat(m1.toPrecision(PRECISION));
                 let m2 = l2p2.x - l2p1.x != 0 ? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
-                m2 = parseFloat(m2.toPrecision(precision));
+                m2 = parseFloat(m2.toPrecision(PRECISION));
 
                 let b1 = l1p1.y - m1 * l1p1.x;
                 let b2 = l2p1.y - m2 * l2p1.x;
@@ -785,9 +1085,9 @@ export const iconDataArr:IconData[] = [
         
 
                 m1 = l1p2.x - l1p1.x != 0? (l1p2.y - l1p1.y) / (l1p2.x - l1p1.x) : BIG_NUMBER;
-                m1 = parseFloat(m1.toPrecision(precision));
+                m1 = parseFloat(m1.toPrecision(PRECISION));
                 m2 = l2p2.x - l2p1.x != 0? (l2p2.y - l2p1.y) / (l2p2.x - l2p1.x) : BIG_NUMBER;
-                m2 = parseFloat(m2.toPrecision(precision));
+                m2 = parseFloat(m2.toPrecision(PRECISION));
         
                 b1 = l1p1.y - m1 * l1p1.x;
                 b2 = l2p1.y - m2 * l2p1.x;
@@ -962,7 +1262,7 @@ export const iconDataArr:IconData[] = [
         return this.selectedWallId === wallId;
     }
 
-    addWallFromWall(startingWall:Wall, nodesPositions:[Vector2D, Vector2D]):Wall{
+    addWallFromWall(startingWall:Wall, nodesPositions:[Vector2D, Vector2D]):[Wall, WallNode]{
         const startingWallNode1 = startingWall.nodes[0];
         const startingWallNode2 = startingWall.nodes[1];
 
@@ -988,34 +1288,31 @@ export const iconDataArr:IconData[] = [
         this.nodes[newWallNode2.id] = newWallNode2;
 
         this.setWalls();
-        // console.log("", this.walls[newWallNode1.id+newWallNode2.id])
-        // console.log("", this.walls[newWallNode2.id+newWallNode1.id])
-
-
-        // const newWall = new Wall([newWallNode1, newWallNode2]);
         
         const sortedNodesIds = [newWallNode1.id, newWallNode2.id].sort();
 
-        // newWall.id = sortedNodesIds[0] + sortedNodesIds[1];
-
-        return this.walls[sortedNodesIds[0] + sortedNodesIds[1]];
+        return [this.walls[sortedNodesIds[0] + sortedNodesIds[1]], newWallNode2];
     }
 
-    addWallFromNode(startingNode:WallNode, endingNodePosition:Vector2D):Wall{
+    addWallFromNode(startingNode:WallNode, endingNodePosition:Vector2D):[Wall, WallNode]{
         const endingNode = new WallNode(v4(), endingNodePosition, [startingNode]);
         startingNode.linkedNodes.push(endingNode);
         this.nodes[endingNode.id] = endingNode;
         this.setWalls();
-        console.log("startingNode.id",startingNode.id)
-        console.log("endingNode.id",endingNode.id)
-        console.log("")
         const sortedNodesIds = [startingNode.id, endingNode.id].sort();
-        console.log("sortedNodesIds[0]",sortedNodesIds[0])
-        console.log("sortedNodesIds[1]",sortedNodesIds[1])
-        console.log("")
-        return this.walls[sortedNodesIds[0] + sortedNodesIds[1]];
+        return [this.walls[sortedNodesIds[0] + sortedNodesIds[1]], endingNode];
     }
 
+    addWallFromVoid(startingNodePosition:Vector2D, endingNodePosition:Vector2D):[Wall, WallNode]{
+        const startingNode = new WallNode(v4(), startingNodePosition, []);
+        const endingNode = new WallNode(v4(), endingNodePosition, [startingNode]);
+        startingNode.linkedNodes.push(endingNode);
+        this.nodes[startingNode.id] = startingNode;
+        this.nodes[endingNode.id] = endingNode;
+        this.setWalls();
+        const sortedNodesIds = [startingNode.id, endingNode.id].sort();
+        return [this.walls[sortedNodesIds[0] + sortedNodesIds[1]], endingNode];
+    }
     getNodeOrWallPenetratedByPoint(p:Vector2D, penetratingNode:WallNode):WallNode | Wall | null{
 
         //must be ignored : linked nodes, linked nodes of linked nodes, and walls joigning these nodes.
@@ -1069,12 +1366,35 @@ export const iconDataArr:IconData[] = [
     }
 
     joinNodes(node1:WallNode, node2:WallNode){
+        // const wallsFromNode2AndItsLinkedNodes:Wall[] = [];
+
         for(const linkedNode of node2.linkedNodes){
             node1.linkedNodes.push(linkedNode); //no need to check if already has linkedNode it's theorically impossible
             linkedNode.linkedNodes.push(node1);
 
             const linkedNodeNode2Idx = linkedNode.linkedNodes.findIndex((node) => node.id === node2.id);
             linkedNode.linkedNodes.splice(linkedNodeNode2Idx, 1);
+
+
+            //the reaffectation of wall ids is done in setWalls(), but if we don't do this before setWalls(),
+            //there will be a problem with data binded to wall like numero
+            //because setWalls depends on walls ids, which depends on node ids
+            //yet we change nodes and then node ids here so we need to make a temporary fix
+            //before the calling of setWalls()
+
+            const sortedNode2LinkedNodeIds = [linkedNode.id, node2.id].sort();
+            const concatSortedNode2LinkedNodeIds = sortedNode2LinkedNodeIds[0] + sortedNode2LinkedNodeIds[1];
+
+            const wallFromNode2AndItsLinkedNode = this.walls[concatSortedNode2LinkedNodeIds];
+
+            const sortedNode1LinkedNodeIds = [linkedNode.id, node1.id].sort();
+            const concatSortedNode1LinkedNodeIds = sortedNode1LinkedNodeIds[0] + sortedNode1LinkedNodeIds[1];
+
+            wallFromNode2AndItsLinkedNode.id = concatSortedNode1LinkedNodeIds;
+
+            this.walls[concatSortedNode1LinkedNodeIds] = wallFromNode2AndItsLinkedNode;
+
+            delete this.walls[concatSortedNode2LinkedNodeIds];
         }
 
         delete this.nodes[node2.id];
@@ -1082,7 +1402,7 @@ export const iconDataArr:IconData[] = [
         this.setWalls();
     }
 
-    joinDraggedNodeAndCreatedNode(node:WallNode, wall:Wall){
+    joinDraggedNodeAndCreatedNodeOnWall(node:WallNode, wall:Wall){
         const wallNode1 = wall.nodes[0];
         const wallNode2 = wall.nodes[1];
 
@@ -1146,6 +1466,22 @@ export const iconDataArr:IconData[] = [
 
         jwClone.selectedWallId = this.selectedWallId;
         return jwClone;
+    }
+
+    override delete(wallId:string){
+        const wall = this.walls[wallId];
+
+        for(let i=0; i<wall.nodes.length; i++){
+            const node = wall.nodes[i];
+            const secondWallNode = wall.nodes[i == 0? 1 : 0];
+            const linkedNodeSecondWallNodeIdx = node.linkedNodes.findIndex((n) => n.id === secondWallNode.id);
+            node.linkedNodes.splice(linkedNodeSecondWallNodeIdx, 1);
+            if(!node.linkedNodes.length){
+                delete this.nodes[node.id];
+            }
+        }
+        
+        this.cleanWalls();
     }
   }
 
@@ -1417,7 +1753,7 @@ export class TestPoint{
 export enum PlanElementSheetTypeName {Wall, REP};
 export interface PlanElementSheetData{
     planElementId: string,
-    wallId: string | null,
+    wallId: string | undefined,
     typeName: PlanElementSheetTypeName,
     numero:string
   }
@@ -1435,9 +1771,14 @@ export class AddWallSession{
     }
 }
 
+export interface linePoints {
+    p1: Vector2D,
+    p2: Vector2D,
+}
 
 export interface MagnetData{
     activeOnAxes: boolean,
     node:WallNode | null,
     wall: Wall | null,
+    linePoints: linePoints | null,
 }

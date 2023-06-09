@@ -2,10 +2,11 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { Dimensions, JoinedWalls, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementsHelper, PlanElementsRecordsHandler, iconDataArr } from "@/entities";
+import { Dimensions, JoinedWalls, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectPlanElements, selectPlanElementsRecords } from "@/redux/plan/plan.selectors";
+import { selectPlanElements, selectPlanElementsRecords, selectPlanMode } from "@/redux/plan/plan.selectors";
+import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 
 type Props = {
     data: PlanElementSheetData,
@@ -16,9 +17,9 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
   const dispatch = useDispatch();
   const planElements: PlanElement[] = useSelector(selectPlanElements);
   const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
-
+  const planMode: PlanMode = useSelector(selectPlanMode);
   const [inputNumero, setInputNumero] = useState<string | null>(null);
-
+  const savePlan = useSavePlan();
   
   // useEffect(()=>{
   //   console.log("render data", data)
@@ -70,6 +71,18 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
     }
   },[data.typeName]);
 
+  const deleteElement = useCallback(()=>{
+    const el = PlanElementsHelper.findElementById(planElements, data.planElementId);
+    if(!el) return;
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+    if(data.wallId){ //then its a wall
+      el.delete(data.wallId);
+    }
+    const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+    savePlan(currentPlanElementsClone, nextPlanElementsClone);
+    dispatch(setPlanElementSheetData(null));
+  }, [data.planElementId, data.wallId, dispatch, planElements, savePlan]);
+
   return (
     <div className={`${styles['main']}`} >
       <div className={`${styles['table']}`}>
@@ -86,6 +99,15 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
             onChange={(e) => {handleInputOnChange(e)}} 
         />
       </div>
+      {planMode != PlanMode.AddWall?
+        <button className={styles['del-btn']}
+          onClick={deleteElement}
+        >
+          <div className={styles['del-cross']}>
+            +</div> Supprimer
+        </button>
+        :null
+      }
     </div>
   )
 };

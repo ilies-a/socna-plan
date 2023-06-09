@@ -17,4 +17,25 @@
         }
     }
 
+    .del-btn{
+        border: 1px solid rgb(212, 63, 58);
+        background-color: rgb(217, 83, 79);
+        border-radius: 5px;
+        padding: 5px 20px;
+        color: white;
+        width: 100%;
+        margin: 5px 0px;
+
+        &:hover{
+            border-color: rgb(172, 41, 37);
+            background-color: rgb(210, 50, 45);
+        }
+
+        .del-cross{
+            display: inline-block;
+            font-weight: bold;
+            transform: rotateZ(45deg);
+            font-size: 1.2em;
+        }
+    }
 }

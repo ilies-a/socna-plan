@@ -1,4 +1,4 @@
-import { MagnetData, Position, Vector2D, Wall, WallNode } from "./entities";
+import { MagnetData, Position, Vector2D, Wall, WallNode, linePoints } from "./entities";
 import { BIG_NUMBER } from "./global";
 
 export const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
@@ -135,25 +135,27 @@ export const getOrthogonalProjection = (lp1:Vector2D, lp2:Vector2D, p:Vector2D):
   return new Position(projectionX, projectionY);
 }
 
-export const getMovingNodePositionWithMagnet = (fixedNode:WallNode, movingNodePosition:Vector2D, magnetData:MagnetData) => {
+export const getMovingNodePositionWithMagnet = (fixedNode:WallNode, movingNodePosition:Vector2D, magnetData:MagnetData):[Vector2D, linePoints | null] => {
   // node.position = new Position(newCursorPos.x, newCursorPos.y);
   // dispatch(updatePlanElement(addWallSession.joinedWalls));
 
   if(magnetData.node){
-      return new Position(magnetData.node.position.x, magnetData.node.position.y);
+      return [new Position(magnetData.node.position.x, magnetData.node.position.y), null];
   }else if(magnetData.wall){
       const op = getOrthogonalProjection(magnetData.wall.nodes[0].position, magnetData.wall.nodes[1].position, movingNodePosition);
-      return new Position(op.x, op.y);
+      return [new Position(op.x, op.y), null];
   }else if(magnetData.activeOnAxes){
     let lockHorizontally: WallNode | null = null;
     let lockVertically: WallNode | null = null;
     let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
     let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
-  
+    let lineP1: Vector2D | null = null;
+    let lineP2: Vector2D | null = null;
+
     for(const linkedNode of fixedNode.linkedNodes){
         const angle = Math.atan2(linkedNode.position.y - movingNodePosition.y, linkedNode.position.x - movingNodePosition.x);
         const maxOffsetAngle = 0.08;
-  
+
         if(!lockHorizontally){              
         lockHorizontally = 
         (angle > 0 ?
@@ -230,30 +232,48 @@ export const getMovingNodePositionWithMagnet = (fixedNode:WallNode, movingNodePo
     let newY;
   
     if(lockVertically || lockHorizontally){
-        newX = lockVertically ? lockVertically.position.x : movingNodePosition.x;
-        newY = lockHorizontally ? lockHorizontally.position.y : movingNodePosition.y;
+      if(lockVertically){
+        lineP1 = new Position(lockVertically.position.x, -BIG_NUMBER);
+        lineP2 = new Position(lockVertically.position.x, BIG_NUMBER);
+        newX = lockVertically.position.x;
+      }else{
+        newX = movingNodePosition.x;
+      }
+      if(lockHorizontally){
+        lineP1 = new Position(-BIG_NUMBER, lockHorizontally.position.y);
+        lineP2 = new Position(BIG_NUMBER, lockHorizontally.position.y);
+        newY = lockHorizontally.position.y;
+      }else{
+        newY =  movingNodePosition.y;
+      }
+        // newX = lockVertically ? lockVertically.position.x : movingNodePosition.x;
+        // newY = lockHorizontally ? lockHorizontally.position.y : movingNodePosition.y;
     }
     else if(lockDiagonallyTopLeftBottomRight || lockDiagonallyTopRightBottomLeft){
-        const linkedNode = fixedNode.linkedNodes[0];
-        const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
-        let b = linkedNode.position.y - slope * linkedNode.position.x;
-        const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
-        const orthogonalIntercept = movingNodePosition.y - orthogonalSlope * movingNodePosition.x; // Calculate the y-intercept of the orthogonal line
-        const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
-        const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
-  
-        newX = projectionX;
-        newY = projectionY;
+      const linkedNode = fixedNode.linkedNodes[0];
+      const slope = lockDiagonallyTopLeftBottomRight? 1 : -1;
+      let b = linkedNode.position.y - slope * linkedNode.position.x;
+      const orthogonalSlope = -1 / slope; // Calculate the slope of the orthogonal line
+      const orthogonalIntercept = movingNodePosition.y - orthogonalSlope * movingNodePosition.x; // Calculate the y-intercept of the orthogonal line
+      const projectionX = (orthogonalIntercept - b) / (slope - orthogonalSlope); // Calculate the x-coordinate of the projection
+      const projectionY = orthogonalSlope * projectionX + orthogonalIntercept; // Calculate the y-coordinate of the projection
+
+      newX = projectionX;
+      newY = projectionY;
+
+      lineP1 = new Position(-BIG_NUMBER, -BIG_NUMBER * slope + b);
+      lineP2 = new Position(BIG_NUMBER, BIG_NUMBER * slope + b);
   
     }
     else{
-        newX = movingNodePosition.x;
-        newY = movingNodePosition.y;
+      newX = movingNodePosition.x;
+      newY = movingNodePosition.y;
     }
-    return new Position(newX, newY)
+
+    return [new Position(newX, newY), lineP1 && lineP2?{p1:lineP1, p2:lineP2} : null];
   }
   else{
-    return new Position(movingNodePosition.x, movingNodePosition.y); //default position (no magnet)
+    return [new Position(movingNodePosition.x, movingNodePosition.y), null]; //default position (no magnet)
   }
 }
 

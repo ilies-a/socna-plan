@@ -8,3 +8,4 @@ export const LEFT_MENU_WIDTH = 300;
 export const WALL_WIDTH = 30;
 export const TOP_MENU_HEIGHT = 60;
 export const BIG_NUMBER = 10000;
+export const PRECISION = 4;
