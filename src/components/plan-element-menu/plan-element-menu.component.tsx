@@ -47,7 +47,7 @@ const PlanElementMenu: React.FC = () => {
 
   const handleClickOnAddWall = useCallback(() =>{
     const newJoinedWallsId = v4();
-    const sheetData:PlanElementSheetData = {planElementId:newJoinedWallsId, wallId:null, typeName: PlanElementSheetTypeName.Wall, numero:""};
+    const sheetData:PlanElementSheetData = {planElementId:newJoinedWallsId, wallId:undefined, typeName: PlanElementSheetTypeName.Wall, numero:""};
     dispatch(setPlanElementSheetData(sheetData));
     dispatch(setPlanMode(PlanMode.AddWall));
   },[dispatch]);
