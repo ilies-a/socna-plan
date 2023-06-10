@@ -354,21 +354,21 @@ const Plan: React.FC = () => {
                         })
                     }
                     {/* {
-                        w.farthestNodes?.map((node, _) => {
-                            return(
-                                <Group
-                                key={node.id}
-                                >
+                        w.nodesToPrint. map((nodes, i) => {
+                            return nodes.map(node=>{
+                                return(
                                     <Circle
+                                        key={node.id}
+    
                                         radius = {5}
                                         x = {node.position.x}
                                         y = {node.position.y}
-                                        fill={"red"}
+                                        fill={colorsForTesting[i]}
                                         stroke="black"
                                         strokeWidth={0}
                                     />
-                                </Group>
-                            );
+                                );
+                            })
                         })
                     } */}
                     </Group>

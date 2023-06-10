@@ -653,7 +653,7 @@ export const iconDataArr:IconData[] = [
     width: number = WALL_WIDTH;
     color: string = "grey";
     selectedWallId:string | null = null;
-    farthestNodes:WallNode[] = [];
+    nodesToPrint:WallNode[][] = [];
 
     constructor(id: string, nodes: {[nodeId: string]: WallNode;}){
         super(id, PlanElementTypeName.JoinedWalls);
@@ -778,16 +778,16 @@ export const iconDataArr:IconData[] = [
                 for (const group of alignedWalls) {
                     const referenceWall = group[0];
 
-                    const referenceWallSlope = calculateSlope(referenceWall.nodes[0].position, referenceWall.nodes[1].position);
-                    const wallSlope = calculateSlope(wall.nodes[0].position, wall.nodes[1].position);
+                    const referenceWallSlope = parseFloat(calculateSlope(referenceWall.nodes[0].position, referenceWall.nodes[1].position).toPrecision(1));
+                    const wallSlope = parseFloat(calculateSlope(wall.nodes[0].position, wall.nodes[1].position).toPrecision(1));
                     
                     // console.log("referenceWallSlope", referenceWallSlope)
                     // console.log("wallSlope", wallSlope)
 
-                    if(
-                        (referenceWallSlope === Infinity && wallSlope === Infinity)
-                        ||
-                        (Math.abs(Math.abs(wallSlope) - Math.abs(referenceWallSlope)) < tolerance)
+                    if( wallSlope === referenceWallSlope
+                        // (referenceWallSlope === Infinity && wallSlope === Infinity)
+                        // ||
+                        // (Math.abs(Math.abs(wallSlope) - Math.abs(referenceWallSlope)) < tolerance)
                         ){
                         // console.log("foundNewGroup !!");
                         foundNewGroup = true;
@@ -799,7 +799,7 @@ export const iconDataArr:IconData[] = [
                 if (!foundNewGroup) {
                     alignedWalls.push([wall]);
                 }
-                // console.log("")
+                // console.log("\n\n")
 
             }
 
@@ -887,55 +887,168 @@ export const iconDataArr:IconData[] = [
             let farthestPoints: [WallNode, WallNode] | null = null;
         
             for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-                const distance = getDistance(nodes[i].position, nodes[j].position);
-                if (distance > maxDistance) {
-                maxDistance = distance;
-                farthestPoints = [nodes[i], nodes[j]];
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const distance = getDistance(nodes[i].position, nodes[j].position);
+                    if (distance > maxDistance) {
+                        maxDistance = distance;
+                        farthestPoints = [nodes[i], nodes[j]];
+                    }
                 }
             }
-            }
-        
+
             return farthestPoints;
         }
 
 
+
+        // function findChainedWalls(walls: Wall[]): Wall[][] {
+        //     const chains:  Wall[][] = [];
+          
+        //     function isNodeValid(wall: Wall): boolean {
+        //       const nodeA = wall.nodes[0];
+        //       const nodeB = wall.nodes[1];
+        //       return nodeA.linkedNodes.length<3 && nodeB.linkedNodes.length<3;
+        //     }
+          
+        //     function findChain(wall: Wall): Wall[] {
+        //       const chain: Wall[] = [];
+        //       chain.push(wall);
+        //         let nodeA = wall.nodes[0];
+        //         let nodeB = wall.nodes[1];
+          
+        //       while (true) {
+        //         let foundNextWall = false;
+          
+        //         for (const nextWall of walls) {
+        //           const nextNodeA = nextWall.nodes[0];
+        //           const nextNodeB = nextWall.nodes[1];
+        //           if (
+        //             (nextNodeA.id === nodeA.id || nextNodeA.id === nodeB.id || nextNodeB.id === nodeA.id || nextNodeB.id === nodeB.id) &&
+        //             isNodeValid(nextWall) &&
+        //             !chain.includes(nextWall)
+        //           ) {
+        //             chain.push(nextWall);
+        //             nodeA = nextNodeA;
+        //             nodeB = nextNodeB;
+        //             foundNextWall = true;
+        //             break;
+        //           }
+        //         }
+          
+        //         if (!foundNextWall) {
+        //           break;
+        //         }
+        //       }
+          
+        //       return chain;
+        //     }
+          
+        //     for (const wall of walls) {
+        //       const nodeA = wall.nodes[0];
+        //       const nodeB = wall.nodes[1];
+          
+        //       if (isNodeValid(wall)) {
+        //         let wallFound = false;
+          
+        //         for (const chain of chains) {
+        //           const chainNodeA = chain[0].nodes[0];
+        //           const chainNodeB = chain[0].nodes[1];
+          
+        //           if (chainNodeA.id === nodeA.id || chainNodeA.id === nodeB.id || chainNodeB.id === nodeA.id || chainNodeB.id === nodeB.id) {
+        //             chain.push(wall);
+        //             wallFound = true;
+        //             break;
+        //           }
+        //         }
+          
+        //         if (!wallFound) {
+        //           const newChain = findChain(wall);
+        //           chains.push(newChain);
+        //         }
+        //       }
+        //     }
+          
+        //     return chains;
+        //   }
+
         // type Segment = [string, string];
         // type Chain = Wall[];
-
         function findChainedWalls(walls: Wall[]): Wall[][] {
-        const chains: Wall[][] = [];
-        const visited: boolean[] = Array(walls.length).fill(false);
+            const chains: Wall[][] = [];
+            const visited: boolean[] = Array(walls.length).fill(false);
+          
+            function dfs(wall: Wall, chain: Wall[]): void {
+                const nodeA = wall.nodes[0];
+                const nodeB = wall.nodes[1];
+              chain.push(wall);
+              visited[walls.indexOf(wall)] = true;
 
-        function dfs(wall: Wall, chain: Wall[]): void {
-            const nodeA = wall.nodes[0];
-            const nodeB = wall.nodes[1];
-            chain.push(wall);
-            visited[walls.indexOf(wall)] = true;
 
-            const nextSegments = walls.filter(
-            (w) =>
-                (w.nodes[0] === nodeA || w.nodes[1] === nodeA || w.nodes[0] === nodeB || w.nodes[1] === nodeB) &&
-                !visited[walls.indexOf(w)]
-            );
-
-            for (const nextSegment of nextSegments) {
-            dfs(nextSegment, chain);
+              function nodeIsValid(node:WallNode){
+                return node.linkedNodes.length<3;
+              }
+          
+              const nextWalls = walls.filter(
+                (w) =>
+                  (
+                    (w.nodes[0].id === nodeA.id && nodeIsValid(nodeA))
+                    || (w.nodes[1].id === nodeA.id && nodeIsValid(nodeA))
+                    || (w.nodes[0].id === nodeB.id && nodeIsValid(nodeB))
+                    || (w.nodes[1].id === nodeB.id && nodeIsValid(nodeB))
+                    ) &&
+                //   wallNodesAreValid(w) && // Check if all nodes in the wall are valid
+                  !visited[walls.indexOf(w)]
+              );
+          
+              for (const nextWall of nextWalls) {
+                dfs(nextWall, chain);
+              }
             }
-        }
-
-        for (const wall of walls) {
-            if (!visited[walls.indexOf(wall)]) {
-            const chain: Wall[] = [];
-            dfs(wall, chain);
-            chains.push(chain);
+          
+            for (const wall of walls) {
+              if (!visited[walls.indexOf(wall)]) {
+                const chain: Wall[] = [];
+                dfs(wall, chain);
+                chains.push(chain);
+              }
             }
-        }
+          
+            return chains;
+          }
+        
+        // function findChainedWalls(walls: Wall[]): Wall[][] {
+        //     const chains: Wall[][] = [];
+        //     const visited: boolean[] = Array(walls.length).fill(false);
 
-        return chains;
-        }
+        //     function dfs(wall: Wall, chain: Wall[]): void {
+        //         const nodeA = wall.nodes[0];
+        //         const nodeB = wall.nodes[1];
+        //         chain.push(wall);
+        //         visited[walls.indexOf(wall)] = true;
 
-        this.farthestNodes = [];
+        //         const nextWalls = walls.filter(
+        //         (w) =>
+        //             (w.nodes[0] === nodeA || w.nodes[1] === nodeA || w.nodes[0] === nodeB || w.nodes[1] === nodeB) &&
+        //             !visited[walls.indexOf(w)]
+        //         );
+
+        //         for (const nextWall of nextWalls) {
+        //             dfs(nextWall, chain);
+        //         }
+        //     }
+
+        //     for (const wall of walls) {
+        //         if (!visited[walls.indexOf(wall)]) {
+        //         const chain: Wall[] = [];
+        //         dfs(wall, chain);
+        //         chains.push(chain);
+        //         }
+        //     }
+
+        //     return chains;
+        // }
+
+        // this.nodesToPrint = [];
 
         let updateWalls = false;
 
@@ -945,7 +1058,7 @@ export const iconDataArr:IconData[] = [
 
             if(alignedWallsGroup.length>1){
                 const alignedAndChainedWallsGroups = findChainedWalls(alignedWallsGroup);
-                // console.log("chainedWallsGroups.length inside alignedWallsGroup", chainedWallsGroups.length)
+                // console.log("alignedAndChainedWallsGroups.length", alignedAndChainedWallsGroups.length)
                 // chainedWallsGroupsInsideEachAlignedWallsGroup.push(chainedWallsGroups);
 
 
@@ -968,6 +1081,7 @@ export const iconDataArr:IconData[] = [
                     }
 
                     const farthestNodes = findFarthestNodes(nodes);
+
                     // console.log("farthestNodes.length", farthestNodes?.length);
                     if(farthestNodes){
                         const nodesToDelete = nodes.filter(n =>{
@@ -977,7 +1091,7 @@ export const iconDataArr:IconData[] = [
                                 if(!found) return false;
                             }
 
-                            //at this point we know the node will be delete so we remove it from linkedNodes of farthestNodes
+                            //at this point we know the node will be delete so we remove it from linkedNodes of nodes linked to it
                             for(let i=0; i<2; i++){
                                 const farthestNode = farthestNodes[i];
                                 for(let j=0; j<farthestNode.linkedNodes.length; j++){
@@ -990,10 +1104,22 @@ export const iconDataArr:IconData[] = [
     
                             return true;
                             });
-                        // this.farthestNodes = this.farthestNodes.concat(nodesToDelete);
+                        // console.log("nodesToDelete", nodesToDelete)
 
+                        this.nodesToPrint.push(nodesToDelete);
+                        // console.log("this.nodesToPrint", this.nodesToPrint)
                         if(nodesToDelete.length){
                             updateWalls = true;
+
+                            for(const nodeId in this.nodes){
+                                const node = this.nodes[nodeId];
+                                node.linkedNodes = node.linkedNodes.filter(linkedNode => {
+                                    for(const nodeToDelete of nodesToDelete){
+                                        if(nodeToDelete.id === linkedNode.id) return false;
+                                    }
+                                    return true;
+                                })
+                            }
                             for(let i=0; i<2; i++){
                                 const farthestNode = farthestNodes[i];
                                 const otherFarthestNode = farthestNodes[i==0 ? 1:0];
@@ -1001,15 +1127,18 @@ export const iconDataArr:IconData[] = [
                                 if(found) continue;
                                 farthestNode.linkedNodes.push(otherFarthestNode);
                             }
+                            for(const nodeToDelete of nodesToDelete){
+                                delete this.nodes[nodeToDelete.id];
+                            }
                         }
 
-                        for(const nodeToDelete of nodesToDelete){
-                            delete this.nodes[nodeToDelete.id];
-                        }
+
                     }
                 }
             }
         }
+        // console.log("\n\n\n")
+
         if(updateWalls) this.setWalls();
 
     }
@@ -1465,6 +1594,7 @@ export const iconDataArr:IconData[] = [
         // }
 
         jwClone.selectedWallId = this.selectedWallId;
+        jwClone.nodesToPrint = this.nodesToPrint;
         return jwClone;
     }
 
