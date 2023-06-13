@@ -1,4 +1,4 @@
-import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
 
 export const updatePlanProps = (planProps: PlanProps) => ({
@@ -84,6 +84,11 @@ export const setMagnetData= (magnetData: MagnetData) => ({
 export const setAddSegSession= (addSegSession: AddSegSession | null) => ({
   type: PlanActionTypes.SET_ADD_SEG_SESSION,
   payload: addSegSession,
+});
+
+export const setSegOnCreationData= (segOnCreationData: SegOnCreationData | null) => ({
+  type: PlanActionTypes.SET_SEG_ON_CREATION_DATA,
+  payload: segOnCreationData,
 });
 
 export const setPlanElementsSnapshot= (planElements: PlanElement[] | null) => ({

@@ -1,5 +1,5 @@
 import PlanActionTypes from "./plan.types";
-import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { v4 } from "uuid";
 import { initialPlanElements } from "@/global-for-tests";
@@ -22,6 +22,7 @@ const INITIAL_STATE = {
   planElementSheetData: null as PlanElementSheetData | null,
   magnetData: {activeOnAxes:true, node:null, seg:null} as MagnetData,
   addSegSession: null as AddSegSession | null,
+  segOnCreationData: null as SegOnCreationData | null
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -115,6 +116,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
       return {
         ...state,
         addSegSession: action.payload
+      };
+    case PlanActionTypes.SET_SEG_ON_CREATION_DATA:
+      return {
+        ...state,
+        segOnCreationData: action.payload
       };
     case PlanActionTypes.SET_PLAN_ELEMENT_SNAPSHOT:
       return {

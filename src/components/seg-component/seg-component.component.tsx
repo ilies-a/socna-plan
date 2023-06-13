@@ -2,14 +2,15 @@
 import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
-import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr } from "@/entities";
+import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData } from "@/entities";
 import { Path } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
 import { JointSegsAndSegNodes } from "../plan/plan.component";
-import { selectAddSegSession, selectMagnetData, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
+import { selectAddSegSession, selectMagnetData, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectPlanProps, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { getOrthogonalProjection } from "@/utils";
 import { v4 } from 'uuid';
+import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 
 type Props = {
     id: string,
@@ -34,6 +35,8 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
     const planElements: PlanElement[] = useSelector(selectPlanElements);
     const addSegSession: AddSegSession = useSelector(selectAddSegSession);
     const magnetData: MagnetData = useSelector(selectMagnetData);
+    const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
+    const addSeg = useAddSeg();
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
         const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
@@ -55,7 +58,7 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
                     return s
                 })()
             }
-            fill="#AAAAAA"
+            fill={seg.color}
             stroke="#5CB85C"
             strokeWidth={segIsSelected ? 2 : 0}
             onPointerDown={e => {
@@ -63,81 +66,37 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
 
                 if(planMode === PlanMode.AddSeg){
                     e.cancelBubble = true;
+                    addSeg(
+                        getCursorPosWithEventPos(e, false), 
+                        undefined, 
+                        seg);
 
-                    dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
-                    const pointerPos = getCursorPosWithEventPos(e, false);
-                    const pointOnSegMiddleLine = getOrthogonalProjection(seg.nodes[0].position, seg.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
-                    const [addedSeg, draggingNode] = jointSegs.addSegFromSeg(seg, [pointOnSegMiddleLine, pointerPos]);
-                    // const orthogonalProjectionNode = 
-                    // addedSeg.nodes[0].position.x === pointOnSegMiddleLine.x
-                    // && addedSeg.nodes[0].position.y === pointOnSegMiddleLine.y ?
-                    // addedSeg.nodes[1] : addedSeg.nodes[0];
-
-                    dispatch(setAddSegSession(
-                        new AddSegSession(
-                            jointSegs,
-                            addedSeg,
-                            draggingNode 
-                        )
-                    ));
-
-                    // if(!sheetData) return; //should throw error
-                    // addedSeg.numero = sheetData.numero;
-                    dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
-                    
-                    // const newSheetData:PlanElementSheetData = {
-                    //     planElementId: PlanElementsHelper.getAllJointSegs(planElements).id, 
-                    //     segId:addedSeg.id, 
-                    //     typeName:sheetData.typeName, 
-                    //     numero:sheetData.numero
-                    // };
-                    // dispatch(setPlanElementSheetData(newSheetData));
                 }else{
                     setPointingOnSeg(true);
-                    // const nodesIds:[string, string] = [nodes[0].id, nodes[1].id];
                     if(segIsSelected) return;
                     jointSegs.selectSeg(id);                                   
                     dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
-                    // const newSheetData:PlanElementSheetData = {
-                    //     planElementId:PlanElementsHelper.getAllJointSegs(planElements).id, 
-                    //     segId:id, 
-                    //     typeName:PlanElementSheetTypeName.Seg, 
-                    //     numero:numero};
-                    // dispatch(setPlanElementSheetData(newSheetData));
+ 
                 }
             }}
             onPointerMove={_=>{
                 if(!pointerStartPos || movingSeg || planMode === PlanMode.AddSeg) return;
-                const wClone = jointSegs.clone();                                        
-                const node1Clone = jointSegs.nodes[nodes[0].id];
-                const node2Clone = jointSegs.nodes[nodes[1].id];
+                dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
+
+                const node1 = jointSegs.nodes[nodes[0].id];
+                const node2 = jointSegs.nodes[nodes[1].id];
 
                 setMovingSeg({ 
-                    jointSegs:wClone, 
-                    segNodes:[node1Clone, node2Clone],
+                    jointSegs, 
+                    segNodes:[node1, node2],
                     startingNodesPos:[
-                        new Position(node1Clone.position.x, node1Clone.position.y), 
-                        new Position(node2Clone.position.x, node2Clone.position.y),
+                        new Position(node1.position.x, node1.position.y), 
+                        new Position(node2.position.x, node2.position.y),
                     ]
                 });
-
-                // dispatch(setMagnetData(
-                //     {
-                //         activeOnAxes: magnetData.activeOnAxes,
-                //         node: magnetData.node,
-                //         seg:seg
-                //     }
-                // ))
             }}
-            onPointerUp={e=>{
-
+            onPointerUp={_=>{
                 if(addSegSession && addSegSession.seg.id != id){
-                    console.log("onPointerUp seg")
-                    const pointerPos = getCursorPosWithEventPos(e, false);
-                    console.log("onPointerUp seg pointerPos.x", pointerPos.x)
-                    // const pointOnSegMiddleLine = getOrthogonalProjection(seg.nodes[0].position, seg.nodes[1].position, new Position(pointerPos.x, pointerPos.y))
-
-
                     dispatch(setMagnetData(
                         {
                             activeOnAxes: magnetData.activeOnAxes,

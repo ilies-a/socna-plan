@@ -2,10 +2,10 @@ import { useDispatch, useSelector } from "react-redux";
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { useCallback, useEffect, useState } from "react";
 import styles from './plan-element-menu.module.scss';
-import { setPlanElementSheetData, setPlanElements, setPlanMode } from "@/redux/plan/plan.actions";
-import { AddSegSession, AllJointSegs, Dimensions, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Seg, SheetData, SheetDataWall, Wall } from "@/entities";
+import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData } from "@/redux/plan/plan.actions";
+import { AddSegSession, AllJointSegs, Dimensions, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataWall, Wall } from "@/entities";
 import { v4 } from 'uuid';
-import { selectAddSegSession, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode } from "@/redux/plan/plan.selectors";
+import { selectAddSegSession, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH } from "@/global";
 import PlanElementSheet from "../plan-element-sheet/plan-element-sheet.component";
 import PlanElementButton from "../plan-element-button/plan-element-button.component";
@@ -22,6 +22,9 @@ const PlanElementMenu: React.FC = () => {
   // const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
   const planMode: PlanMode = useSelector(selectPlanMode);
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
+  const addSegSession: AddSegSession | null = useSelector(selectAddSegSession);
+  const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
+
 
   useEffect(()=>{
     const selectedEl = PlanElementsHelper.getSelectedElement(planElements);
@@ -33,30 +36,48 @@ const PlanElementMenu: React.FC = () => {
           if(!js) return; //should throw error
           const selectedWall = js.getSelectedSeg() as Wall; 
           if(!selectedWall) return; //should throw error
-          setSheetData(new SheetDataWall(ajs, selectedWall));
+          setSheetData(new SheetDataWall(ajs.id, selectedWall.id));
           break;
       }
-    }else if(planMode === PlanMode.AddSeg){
+    }else if(segOnCreationData != null){ //we could use PlanMode.AddSeg but it would overload dependencies array and then rerenders (imo)
       //todo setSheetData with data inside adding element data (not implemented yet)
+      switch(segOnCreationData){
+        default:{
+          setSheetData(new SheetDataWall());
+          break;
+        }
+      }
+
     }else{
       setSheetData(null);
     }
-  },[planElements, planMode]);
+  },[planElements, segOnCreationData]);
 
 
-  const handleClickOnAddSeg = useCallback(() =>{
-    const newJoinedSegsId = v4();
+  const handleClickOnAddWall = useCallback(() =>{
     // const sheetData:PlanElementSheetData = {planElementId:newJoinedSegsId, segId:undefined, typeName: PlanElementSheetTypeName.Seg, numero:""};
     // dispatch(setPlanElementSheetData(sheetData));
     dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.Wall, numero:"0"}));
+    
+  },[dispatch]);
+
+  const handleClickOnAddREP = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.REP, numero:"0"}));
+  },[dispatch]);
+
+  const handleClickOnAddREU = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.REU, numero:"0"}));
   },[dispatch]);
 
   const goBack = useCallback(()=>{
     dispatch(setPlanElementSheetData(null));
+    dispatch(setSegOnCreationData(null));
     PlanElementsHelper.unselectAllElements(planElements);
     dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
     dispatch(setPlanMode(PlanMode.Move));
-
   }, [dispatch, planElements]);
 
 
@@ -65,13 +86,15 @@ const PlanElementMenu: React.FC = () => {
       style={{"width":""+LEFT_MENU_WIDTH+"px", "maxWidth":""+LEFT_MENU_WIDTH+"px"}}
     >
       <button className={`${styles['back-button']} ${sheetData? styles['active']: null}`} onClick={goBack}>&#8592;</button>
-      {sheetData ?
+      {sheetData?
         <PlanElementSheet sheetData={sheetData}/>
         :
         <div className={styles['linears-wrapper']}>
           <div className={styles['linears-header']}>LINEAIRES</div>
           <div className={styles['linears-body']}>
-            <PlanElementButton name="Ajouter un mur" onClick={handleClickOnAddSeg}/>
+            <PlanElementButton name="Ajouter un mur" onClick={handleClickOnAddWall}/>
+            <PlanElementButton name="Ajouter un REP" onClick={handleClickOnAddREP}/>
+            <PlanElementButton name="Ajouter un REU" onClick={handleClickOnAddREU}/>
           </div>
         </div>
       }

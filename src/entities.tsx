@@ -199,36 +199,54 @@ export const iconDataArr:IconData[] = [
 export class AllJointSegs extends PlanElement{
     public readonly NAME:PlanElementClassName = PlanElementClassName.AllJointSegs;
     jointWalls: JointWalls = new JointWalls({});
+    jointREPs: JointREPs = new JointREPs({});
+    jointREUs: JointREUs = new JointREUs({});
+
     constructor(id:string){
         super(id);
         this.instantiatedClassName = this.NAME;
     }
     setJointSegs(jointSegs: JointSegs){
         switch(jointSegs.instantiatedClassName){
-            case JointSegsClassName.JointWalls:
-                this.jointWalls = jointSegs as JointWalls;
+            case JointSegsClassName.JointREPs:
+                this.jointREPs = jointSegs as JointREPs;
+                break;
+            case JointSegsClassName.JointREUs:
+                this.jointREUs = jointSegs as JointREUs;
+                break;
             default:
+                this.jointWalls = jointSegs as JointWalls;
                 break;
         }
     }
 
     getSelectedJointSegs(): JointSegs | null{
         if(this.jointWalls.selectedSegId!=null) return this.jointWalls;
-        // todo : || the other jointsSegs are selected...
+        if(this.jointREPs.selectedSegId!=null) return this.jointREPs;
+        if(this.jointREUs.selectedSegId!=null) return this.jointREUs;
         return null;
     }
 
     override getSelected():boolean{
-        return (this.jointWalls.selectedSegId!=null); // todo : || the other jointsSegs are selected...
+        return (this.jointWalls.selectedSegId!=null
+            || this.jointREPs.selectedSegId!=null
+            || this.jointREUs.selectedSegId!=null
+            ); // todo : || the other jointsSegs are selected...
     }
 
     override unselect(): void {
         this.jointWalls.unselect();
+        this.jointREPs.unselect();
+        this.jointREUs.unselect();
     }
     override clone(): AllJointSegs {
         const ajsClone = new AllJointSegs(this.id);
         const jwClone = this.jointWalls.clone();
+        const jREPsClone = this.jointREPs.clone();
+        const jREUsClone = this.jointREUs.clone();
         ajsClone.jointWalls = jwClone as JointWalls;
+        ajsClone.jointREPs = jREPsClone as JointREPs;
+        ajsClone.jointREUs = jREUsClone as JointREUs;
         return ajsClone;
     }
 
@@ -266,6 +284,12 @@ export abstract class JointSegs {
 
     createSeg(nodes: [SegNode, SegNode]):Seg{
         switch(this.instantiatedClassName){
+            case(JointSegsClassName.JointREPs):{
+                return new REP(nodes);
+            }
+            case(JointSegsClassName.JointREUs):{
+                return new REU(nodes);
+            }
             default :
                 return new Wall(nodes);
         }
@@ -987,6 +1011,12 @@ export abstract class JointSegs {
 
     createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointSegs{
         switch(this.instantiatedClassName){
+            case(JointSegsClassName.JointREPs):{
+                return new JointREPs(nodes);
+            }
+            case(JointSegsClassName.JointREUs):{
+                return new JointREUs(nodes);
+            }
             default:{
                 return new JointWalls(nodes);
             }
@@ -1061,6 +1091,22 @@ export abstract class JointSegs {
 
 export class JointWalls extends JointSegs {
     public readonly NAME = JointSegsClassName.JointWalls;
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+        this.instantiatedClassName = this.NAME;
+    }
+}
+
+export class JointREPs extends JointSegs {
+    public readonly NAME = JointSegsClassName.JointREPs;
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+        this.instantiatedClassName = this.NAME;
+    }
+}
+
+export class JointREUs extends JointSegs {
+    public readonly NAME = JointSegsClassName.JointREUs;
     constructor(nodes:{ [nodeId: string]: SegNode;}){
         super(nodes);
         this.instantiatedClassName = this.NAME;
@@ -1147,6 +1193,7 @@ export abstract class Seg {
     sideline2Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
     points: Vector2D[] = [];
     width:number = 0;
+    color:string = "";
 
     constructor(nodes:[SegNode, SegNode]){
         // this.nodes = nodes.sort((a, b) => { 
@@ -1255,13 +1302,36 @@ export abstract class Seg {
 export class Wall extends Seg{
     public readonly NAME:SegClassName = SegClassName.Wall;
     width: number = 30;
-    color: string = "grey";
+    color: string = "#AAAAAA";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
         this.instantiatedSegClassName = this.NAME;
         this.setSidelinesPoints();
     }
 }
+
+export class REP extends Seg{
+    public readonly NAME:SegClassName = SegClassName.REP;
+    width: number = 10;
+    color: string = "#058e1e";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        this.instantiatedSegClassName = this.NAME;
+        this.setSidelinesPoints();
+    }
+}
+
+export class REU extends Seg{
+    public readonly NAME:SegClassName = SegClassName.REU;
+    width: number = 10;
+    color: string = "#fa8c06";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        this.instantiatedSegClassName = this.NAME;
+        this.setSidelinesPoints();
+    }
+}
+
 
 
 export class TestPoint{
@@ -1311,36 +1381,29 @@ export interface MagnetData{
     linePoints: linePoints | null,
 }
 
-// export type SheetData = {
-//     // planElement:PlanElement | null,
-//     profile:
-// }
 
 export enum SheetDataChildClassName {Wall};
 
 export abstract class SheetData {
     instantiatedSegClassName:SheetDataChildClassName | undefined;
-    planElement:PlanElement;
-    constructor(planElement:PlanElement){
-        this.planElement = planElement;
+    planElementId:string | undefined;
+    constructor(planElementId?:string){
+        this.planElementId = planElementId;
     }
 }
 
 export class SheetDataWall extends SheetData {
     public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Wall;
-    wall: Wall;
-    constructor(planElement:PlanElement, wall: Wall){
-        super(planElement);
+    wallId: string | undefined;
+    constructor(planElementId?:string, wallId?: string){
+        super(planElementId);
         this.instantiatedSegClassName = this.NAME;
-        this.wall = wall;
+        this.wallId = wallId;
     }
 }
 
-// export type SheetDataWall = {
-//     wall: Wall;
-// }
- 
 
-//SheetDataProfiles
-
-
+export type SegOnCreationData = {
+    segClassName: SegClassName,
+    numero: string,
+}

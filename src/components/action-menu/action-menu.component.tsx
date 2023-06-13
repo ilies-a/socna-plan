@@ -21,69 +21,6 @@ const ActionMenu: React.FC = () => {
   const savePlan = useSavePlan();
   const dispatch = useDispatch();
 
-  // const selectMenu = useCallback(() =>{
-  //   const el = planElements.find(el => el.getSelected());
-  //   if(!el) return null;
-  //   switch(el.typeName){
-  //     case(PlanElementTypeName.Line): {
-  //       return <LineMenu line={el as Line}/>;
-  //     }
-  //     default: {
-  //       return null
-  //     }
-  //   }
-  // },[planElements]);
-
-  // const addLine = useCallback(()=>{
-  //   console.log("addLine")
-  //   for(const elId in planElements){
-  //     console.log("elId", elId)
-
-  //   }
-  //   const lineLenghtMaxWhenAdded = 100;
-  //   let lineLength = planProps.dimensions.w * 0.3;
-  //   lineLength = lineLength < lineLenghtMaxWhenAdded ? lineLength : lineLenghtMaxWhenAdded;
-
-  //   const p1x = (planProps.dimensions.w * 0.5 - planProps.position.x) * 1/planProps.scale - lineLength * 0.5;
-  //   const p1y = (planProps.dimensions.h * 0.5 - planProps.position.y) * 1/planProps.scale;
-  //   const p2x = p1x + lineLength;
-  //   const p2y = p1y;
-
-  //   const newElement:PlanElement = new Line(v4(), [new Point(v4(), p1x,p1y), new Point(v4(), p2x, p2y)], 25);
-  //   dispatch(addPlanElement(newElement));
-  // },[dispatch, planElements, planProps.dimensions.h, planProps.dimensions.w, planProps.position.x, planProps.position.y, planProps.scale]);
-
-  const setPlanModeToAddElement= useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.AddPlanElement));
-  }, [dispatch]);
-  const setPlanModeToMove = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.MovePoint));
-  }, [dispatch]);
-  const setPlanModeToAddPoint = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.AddPoint));
-  }, [dispatch]);
-  const setPlanModeToRemovePointThenJoin = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.RemovePointThenJoin));
-  }, [dispatch]);
-  const setPlanModeToRemovePointNoJoin = useCallback(()=>{
-    dispatch(setPlanMode(PlanMode.RemovePointNoJoin));
-  }, [dispatch]);
-
-  const removeSelectedPlanElements = useCallback(()=>{
-    let elementsRemoved: boolean = false; 
-    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-    for(const el of planElements){
-        if(!el.getSelected()) continue;
-        elementsRemoved = true;
-        const planElementToRemoveIndex = nextPlanElementsClone.findIndex((iterEl) => iterEl.id === el.id);
-        if(planElementToRemoveIndex === -1) continue;
-        nextPlanElementsClone.splice(planElementToRemoveIndex, 1);
-    }
-    if(!elementsRemoved) return;
-    savePlan(currentPlanElementsClone, nextPlanElementsClone);
-
-  }, [planElements, savePlan]);
 
   const toPreviousRecord = useCallback(()=>{
     if(planElementsRecords.currentRecordIndex === 0 ) return;

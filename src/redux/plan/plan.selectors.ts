@@ -82,6 +82,11 @@ export const selectAddSegSession= createSelector(
   (plan) => plan.addSegSession
 );
 
+export const selectSegOnCreationData= createSelector(
+  [selectPlan],
+  (plan) => plan.segOnCreationData
+);
+
 export const selectPlanElementsSnapshot= createSelector(
   [selectPlan],
   (plan) => plan.planElementsSnapshot

@@ -1,8 +1,9 @@
+import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
-import { PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, Vector2D, SegNode, TestPoint, AddSegSession, PlanElementSheetData, MagnetData, Seg, JointSegs } from "@/entities";
+import { PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, Vector2D, SegNode, TestPoint, AddSegSession, PlanElementSheetData, MagnetData, Seg, JointSegs, SegOnCreationData } from "@/entities";
 import { NODE_RADIUS } from "@/global";
 import { setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanMode, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAddSegSession, selectAddingPointLineIdPointId, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSegOnCreationData, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { cloneArray, doSegmentsIntersect, getMovingNodePositionWithMagnet, getOrthogonalProjection } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, Text } from "react-konva";
@@ -28,6 +29,8 @@ const SegNodeComponent: React.FC<Props> = ({jointSegs, node, pointingOnSeg}) => 
   const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
   const planMode: PlanMode = useSelector(selectPlanMode);
   const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
+  const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
+  const addSeg = useAddSeg();
 
   const updateNodePosition = useCallback((p:Position) =>{
         node.position = p;
@@ -113,23 +116,10 @@ const SegNodeComponent: React.FC<Props> = ({jointSegs, node, pointingOnSeg}) => 
           //REPETITION OF CODE IN WALL COMPONENT
 
           if(planMode === PlanMode.AddSeg){
-            const pointerPos = e.target.getPosition();
-            const [addedSeg, draggingNode] = jointSegs.addSegFromNode(node, pointerPos);
-            // const draggingNode = 
-            // addedSeg.nodes[0].id === node.id ?
-            // addedSeg.nodes[1] : addedSeg.nodes[0];
-
-            dispatch(setAddSegSession(
-                new AddSegSession(
-                  jointSegs,
-                  addedSeg,
-                  draggingNode 
-                )
-            ));
-
-            // if(!sheetData) return; //should throw error
-            // addedSeg.numero = sheetData.numero;
-            dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
+            addSeg(
+              e.target.getPosition(), 
+              node, 
+              undefined);
             
             // const newSheetData:PlanElementSheetData = {
             //     planElementId: PlanElementsHelper.getAllJointSegs(planElements).id, 

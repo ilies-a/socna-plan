@@ -2,15 +2,16 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, PlanElementClassName, AllJointSegs } from "@/entities";
+import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, PlanElementClassName, AllJointSegs, SegOnCreationData } from "@/entities";
 import { cloneArray, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddSegSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSegOnCreationData, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import SegNodeComponent from "../seg-node/seg-node.component";
 import SegComponent from "../seg-component/seg-component.component";
+import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 
 
 export type JointSegsAndSegNodes ={
@@ -66,12 +67,15 @@ const Plan: React.FC = () => {
 
 
     const savePlan = useSavePlan();
+    const addSeg = useAddSeg();
+
     const testPoints: TestPoint[] = useSelector(selectTestPoints);
     const [preventUnselectAllElements, setPreventUnselectAllElements] = useState<boolean>(false);
     const addSegSession: AddSegSession | null = useSelector(selectAddSegSession);
     const magnetData: MagnetData = useSelector(selectMagnetData);
     const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
     const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
+    const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
 
 
     useEffect(()=>{
@@ -127,18 +131,15 @@ const Plan: React.FC = () => {
             const d = Math.sqrt(Math.pow((movingSeg.segNodes[0].position.x - movingSeg.startingNodesPos[0].x), 2) + Math.pow((movingSeg.segNodes[0].position.y - movingSeg.startingNodesPos[0].y), 2));
             if(d>MIN_SHIFT_TO_ALLOW_SAVE)
             {
-                const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+                if(!planElementsSnapshot) return; //should throw error
+                movingSeg.jointSegs.cleanSegs();
                 const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-                // const jwIdx = PlanElementsHelper.findElementIndexById(currentPlanElementsClone, movingSeg.jointSegs.id);
-                // currentPlanElementsClone[jwIdx] = movingSeg.jointSegs.clone();
-
-                PlanElementsHelper.getAllJointSegs(currentPlanElementsClone).setJointSegs(movingSeg.jointSegs.clone()); 
-
-                savePlan(currentPlanElementsClone, nextPlanElementsClone);
+                savePlan(planElementsSnapshot, nextPlanElementsClone);
+                dispatch(setPlanElementsSnapshot(null));
             }
             setMovingSeg(null);
         }
-    },[movingSeg, planElements, savePlan]);
+    },[dispatch, movingSeg, planElements, planElementsSnapshot, savePlan]);
 
     const getJointSegsDrawings = useCallback((js:JointSegs, idx: number) => {
         js.setSegs();
@@ -235,6 +236,8 @@ const Plan: React.FC = () => {
                 const ajs = el as AllJointSegs;
                 const jointSegs:JointSegs[] = new Array<JointSegs>(3);
                 jointSegs.push(ajs.jointWalls);
+                jointSegs.push(ajs.jointREPs);
+                jointSegs.push(ajs.jointREUs);
                 return jointSegs.map((js, i)=>{
                     return getJointSegsDrawings(js, i);
                 });
@@ -450,7 +453,6 @@ const Plan: React.FC = () => {
     const handleOnPointerUp = useCallback(()=>{
         setPointerStartPos(null);
         if(movingSeg){
-            movingSeg.jointSegs.cleanSegs();
             saveIfMovingSeg();
         }
         if(pointingOnSeg){
@@ -495,6 +497,7 @@ const Plan: React.FC = () => {
             
             dispatch(setAddSegSession(null));
             dispatch(setPlanMode(PlanMode.Move));
+            dispatch(setSegOnCreationData(null));
             setPreventUnselectAllElements(true);
           }else{
             setPreventUnselectAllElements(false);
@@ -564,7 +567,11 @@ const Plan: React.FC = () => {
         else{
             handleMovingSeg(newCursorPos);
         }
-    },[addSegSession, dispatch, handleMovingSeg, magnetData, planElements])
+    },[addSegSession, dispatch, handleMovingSeg, magnetData, planElements]);
+
+    // const addSegFunc = useCallback((jointSegs:JointSegs, pointerPos: Vector2D, node?:SegNode, seg?:Seg)=>{
+    //     addSeg(jointSegs, pointerPos, node, seg);
+    // }, [addSeg]);
 
     return (
         // <div onClick={e =>{console.log("Click on parent")}}>Parent
@@ -618,28 +625,32 @@ const Plan: React.FC = () => {
                     //ADD SEG:
                     if(planMode === PlanMode.AddSeg){
                         //TODO : here addSeg means addWall but there are also other segs
-                        dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
-                        const jw = PlanElementsHelper.getAllJointSegs(planElements).jointWalls;
-                        const [addedSeg, endingNode] = jw.addSegFromVoid(newCursorPos, newCursorPos);
-                        dispatch(setAddSegSession(
-                            new AddSegSession(
-                                jw,
-                                addedSeg,
-                                endingNode 
-                            )
-                        ));
+                        addSeg(newCursorPos);
+                        // dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
+                        // const jw = PlanElementsHelper.getAllJointSegs(planElements).jointWalls;
+                        // const [addedSeg, endingNode] = jw.addSegFromVoid(newCursorPos, newCursorPos);
+                        // dispatch(setAddSegSession(
+                        //     new AddSegSession(
+                        //         jw,
+                        //         addedSeg,
+                        //         endingNode 
+                        //     )
+                        // ));
     
-                        // if(!sheetData) return; //should throw error
-                        // addedSeg.numero = sheetData.numero;
-                        dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
+                        // // if(!sheetData) return; //should throw error
+                        // // addedSeg.numero = sheetData.numero;
+                        // if(!segOnCreationData) return; //should throw error
+                        // addedSeg.numero = segOnCreationData.numero;
+
+                        // dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
                         
-                        // const newSheetData:PlanElementSheetData = {
-                        //     planElementId: PlanElementsHelper.getAllJointSegs(planElements).id,
-                        //     segId:addedSeg.id, 
-                        //     typeName:sheetData.typeName, 
-                        //     numero:sheetData.numero
-                        // };
-                        // dispatch(setPlanElementSheetData(newSheetData));
+                        // // const newSheetData:PlanElementSheetData = {
+                        // //     planElementId: PlanElementsHelper.getAllJointSegs(planElements).id,
+                        // //     segId:addedSeg.id, 
+                        // //     typeName:sheetData.typeName, 
+                        // //     numero:sheetData.numero
+                        // // };
+                        // // dispatch(setPlanElementSheetData(newSheetData));
                     }
 
                 }}
