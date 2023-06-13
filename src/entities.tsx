@@ -1416,6 +1416,7 @@ export interface MagnetData{
 export enum SheetDataChildClassName {Seg, Wall, REP, REU};
 
 export abstract class SheetData {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Seg;
     planElementId:string | undefined;
     constructor(planElementId?:string){
         this.planElementId = planElementId;
@@ -1424,40 +1425,36 @@ export abstract class SheetData {
 
 
 export abstract class SheetDataSeg extends SheetData{
-    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Seg;
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Seg;
     // instantiatedSegClassName:SheetDataChildClassName | undefined;
-    constructor(planElementId?:string){
+    segId: string | undefined;
+    constructor(planElementId?:string, segId?: string){
         super(planElementId);
+        this.segId = segId;
     }
 }
 
 export class SheetDataWall extends SheetDataSeg {
-    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Wall;
-    wallId: string | undefined;
-    constructor(planElementId?:string, wallId?: string){
-        super(planElementId);
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Wall;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
         // this.instantiatedSegClassName = this.NAME;
-        this.wallId = wallId;
     }
 }
 
 export class SheetDataREP extends SheetDataSeg {
-    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REP;
-    resId: string | undefined;
-    constructor(planElementId?:string, resId?: string){
-        super(planElementId);
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REP;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
         // this.instantiatedSegClassName = this.NAME;
-        this.resId = resId;
     }
 }
 
 export class SheetDataREU extends SheetDataSeg {
-    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
-    resId: string | undefined;
-    constructor(planElementId?:string, resId?: string){
-        super(planElementId);
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
         // this.instantiatedSegClassName = this.NAME;
-        this.resId = resId;
     }
 }
 

@@ -44,7 +44,7 @@ const PlanElementMenu: React.FC = () => {
             case(JointSegsClassName.JointREUs):{
               const selectedREP = js.getSelectedSeg() as Wall; 
               if(!selectedREP) return; //should throw error
-              setSheetData(new SheetDataREP(ajs.id, selectedREP.id));
+              setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
               break;
             }
             default:{

@@ -47,28 +47,67 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     const segIsOnCreation = segOnCreationData != null;
 
     if(sheetData instanceof SheetDataSeg){
-      if(sheetData instanceof SheetDataWall){
-        if(segIsOnCreation){
-          segOnCreationData!.numero = newNumero;
-          dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, numero: newNumero}));
-        }
-        else if(sheetData.planElementId != undefined){
-          const wallId = (sheetData as SheetDataWall).wallId!;
+      const segId = (sheetData as SheetDataSeg).segId!;
+
+      if(segIsOnCreation){
+        segOnCreationData!.numero = newNumero;
+        dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, numero: newNumero}));
+      }
+      else if(sheetData.planElementId != undefined){
+        // let segId:string | undefined;
+        if(sheetData instanceof SheetDataREP){
           sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-          const wall = (sheetDataPlanElement as AllJointSegs).jointWalls.segs[wallId];
-          wall.numero = newNumero;
-  
+          const res = (sheetDataPlanElement as AllJointSegs).jointREPs.segs[segId];
+          res.numero = newNumero;
+
           //update planElements saves with the updated numero
+          // if(!segId) return;
           for(const planElementsRecord of planElementsRecords.records){
             const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
             if(elIdx === -1) continue;
-            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointWalls.segs[wallId];
+            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointREPs.segs[segId];
+            if(wallInPlanElementsRecord){
+              wallInPlanElementsRecord.numero = newNumero;
+            }
+          }
+
+        }else if(sheetData instanceof SheetDataREU){
+          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+          const res = (sheetDataPlanElement as AllJointSegs).jointREUs.segs[segId];
+          res.numero = newNumero;
+
+          //update planElements saves with the updated numero
+          // if(!segId) return;
+          for(const planElementsRecord of planElementsRecords.records){
+            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+            if(elIdx === -1) continue;
+            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointREUs.segs[segId];
+            if(wallInPlanElementsRecord){
+              wallInPlanElementsRecord.numero = newNumero;
+            }
+          }
+
+        }else{
+          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+          const wall = (sheetDataPlanElement as AllJointSegs).jointWalls.segs[segId];
+          wall.numero = newNumero;
+
+          //update planElements saves with the updated numero
+          // if(!segId) return;
+          for(const planElementsRecord of planElementsRecords.records){
+            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+            if(elIdx === -1) continue;
+            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointWalls.segs[segId];
             if(wallInPlanElementsRecord){
               wallInPlanElementsRecord.numero = newNumero;
             }
           }
         }
+
+
       }
+
+  
     }
     
     if(segIsOnCreation || !sheetDataPlanElement) return;
@@ -79,10 +118,8 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
 
   const convertTypeNameToString = useCallback(()=>{
     if(sheetData instanceof SheetDataREP){
-      console.log("instanceof REP")
       return "REP";
     }else if(sheetData instanceof SheetDataREU){
-      console.log("instanceof REU")
       return "REU";
     }else{
       return "Wall";
@@ -96,15 +133,15 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     if(sheetData instanceof SheetDataREP){
       sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       (sheetDataPlanElement as AllJointSegs)
-      .jointWalls.deleteSeg((sheetData as SheetDataREP).resId!);
+      .jointREPs.deleteSeg((sheetData as SheetDataREP).segId!);
     }else if(sheetData instanceof SheetDataREU){
       sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       (sheetDataPlanElement as AllJointSegs)
-      .jointWalls.deleteSeg((sheetData as SheetDataREU).resId!);
+      .jointREUs.deleteSeg((sheetData as SheetDataREU).segId!);
     }else{
       sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       (sheetDataPlanElement as AllJointSegs)
-      .jointWalls.deleteSeg((sheetData as SheetDataWall).wallId!);
+      .jointWalls.deleteSeg((sheetData as SheetDataWall).segId!);
     }
 
 
@@ -119,20 +156,28 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   const getNumero = useCallback(():string=>{
     const segIsOnCreation= segOnCreationData != null;
     
-    if(sheetData instanceof SheetDataREP){
+    if(sheetData instanceof SheetDataSeg){
+      const segId = (sheetData as SheetDataSeg).segId!;
 
-    }else if(sheetData instanceof SheetDataREU){
-
-    }else{
       if(segIsOnCreation){
         return segOnCreationData!.numero;
-      }else if(sheetData.planElementId != undefined){
-        const wallId = (sheetData as SheetDataWall).wallId!;
-        const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[wallId];
-        return wall? wall.numero : ""; //wall can be undefined, 
-        //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
-        //with a deleted (undefined) wall
       }
+      else if(sheetData.planElementId != undefined){
+        if(sheetData instanceof SheetDataREP){
+          const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointREPs.segs[segId];
+          return res? res.numero : ""; 
+        }else if(sheetData instanceof SheetDataREU){
+          const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointREUs.segs[segId];
+          return res? res.numero : ""; 
+        }else{
+          const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[segId];
+          return wall? wall.numero : ""; //wall can be undefined, 
+          //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
+          //with a deleted (undefined) wall
+          
+        }
+      }
+
     }
 
 
@@ -141,8 +186,8 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     //     if(segIsOnCreation){
     //       return segOnCreationData!.numero;
     //     }else if(sheetData.planElementId != undefined){
-    //       const wallId = (sheetData as SheetDataWall).wallId!;
-    //       const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[wallId];
+    //       const segId = (sheetData as SheetDataWall).segId!;
+    //       const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[segId];
     //       return wall? wall.numero : ""; //wall can be undefined, 
     //       //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
     //       //with a deleted (undefined) wall

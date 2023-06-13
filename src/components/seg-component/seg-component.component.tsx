@@ -74,6 +74,7 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
                 }else{
                     setPointingOnSeg(true);
                     if(segIsSelected) return;
+                    PlanElementsHelper.unselectAllElements(planElements);
                     jointSegs.selectSeg(id);                                   
                     dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
  
