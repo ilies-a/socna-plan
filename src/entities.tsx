@@ -283,17 +283,21 @@ export abstract class JointSegs {
     }
 
     createSeg(nodes: [SegNode, SegNode]):Seg{
-        switch(this.instantiatedClassName){
-            case(JointSegsClassName.JointREPs):{
-                return new REP(nodes);
-            }
-            case(JointSegsClassName.JointREUs):{
-                return new REU(nodes);
-            }
-            default :
-                return new Wall(nodes);
-        }
+        return new Wall(nodes); //will be overridden, must return a Seg here to to avoid error 
     }
+
+    // createSeg(nodes: [SegNode, SegNode]):Seg{
+    //     switch(this.instantiatedClassName){
+    //         case(JointSegsClassName.JointREPs):{
+    //             return new REP(nodes);
+    //         }
+    //         case(JointSegsClassName.JointREUs):{
+    //             return new REU(nodes);
+    //         }
+    //         default :
+    //             return new Wall(nodes);
+    //     }
+    // }
 
     getSegs(): {[id:string]:Seg;} {
         const segs: {[id:string]:Seg;} = {};
@@ -1010,18 +1014,21 @@ export abstract class JointSegs {
     }
 
     createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointSegs{
-        switch(this.instantiatedClassName){
-            case(JointSegsClassName.JointREPs):{
-                return new JointREPs(nodes);
-            }
-            case(JointSegsClassName.JointREUs):{
-                return new JointREUs(nodes);
-            }
-            default:{
-                return new JointWalls(nodes);
-            }
-        }
+        return new JointWalls(nodes);
     }
+    // createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointSegs{
+    //     switch(this.instantiatedClassName){
+    //         case(JointSegsClassName.JointREPs):{
+    //             return new JointREPs(nodes);
+    //         }
+    //         case(JointSegsClassName.JointREUs):{
+    //             return new JointREUs(nodes);
+    //         }
+    //         default:{
+    //             return new JointWalls(nodes);
+    //         }
+    //     }
+    // }
     unselect(){
         // this.setSelected(false);
         this.unselectSeg();
@@ -1095,6 +1102,14 @@ export class JointWalls extends JointSegs {
         super(nodes);
         this.instantiatedClassName = this.NAME;
     }
+
+    override createSeg(nodes: [SegNode, SegNode]):Wall{
+        return new Wall(nodes);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointSegs{
+        return new JointWalls(nodes);
+    }
 }
 
 export class JointREPs extends JointSegs {
@@ -1103,6 +1118,14 @@ export class JointREPs extends JointSegs {
         super(nodes);
         this.instantiatedClassName = this.NAME;
     }
+
+    override createSeg(nodes: [SegNode, SegNode]):REP{
+        return new REP(nodes);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointREPs{
+        return new JointREPs(nodes);
+    }
 }
 
 export class JointREUs extends JointSegs {
@@ -1110,6 +1133,14 @@ export class JointREUs extends JointSegs {
     constructor(nodes:{ [nodeId: string]: SegNode;}){
         super(nodes);
         this.instantiatedClassName = this.NAME;
+    }
+
+    override createSeg(nodes: [SegNode, SegNode]):REU{
+        return new REU(nodes);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointREUs{
+        return new JointREUs(nodes);
     }
 }
 
@@ -1382,26 +1413,53 @@ export interface MagnetData{
 }
 
 
-export enum SheetDataChildClassName {Wall};
+export enum SheetDataChildClassName {Seg, Wall, REP, REU};
 
 export abstract class SheetData {
-    instantiatedSegClassName:SheetDataChildClassName | undefined;
     planElementId:string | undefined;
     constructor(planElementId?:string){
         this.planElementId = planElementId;
     }
 }
 
-export class SheetDataWall extends SheetData {
+
+export abstract class SheetDataSeg extends SheetData{
+    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Seg;
+    // instantiatedSegClassName:SheetDataChildClassName | undefined;
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataWall extends SheetDataSeg {
     public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Wall;
     wallId: string | undefined;
     constructor(planElementId?:string, wallId?: string){
         super(planElementId);
-        this.instantiatedSegClassName = this.NAME;
+        // this.instantiatedSegClassName = this.NAME;
         this.wallId = wallId;
     }
 }
 
+export class SheetDataREP extends SheetDataSeg {
+    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REP;
+    resId: string | undefined;
+    constructor(planElementId?:string, resId?: string){
+        super(planElementId);
+        // this.instantiatedSegClassName = this.NAME;
+        this.resId = resId;
+    }
+}
+
+export class SheetDataREU extends SheetDataSeg {
+    public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    resId: string | undefined;
+    constructor(planElementId?:string, resId?: string){
+        super(planElementId);
+        // this.instantiatedSegClassName = this.NAME;
+        this.resId = resId;
+    }
+}
 
 export type SegOnCreationData = {
     segClassName: SegClassName,
