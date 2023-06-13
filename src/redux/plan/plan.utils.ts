@@ -1,4 +1,4 @@
-import { Line, PlanElement, PlanProps, Point } from "@/entities";
+import { PlanElement, PlanProps, Point } from "@/entities";
 import { cloneArray } from "@/utils";
 
 // export const setPlanElements = (planElements:{ [key: string]: PlanElement }):{ [key: string]: PlanElement } => {

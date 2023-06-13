@@ -9,12 +9,11 @@ type Props = {
     iconFileName: string,
     handleOnClick: MouseEventHandler<HTMLButtonElement> | undefined,
     active: boolean,
-    available: boolean,
-    wallStrokeWidth: number | null
-  };
+    available: boolean
+};
 
 
-const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, available, wallStrokeWidth}) => {
+const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, available}) => {
 
   const icon = useCallback(():ReactNode  =>{
     for(const iconData of iconDataArr){
@@ -33,7 +32,7 @@ const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, a
             />
           </div>
 
-          // !wallStrokeWidth?
+          // !segStrokeWidth?
           // <div className={styles['icon-wrapper']} >
           //   <Image 
           //     src={`/img/${iconData.fileName}`} 
@@ -46,8 +45,8 @@ const PlanMenuButton: React.FC<Props> = ({iconFileName, handleOnClick, active, a
           // </div>
           // :
           // <div
-          //   className={styles['wall-icon']}
-          //   style={{"height":""+wallStrokeWidth+"px"}}
+          //   className={styles['seg-icon']}
+          //   style={{"height":""+segStrokeWidth+"px"}}
           // >
           // </div>
         );

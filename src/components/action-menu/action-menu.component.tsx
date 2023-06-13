@@ -1,4 +1,4 @@
-import { Line, LinePointMode, MagnetData, PlanElement, PlanElementTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
+import { MagnetData, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
 import { addPlanElement, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -132,9 +132,9 @@ const ActionMenu: React.FC = () => {
   const toggleActivateMagnet = useCallback(()=>{
     let newMagnetData; 
     if(magnetData.activeOnAxes){
-      newMagnetData = {activeOnAxes: false, node: magnetData.node, wall: magnetData.wall };
+      newMagnetData = {activeOnAxes: false, node: magnetData.node, seg: magnetData.seg };
     }else{
-      newMagnetData = {activeOnAxes: true, node: magnetData.node, wall: magnetData.wall };
+      newMagnetData = {activeOnAxes: true, node: magnetData.node, seg: magnetData.seg };
     }
     dispatch(setMagnetData(newMagnetData as MagnetData));
 
@@ -145,15 +145,15 @@ const ActionMenu: React.FC = () => {
       style={{"height":""+TOP_MENU_HEIGHT+"px"}}
     >
       <div className={styles['mode-buttons']}>
-        {/* <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="add-el.png" handleOnClick={setPlanModeToAddElement} active={planMode === PlanMode.AddPlanElement} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)} wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available wallStrokeWidth={null}/> */}
-        <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords} wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords} wallStrokeWidth={null}/>
-        <PlanMenuButton iconFileName="magnet.png" handleOnClick={toggleActivateMagnet} active={magnetData.activeOnAxes} available={true} wallStrokeWidth={null}/>
+        {/* <PlanMenuButton iconFileName="move.png" handleOnClick={setPlanModeToMove} active={planMode === PlanMode.MovePoint} available segStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="add-el.png" handleOnClick={setPlanModeToAddElement} active={planMode === PlanMode.AddPlanElement} available segStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="del-el.png" handleOnClick={removeSelectedPlanElements} active={false} available={PlanElementsHelper.hasSelectedElements(planElements)} segStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="add-point.png" handleOnClick={setPlanModeToAddPoint} active={planMode === PlanMode.AddPoint} available segStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="del-point.png" handleOnClick={setPlanModeToRemovePointThenJoin} active={planMode === PlanMode.RemovePointThenJoin} available segStrokeWidth={null}/>
+        <PlanMenuButton iconFileName="del-seg.png" handleOnClick={setPlanModeToRemovePointNoJoin} active={planMode === PlanMode.RemovePointNoJoin} available segStrokeWidth={null}/> */}
+        <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
+        <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
+        <PlanMenuButton iconFileName="magnet.png" handleOnClick={toggleActivateMagnet} active={magnetData.activeOnAxes} available={true}/>
       </div>
       {/* {
       planMode === PlanMode.AddPlanElement?

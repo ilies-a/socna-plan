@@ -2,18 +2,18 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { Dimensions, JoinedWalls, PlanElement, PlanElementSheetData, PlanElementSheetTypeName, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, iconDataArr } from "@/entities";
+import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, SheetData, SheetDataChildClassName, SheetDataWall, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode } from "@/redux/plan/plan.selectors";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 
 type Props = {
-    data: PlanElementSheetData,
+    sheetData: SheetData,
   };
 
 
-const PlanElementSheet: React.FC<Props> = ({data}) => {
+const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   const dispatch = useDispatch();
   const planElements: PlanElement[] = useSelector(selectPlanElements);
   const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);
@@ -22,84 +22,118 @@ const PlanElementSheet: React.FC<Props> = ({data}) => {
   const savePlan = useSavePlan();
   
   // useEffect(()=>{
-  //   console.log("render data", data)
-  // },[data]);
+  //   console.log("render sheetData", sheetData)
+  // },[sheetData]);
 
 
   useEffect(()=>{
     setInputNumero(null);
-  },[data.planElementId, data.wallId])
+  },[sheetData])
 
   const handleInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
     const newNumero = e.currentTarget.value;
     setInputNumero(newNumero);
 
-    const el = PlanElementsHelper.findElementById(planElements, data.planElementId);
-    if(el){
-      const isWall = data.wallId;
-      if(isWall){ //then its a wall
-        const wall = (el as JoinedWalls).walls[data.wallId!];
-        if (!wall) return;
+    switch(sheetData.instantiatedSegClassName){
+      default:{
+        const wall = (sheetData as SheetDataWall).wall;
         wall.numero = newNumero;
-      }
-      dispatch(updatePlanElement(el));
 
-      //todo: update planElements saves with the updated numero
-      for(const planElements of planElementsRecords.records){
-        const elIdx = PlanElementsHelper.findElementIndexById(planElements, data.planElementId);
-        if(elIdx === -1) continue;
-        const wall = (planElements[elIdx] as JoinedWalls).walls[data.wallId!];
-        if(isWall && wall){
-          wall.numero = newNumero;
+        //todo: update planElements saves with the updated numero
+        for(const planElementsRecord of planElementsRecords.records){
+          const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElement.id);
+          if(elIdx === -1) continue;
+          
+          const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointWalls.segs[wall.id];
+            if(wallInPlanElementsRecord){
+              wallInPlanElementsRecord.numero = newNumero;
+            }
+          }
         }
+        break;
       }
-      dispatch(setPlanElementsRecords(planElementsRecords.clone()));
-    }
-    const sheetData:PlanElementSheetData = {planElementId:data.planElementId , wallId:data.wallId, typeName: data.typeName, numero:e.currentTarget.value};
-    dispatch(setPlanElementSheetData(sheetData));
     
-  },[data.planElementId, data.typeName, data.wallId, dispatch, planElements, planElementsRecords]);
+    dispatch(updatePlanElement(sheetData.planElement));
+    dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+  
+
+
+ 
+
+    //   const isSeg = sheetData.segId;
+    //   if(isSeg){ //then its a seg
+    //     const seg = (el as JointSegs).segs[sheetData.segId!];
+    //     if (!seg) return;
+    //     seg.numero = newNumero;
+    //   }
+    //   dispatch(updatePlanElement(el));
+
+    //   //todo: update planElements saves with the updated numero
+    //   for(const planElements of planElementsRecords.records){
+    //     const elIdx = PlanElementsHelper.findElementIndexById(planElements, sheetData.planElementId);
+    //     if(elIdx === -1) continue;
+    //     const seg = (planElements[elIdx] as JointSegs).segs[sheetData.segId!];
+    //     if(isSeg && seg){
+    //       seg.numero = newNumero;
+    //     }
+    //   }
+    //   dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+    // }
+    // const sheetData:PlanElementSheetData = {planElementId:sheetData.planElementId , segId:sheetData.segId, typeName: sheetData.typeName, numero:e.currentTarget.value};
+    // dispatch(setPlanElementSheetData(sheetData));
+    
+  },[dispatch, planElementsRecords, sheetData]);
 
   const convertTypeNameToString = useCallback(()=>{
-    switch(data.typeName){
-      case PlanElementSheetTypeName.Wall:{
-        return "Mur";
-      }
-      default:{
-        return "";
+    switch(sheetData.instantiatedSegClassName){
+      default:{    
+        return "Mur"
       }
     }
-  },[data.typeName]);
+  },[sheetData]);
 
   const deleteElement = useCallback(()=>{
-    const el = PlanElementsHelper.findElementById(planElements, data.planElementId);
-    if(!el) return;
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    if(data.wallId){ //then its a wall
-      el.delete(data.wallId);
+    switch(sheetData.instantiatedSegClassName){
+      default:{
+        (sheetData.planElement as AllJointSegs)
+        .jointWalls.deleteSeg((sheetData as SheetDataWall).wall.id);
+      }
     }
+    dispatch(updatePlanElement(sheetData.planElement));
     const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
     savePlan(currentPlanElementsClone, nextPlanElementsClone);
     dispatch(setPlanElementSheetData(null));
-  }, [data.planElementId, data.wallId, dispatch, planElements, savePlan]);
+  }, [planElements, sheetData, savePlan, dispatch]);
+
+
+  const getNumero = useCallback(():string=>{
+    switch(sheetData.instantiatedSegClassName){
+      default:{
+        return (sheetData as SheetDataWall).wall.numero;
+      }
+    }
+  }, [sheetData]);
+
+
 
   return (
     <div className={`${styles['main']}`} >
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>Ref</div>
-        <div className={`${styles['content']}`}>{convertTypeNameToString() + "_" + data.numero}</div>
+        <div className={`${styles['content']}`}>{convertTypeNameToString() + "_" + getNumero()}</div>
       </div>
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>N°</div>
         <input
             className={`${styles['content']}`}
-            value={inputNumero != null ? inputNumero : data.numero? data.numero: ""}
+            value={inputNumero != null ? inputNumero : getNumero()? getNumero(): ""}
             type="number"
             min="0"
             onChange={(e) => {handleInputOnChange(e)}} 
         />
       </div>
-      {planMode != PlanMode.AddWall?
+      {planMode != PlanMode.AddSeg?
         <button className={styles['del-btn']}
           onClick={deleteElement}
         >

@@ -1,7 +1,6 @@
 import PlanActionTypes from "./plan.types";
-import { AddWallSession, Line, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
-import { setPlanPointerUpActionsHandler } from "./plan.actions";
 import { v4 } from "uuid";
 import { initialPlanElements } from "@/global-for-tests";
 
@@ -15,16 +14,14 @@ const INITIAL_STATE = {
   selectingPlanElement: false,
   unselectAllOnPlanMouseUp: true,
   planElementsRecords: new PlanElementsRecordsHandler(),
-  planPointerUpActionsHandler: new PlanPointerUpActionsHandler(),
   addingPointLineIdPointId: null as [string, string] | null,
   planCursorPos: new Position(0,0) as Vector2D,
   // planElementsRecords: [] as PlanElement[][],
   // currentPlanElementRecordIndex: -1
-  lineToAdd: null as Line | null,
   testPoints: [new TestPoint("", 100, 100, "")] as Point[],
   planElementSheetData: null as PlanElementSheetData | null,
-  magnetData: {activeOnAxes:true, node:null, wall:null} as MagnetData,
-  addWallSession: null as AddWallSession | null,
+  magnetData: {activeOnAxes:true, node:null, seg:null} as MagnetData,
+  addSegSession: null as AddSegSession | null,
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -53,11 +50,6 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
       return {
         ...state,
         planElements: setPlanElements(action.payload)
-      };
-    case PlanActionTypes.SET_PLAN_POINTER_UP_ACTIONS_HANDLER:
-      return {
-        ...state,
-        PlanPointerUpActionsHandler: setPlanPointerUpActionsHandler(action.payload)
       };
     case PlanActionTypes.SET_PLAN_ELEMENTS_RECORDS:
       return {
@@ -119,10 +111,10 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
         ...state,
         magnetData: action.payload
       };
-    case PlanActionTypes.SET_ADD_WALL_SESSION:
+    case PlanActionTypes.SET_ADD_SEG_SESSION:
       return {
         ...state,
-        addWallSession: action.payload
+        addSegSession: action.payload
       };
     case PlanActionTypes.SET_PLAN_ELEMENT_SNAPSHOT:
       return {

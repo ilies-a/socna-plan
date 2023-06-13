@@ -2,25 +2,22 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Wall, PlanMode, PlanElement, PlanElementTypeName, PlanProps, Point, Position, Rectangle, Vector2D, DblClick, PlanElementsRecordsHandler, PlanElementsHelper, PlanPointerUpActionsHandler, Line, JoinedWalls, TestPoint, WallNode, AddWallSession, MagnetData, PlanElementSheetData } from "@/entities";
+import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, PlanElementClassName, AllJointSegs } from "@/entities";
 import { cloneArray, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddWallSession, setAddingPointLineIdPointId, setLineToAdd, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddWallSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
-import LineAddPoint from "../line-add-point/line-add-point.component";
+import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
-import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
-import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
-import WallNodeComponent from "../wall-node/wall-node.component";
-import WallComponent from "../wall-component/wall-component.component";
+import SegNodeComponent from "../seg-node/seg-node.component";
+import SegComponent from "../seg-component/seg-component.component";
 
 
-export interface JoinedWallsAndWallNodes{
-    joinedWalls:JoinedWalls,
-    wallNodes: [WallNode, WallNode],
-    startingNodesPos: [Position, Position]
+export type JointSegsAndSegNodes ={
+    jointSegs:JointSegs,
+    segNodes: [SegNode, SegNode],
+    startingNodesPos: [Position, Position],
 }
 
 const Plan: React.FC = () => {
@@ -39,7 +36,6 @@ const Plan: React.FC = () => {
 
     const selectingPlanElement = useSelector(selectSelectingPlanElement);
     const unselectAllOnPlanMouseUp = useSelector(selectUnselectAllOnPlanMouseUp);
-    const lineToAdd:Line | null = useSelector(selectLineToAdd);
     const [dragging, setDragging] = useState<boolean>(false);
     const planIsDragging:boolean = useSelector(selectPlanIsDragging);
     const [scaling, setScaling] = useState<boolean>(false);
@@ -62,100 +58,22 @@ const Plan: React.FC = () => {
     const [msg, setMsg] = useState("");
 
     const dispatch = useDispatch();
-    const planPointerUpActionsHandler: PlanPointerUpActionsHandler = useSelector(selectPlanPointerUpActionsHandler);
     const addingPointLineIdPointId: [string, string] | null = useSelector(selectAddingPointLineIdPointId);
 
     const [planElementsAtDragStart, setPlanElementsAtDragStart] = useState<PlanElement[] | null>(null);
 
-    const [movingWall, setMovingWall] = useState<JoinedWallsAndWallNodes | null>(null);
-    const [pointingOnWall, setPointingOnWall] = useState<boolean>(false);
+    const [movingSeg, setMovingSeg] = useState<JointSegsAndSegNodes | null>(null);
+    const [pointingOnSeg, setPointingOnSeg] = useState<boolean>(false);
 
 
-    const addPoint = useAddPoint();
     const savePlan = useSavePlan();
-    const removeLineIfNoPoints = useRemLine();
     const testPoints: TestPoint[] = useSelector(selectTestPoints);
     const [preventUnselectAllElements, setPreventUnselectAllElements] = useState<boolean>(false);
-    const addWallSession: AddWallSession | null = useSelector(selectAddWallSession);
+    const addSegSession: AddSegSession | null = useSelector(selectAddSegSession);
     const magnetData: MagnetData = useSelector(selectMagnetData);
     const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
     const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
 
-
-    // const [preventPointerUpOnPlan, setPreventPointerUpOnPlan] = useState<boolean>(false);
-
-    // const [dblCick, setDblClick] = useState<DblClick>(new DblClick());
-
-    // const [msg, setMsg] = useState("");
-    // const [counter, setCounter] = useState(0);
-
-    // const [draggable, setDraggable] = useState<boolean>(true);
-    
-    const dblClick: DblClick = useMemo(() =>{
-        return new DblClick();
-    }, []);
-
-    const addLineAndSetToAddMode = useCallback((e:any) => {
-        if(planMode != PlanMode.AddPlanElement || !lineToAdd) return;
-
-        const pX = planCursorPos.x;
-        const pY = planCursorPos.y;
-    
-        const newLine: Line = lineToAdd;
-        lineToAdd.path.push(new Point(v4(), pX, pY));
-
-        const firstPointId = newLine.path[0].id;
-        newLine.setSelected(true);
-        newLine.selectPointId(firstPointId);
-
-        dispatch(addPlanElement(newLine));
-
-        // newLine.startAddPointSession(firstPointId);
-        // newLine.pointIdCursorIsOver = firstPointId;
-        // const planElementsClone = PlanElementsHelper.clone(planElements);
-        // planElementsClone.push(newLine);
-        // savePlan(planElementsClone);
-
-
-
-        // console.log("--> newLine.path.length", newLine.path.length);
-        dispatch(setPlanMode(PlanMode.AddPoint));
-        dispatch(setAddingPointLineIdPointId([newLine.id, firstPointId]));
-        dispatch(setLineToAdd(null));
-        // dispatch(setUnselectAllOnPlanMouseUp(false));
-
-    }, [planMode, planCursorPos.x, planCursorPos.y, lineToAdd, dispatch]);
-
-    const handleDblClick = useCallback((e:any, f:any) =>{
-        if(dblClick.click === 0){
-            dblClick.start();
-        }else{
-            dblClick.end();
-            f(e);
-        }
-    }, [dblClick]);    
-
-
-    // useEffect(()=>{    
-    //     if(!planWrapperRef) return;
-    
-    //     // dispatch(setPlanStateSpace( 
-    //     //   new StateSpace(
-    //     //     screenSize[0] * KONVA_WIDTH_SCALE, 
-    //     //     screenSize[1] * KONVA_HEIGHT_SCALE, 
-    //     //     planWrapperRef.getBoundingClientRect().left, 
-    //     //     planWrapperRef.getBoundingClientRect().top,
-    //     //   )
-    //     // ));
-
-    //     const newPlanProps = new PlanProps();
-    //     console.log("planWrapperRef.getBoundingClientRect().width", planWrapperRef.getBoundingClientRect().width);
-    //     console.log("planWrapperRef.getBoundingClientRect().height", planWrapperRef.getBoundingClientRect().height);
-
-    //     newPlanProps.dimensions = new Dimensions(planWrapperRef.getBoundingClientRect().width, planWrapperRef.getBoundingClientRect().height);
-    //     dispatch(updatePlanProps(newPlanProps));
-
-    //   },[dispatch, planWrapperRef])
 
     useEffect(()=>{
         const handleResize = ()=>{
@@ -184,10 +102,10 @@ const Plan: React.FC = () => {
     //     setPlanScale(planScale+0.5);
     // },[planScale]);
 
-    const selectPlanElement = useCallback((el:PlanElement)=>{
-        el.setSelected(true);
-        dispatch(updatePlanElement(el));
-    }, [dispatch]);
+    // const selectPlanElement = useCallback((el:PlanElement)=>{
+    //     el.setSelected(true);
+    //     dispatch(updatePlanElement(el));
+    // }, [dispatch]);
 
     const moveUpPlanElement = useCallback((el:PlanElement)=>{
         const newPlanElements = planElements.slice();
@@ -199,214 +117,133 @@ const Plan: React.FC = () => {
         dispatch(setPlanElements(newPlanElements));
     }, [dispatch, planElements]);
 
-    const toggleSelectPlanElement = useCallback((el:PlanElement)=>{
-        el.setSelected(!el.getSelected());
-        dispatch(updatePlanElement(el));
-    }, [dispatch]); 
+    // const toggleSelectPlanElement = useCallback((el:PlanElement)=>{
+    //     el.setSelected(!el.getSelected());
+    //     dispatch(updatePlanElement(el));
+    // }, [dispatch]); 
 
-    const saveIfMovingWall = useCallback(()=>{
+    const saveIfMovingSeg = useCallback(()=>{
         const MIN_SHIFT_TO_ALLOW_SAVE = 1;
-        if(movingWall){
-            const d = Math.sqrt(Math.pow((movingWall.wallNodes[0].position.x - movingWall.startingNodesPos[0].x), 2) + Math.pow((movingWall.wallNodes[0].position.y - movingWall.startingNodesPos[0].y), 2));
+        if(movingSeg){
+            const d = Math.sqrt(Math.pow((movingSeg.segNodes[0].position.x - movingSeg.startingNodesPos[0].x), 2) + Math.pow((movingSeg.segNodes[0].position.y - movingSeg.startingNodesPos[0].y), 2));
             if(d>MIN_SHIFT_TO_ALLOW_SAVE)
             {
                 const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
                 const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-                const jwIdx = PlanElementsHelper.findElementIndexById(currentPlanElementsClone, movingWall.joinedWalls.id);
-                currentPlanElementsClone[jwIdx] = movingWall.joinedWalls.clone();
+                // const jwIdx = PlanElementsHelper.findElementIndexById(currentPlanElementsClone, movingSeg.jointSegs.id);
+                // currentPlanElementsClone[jwIdx] = movingSeg.jointSegs.clone();
+
+                PlanElementsHelper.getAllJointSegs(currentPlanElementsClone).setJointSegs(movingSeg.jointSegs.clone()); 
+
                 savePlan(currentPlanElementsClone, nextPlanElementsClone);
             }
-            setMovingWall(null);
+            setMovingSeg(null);
         }
-    },[movingWall, planElements, savePlan]);
+    },[movingSeg, planElements, savePlan]);
+
+    const getJointSegsDrawings = useCallback((js:JointSegs, idx: number) => {
+        js.setSegs();
+        js.setSegsPoints();
+        const colorsForTesting = ["green","orange","blue","violet"];
+        return (
+            <Group key={idx}>
+            {    
+                objToArr(js.segs).map((seg:Seg, _) => {
+                    const segIsSelected = js.segIsSelected(seg.id);
+                    return <SegComponent 
+                        key={seg.id}
+                        id={seg.id}
+                        seg={seg}
+                        numero={seg.numero}
+                        jointSegs={js}
+                        points={seg.points}
+                        segIsSelected={segIsSelected}
+                        nodes={seg.nodes}
+                        pointerStartPos={pointerStartPos}
+                        movingSeg={movingSeg} 
+                        setMovingSeg={setMovingSeg}
+                        setPointingOnSeg= {setPointingOnSeg}
+                        />
+                })
+            }
+            {
+                magnetData.seg?
+                <Path
+                    stroke="green"
+                    strokeWidth={1}
+                    dash={[10, 5]}
+                    dashEnabled={true}
+                    listening={false}
+                    data={"M"+magnetData.seg.nodes[0].position.x.toString()+" "+
+                        magnetData.seg.nodes[0].position.y.toString()+" "+
+                        magnetData.seg.nodes[1].position.x.toString()+" "+
+                        magnetData.seg.nodes[1].position.y.toString()}
+                >
+                </Path>:null
+            }
+            {
+                magnetData.linePoints?
+                <Path
+                    stroke="green"
+                    strokeWidth={1}
+                    dash={[10, 5]}
+                    dashEnabled={true}
+                    listening={false}
+                    data={"M"+magnetData.linePoints.p1.x.toString()+" "+
+                        magnetData.linePoints.p1.y.toString()+" "+
+                        magnetData.linePoints.p2.x.toString()+" "+
+                        magnetData.linePoints.p2.y.toString()}
+                >
+                </Path>:null
+            }
+            {    
+                Object.values(js.nodes).map((node, _) => {
+                    return (
+                        <SegNodeComponent
+                            key={node.id}
+                            node={node}
+                            jointSegs={js}
+                            pointingOnSeg= {pointingOnSeg}
+                        />
+                    );
+                })
+            }
+            {/* {
+                w.nodesToPrint. map((nodes, i) => {
+                    return nodes.map(node=>{
+                        return(
+                            <Circle
+                                key={node.id}
+
+                                radius = {5}
+                                x = {node.position.x}
+                                y = {node.position.y}
+                                fill={colorsForTesting[i]}
+                                stroke="black"
+                                strokeWidth={0}
+                            />
+                        );
+                    })
+                })
+            } */}
+            </Group>
+        );
+    }, [magnetData.linePoints, magnetData.seg, movingSeg, pointerStartPos, pointingOnSeg]);
 
     const getPlanElement = useCallback((el:PlanElement)=> {
-        switch(el.typeName){
-            // case(PlanElementTypeName.Wall): {
-            //     const l = el as Wall;
-            //     const path = l.path;
-            //     // return <Path
-            //     //     key={el.id}
-            //     //     x= {50}
-            //     //     y= {40}
-            //     //     data= 'M213.1,6.7c-32.4-14.4-73.7,0-88.1,30.6C110.6,4.9,67.5-9.5,36.9,6.7C2.8,22.9-13.4,62.4,13.5,110.9C33.3,145.1,67.5,170.3,125,217c59.3-46.7,93.5-71.9,111.5-106.1C263.4,64.2,247.2,22.9,213.1,6.7z'
-            //     //     fill= 'green'
-            //     //     scaleX= {0.5}
-            //     //     scaleY= {0.5}
-            //     // />
-            //     return  (
-            //         <Group key={l.id}>
-            //         <Path
-            //             data= {
-            //                 (():string => {
-            //                     let s:string = "";
-            //                     s += "M";
-            //                     for(const point of path){
-            //                         s += " " + point.x + " " + point.y + " ";
-            //                     }
-            //                     s += l.pathIsClose ? "Z":"";
-            //                     return s
-            //                 })()
-            //             }
-            //             fillEnabled = {false}
-            //             stroke="grey"
-            //             // dash={[33, 10]}
-            //             strokeWidth={l.width}
-            //             onClick={e => {
-            //                 e.cancelBubble = true;
-            //                 console.log("selectPlanElement");
-            //                 toggleSelectPlanElement(el);
-            //                 moveUpPlanElement(el);
-            //             }}
-            //             onTap={_ => {
-            //                 console.log("selectPlanElement");
-            //                 toggleSelectPlanElement(el);
-            //                 moveUpPlanElement(el);
-            //             }}
-            //         />
-            //         {                    
-            //             path.map((p, _) => {
-            //                 return <LinePoint key={p.id} line={l} id={p.id} position={p as Position} selected={l.selectedPointId === p.id && !planIsDragging && !scaling}/>
-            //             })
-            //         }
-            //         </Group>
-            //     );
-            // };
-            case(PlanElementTypeName.JoinedWalls): {
-                const w = el as JoinedWalls;
-                w.setWalls();
-                w.setWallsPoints();
-                const colorsForTesting = ["green","orange","blue","violet"];
-
-                // console.log("pointsBySegment.length", pointsBySegment.length)
-
-                // const nodesPos = nodes.map(node => node.position);
-                // return <Path
-                //     key={el.id}
-                //     x= {50}
-                //     y= {40}
-                //     data= 'M213.1,6.7c-32.4-14.4-73.7,0-88.1,30.6C110.6,4.9,67.5-9.5,36.9,6.7C2.8,22.9-13.4,62.4,13.5,110.9C33.3,145.1,67.5,170.3,125,217c59.3-46.7,93.5-71.9,111.5-106.1C263.4,64.2,247.2,22.9,213.1,6.7z'
-                //     fill= 'green'
-                //     scaleX= {0.5}
-                //     scaleY= {0.5}
-                // />
-                return  (
-                    <Group key={w.id}>
-                    {    
-                        objToArr(w.walls).map((wall:Wall, _) => {
-                            const wallIsSelected = w.wallIsSelected(wall.id);
-                            return <WallComponent 
-                                key={v4()}
-                                id={wall.id}
-                                wall={wall}
-                                numero={wall.numero}
-                                w={w}
-                                points={wall.points}
-                                wallIsSelected={wallIsSelected}
-                                nodes={wall.nodes}
-                                pointerStartPos={pointerStartPos}
-                                movingWall={movingWall} 
-                                setMovingWall={setMovingWall}
-                                setPointingOnWall= {setPointingOnWall}
-                                />
-                        })
-                    }
-                    {
-                        magnetData.wall?
-                        <Path
-                            stroke="green"
-                            strokeWidth={1}
-                            dash={[10, 5]}
-                            dashEnabled={true}
-                            listening={false}
-                            data={"M"+magnetData.wall.nodes[0].position.x.toString()+" "+
-                                magnetData.wall.nodes[0].position.y.toString()+" "+
-                                magnetData.wall.nodes[1].position.x.toString()+" "+
-                                magnetData.wall.nodes[1].position.y.toString()}
-                        >
-                        </Path>:null
-                    }
-                    {
-                        magnetData.linePoints?
-                        <Path
-                            stroke="green"
-                            strokeWidth={1}
-                            dash={[10, 5]}
-                            dashEnabled={true}
-                            listening={false}
-                            data={"M"+magnetData.linePoints.p1.x.toString()+" "+
-                                magnetData.linePoints.p1.y.toString()+" "+
-                                magnetData.linePoints.p2.x.toString()+" "+
-                                magnetData.linePoints.p2.y.toString()}
-                        >
-                        </Path>:null
-                    }
-                    {    
-                        Object.values(w.nodes).map((node, _) => {
-                            return (
-                                <WallNodeComponent
-                                    key={node.id}
-                                    node={node}
-                                    joinedWalls={w}
-                                    pointingOnWall= {pointingOnWall}
-                                />
-                            );
-                        })
-                    }
-                    {/* {
-                        w.nodesToPrint. map((nodes, i) => {
-                            return nodes.map(node=>{
-                                return(
-                                    <Circle
-                                        key={node.id}
-    
-                                        radius = {5}
-                                        x = {node.position.x}
-                                        y = {node.position.y}
-                                        fill={colorsForTesting[i]}
-                                        stroke="black"
-                                        strokeWidth={0}
-                                    />
-                                );
-                            })
-                        })
-                    } */}
-                    </Group>
-                );
+        switch(el.instantiatedClassName){
+            case(PlanElementClassName.AllJointSegs): {
+                const ajs = el as AllJointSegs;
+                const jointSegs:JointSegs[] = new Array<JointSegs>(3);
+                jointSegs.push(ajs.jointWalls);
+                return jointSegs.map((js, i)=>{
+                    return getJointSegsDrawings(js, i);
+                });
             };
-            // default: {
-            //     const r = el as Rectangle;
-            //     return(
-            //         <Rect
-            //             key={el.id}
-            //             x={r.getX()}
-            //             y={r.getY()}
-            //             width={r.getW()}
-            //             height={r.getH()}
-            //             fill="blue"
-            //             draggable
-            //             onDragEnd={e => {
-            //                 r.setPos(e.target.getPosition().x, e.target.getPosition().y)
-
-            //                 // console.log("r.x = ",r.x)
-            //                 // const rindex = planElements.findIndex((value) => value.id === el.id);
-            //                 // (planElements[rindex] as Rectangle).x = r.x;
-            //                 // (planElements[rindex] as Rectangle).x1 = r.x;
-            //                 const newPlanElements = {...planElements};
-            //                 setPlanElements(newPlanElements);
-            //             }}
-            //         />
-            //     )
-            // }
         }
-    },[magnetData.wall, magnetData.linePoints, pointerStartPos, movingWall, pointingOnWall]);
+    },[getJointSegsDrawings]);
 
     const unselectAllPlanElements = useCallback(() => {
-        //doesnt work well on desktop:
-        // const planElementsCopy = PlanElementsHelper.clone(planElements);
-        // for(const el of planElementsCopy){
-        //     el.unselect();
-        // }
         if(!preventUnselectAllElements){
             PlanElementsHelper.unselectAllElements(planElements);
             dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
@@ -415,32 +252,13 @@ const Plan: React.FC = () => {
             setPreventUnselectAllElements(false);
         }
 
-
-        // if(!preventPointerUpOnPlan){
-        //     const planElementsCopy = PlanElementsHelper.clone(planElements);
-        //     for(const el of planElementsCopy){
-        //         el.unselect();
-        //     }
-        //     dispatch(setPlanElements(planElementsCopy));
-        // }else{
-        //     setPreventPointerUpOnPlan(false);
-        //     console.log("unselectAllPlanElements OK NOW FALSE")
-
-        // }
-
     }, [dispatch, planElements, preventUnselectAllElements]);
     
     const handleClick = useCallback(()=>{
-        // if(!preventUnselectAllElements){
-        //     unselectAllPlanElements();
-        // }else{
-        //     setPreventUnselectAllElements(false);
-        // }
         unselectAllPlanElements();
     }, [unselectAllPlanElements]);
 
     const getPlanElements = () => {
-        // const planElementsSBS: [PlanElement[], PlanElement[]] = [[], []];
         const selectedElements: PlanElement[] = [];
         const unselectedElements: PlanElement[] = [];
 
@@ -472,8 +290,8 @@ const Plan: React.FC = () => {
                         if(!dragStartPos) return;
                         const dragDxy = new Position(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
                         // for(const el of selectedElements){
-                        //     if(!(el.typeName === PlanElementTypeName.Wall)) continue;
-                        //     const l = el as Wall;
+                        //     if(!(el.typeName === PlanElementTypeName.Seg)) continue;
+                        //     const l = el as Seg;
                         //         for(const p of l.path){
                         //             p.x += dragDxy.x;
                         //             p.y += dragDxy.y;
@@ -501,7 +319,7 @@ const Plan: React.FC = () => {
                     //l.addingPoint ?
                     //<LineAddPoint line={l} position={cursorPosOnPlan}/>
                     addingPointLineIdPointId?
-                    <LineAddPoint line={PlanElementsHelper.findElementById(planElements, addingPointLineIdPointId[0]) as Wall} position={planCursorPos}/>
+                    <LineAddPoint line={PlanElementsHelper.findElementById(planElements, addingPointLineIdPointId[0]) as Seg} position={planCursorPos}/>
                     :null
                 } */}
             </>
@@ -536,7 +354,7 @@ const Plan: React.FC = () => {
           if(addingPointLineIdPointId){
             const lineIndex = PlanElementsHelper.findElementIndexById(planElements, addingPointLineIdPointId[0]);
             if(lineIndex > -1){
-                // const line = planElements[lineIndex] as Wall;
+                // const line = planElements[lineIndex] as Seg;
                 // // removeLineIfNoPoints(lineIndex)
                 // if(line.path.length < 2){ //if line has only one point we remove the line
                 //     const clone = PlanElementsHelper.clone(planElements);
@@ -631,46 +449,43 @@ const Plan: React.FC = () => {
 
 
     const handleOnPointerUp = useCallback(()=>{
-        if(addingPointLineIdPointId){
-            addPoint(null);
-        }
         setPointerStartPos(null);
-        if(movingWall){
-            (planElements[0] as JoinedWalls).cleanWalls();
-            saveIfMovingWall();
+        if(movingSeg){
+            movingSeg.jointSegs.cleanSegs();
+            saveIfMovingSeg();
         }
-        if(pointingOnWall){
-            setPointingOnWall(false);
+        if(pointingOnSeg){
+            setPointingOnSeg(false);
             setPreventUnselectAllElements(true);
         }
         // //pointerUp on node but just in in case
-        // if(addWallSession){
-        //     dispatch(setAddWallSession(null));
+        // if(addSegSession){
+        //     dispatch(setAddSegSession(null));
         // }
 
-        else if(addWallSession){
+        else if(addSegSession){
 
             if(magnetData.node){
-                addWallSession.joinedWalls.joinNodes(addWallSession.draggingNode, magnetData.node);              
-              }else if(magnetData.wall){
-                addWallSession.joinedWalls.joinDraggedNodeAndCreatedNodeOnWall(addWallSession.draggingNode, magnetData.wall);
+                addSegSession.jointSegs.joinNodes(addSegSession.draggingNode, magnetData.node);              
+              }else if(magnetData.seg){
+                addSegSession.jointSegs.joinDraggedNodeAndCreatedNodeOnSeg(addSegSession.draggingNode, magnetData.seg);
               }
               dispatch(setMagnetData({
-                  activeOnAxes: magnetData.activeOnAxes, node: null, wall: null,
+                  activeOnAxes: magnetData.activeOnAxes, node: null, seg: null,
                   linePoints: null
               }));
 
 
 
-            addWallSession.joinedWalls.selectWall(addWallSession.wall.id);
-            // dispatch(updatePlanElement(addWallSession.joinedWalls));
+            addSegSession.jointSegs.selectSeg(addSegSession.seg.id);
+            // dispatch(updatePlanElement(addSegSession.jointSegs));
             if(!planElementsSnapshot) return; //should throw error
 
-            (planElements[0] as JoinedWalls).cleanWalls();
-            //if sheetData is opened, cleanWalls may have deleted the wall opened in sheetData, which can cause error
-            //so we check if sheetData is opened with wall data, then if this wall still exists, if not, we close sheetData
-            if(sheetData && sheetData.wallId){
-                if(!(planElements[0] as JoinedWalls).walls.hasOwnProperty(sheetData.wallId)){
+            addSegSession.jointSegs.cleanSegs();
+            //if sheetData is opened, cleanSegs may have deleted the seg opened in sheetData, which can cause error
+            //so we check if sheetData is opened with seg data, then if this seg still exists, if not, we close sheetData
+            if(sheetData && sheetData.segId){
+                if(!addSegSession.jointSegs.segs.hasOwnProperty(sheetData.segId)){
                   dispatch(setPlanElementSheetData(null));
                 }
               }
@@ -679,13 +494,13 @@ const Plan: React.FC = () => {
             savePlan(planElementsSnapshot, nextPlanElementsClone);
             dispatch(setPlanElementsSnapshot(null));
             
-            dispatch(setAddWallSession(null));
+            dispatch(setAddSegSession(null));
             dispatch(setPlanMode(PlanMode.Move));
             setPreventUnselectAllElements(true);
           }else{
             setPreventUnselectAllElements(false);
           }
-    }, [addPoint, addWallSession, addingPointLineIdPointId, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.wall, movingWall, planElements, planElementsSnapshot, pointingOnWall, saveIfMovingWall, savePlan, sheetData]);
+    }, [addSegSession, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.seg, movingSeg, planElements, planElementsSnapshot, pointingOnSeg, saveIfMovingSeg, savePlan, sheetData]);
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
@@ -702,32 +517,32 @@ const Plan: React.FC = () => {
     
     // },[dispatch, planProps.scale]);
 
-    const handleMovingWall = useCallback((newCursorPos: Position) => {
-        if(!movingWall || !pointerStartPos) return;
+    const handleMovingSeg = useCallback((newCursorPos: Position) => {
+        if(!movingSeg || !pointerStartPos) return;
         const cursorOffset = new Position(
             newCursorPos.x - pointerStartPos.x,
             newCursorPos.y - pointerStartPos.y
         );
         for(let i=0; i<2; i++){
-            movingWall.wallNodes[i].position.x = movingWall.startingNodesPos[i].x + cursorOffset.x;
-            movingWall.wallNodes[i].position.y = movingWall.startingNodesPos[i].y + cursorOffset.y;
+            movingSeg.segNodes[i].position.x = movingSeg.startingNodesPos[i].x + cursorOffset.x;
+            movingSeg.segNodes[i].position.y = movingSeg.startingNodesPos[i].y + cursorOffset.y;
         }
-        dispatch(updatePlanElement(movingWall.joinedWalls));
-    }, [dispatch, movingWall, pointerStartPos]);
+        dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
+    }, [dispatch, movingSeg, planElements, pointerStartPos]);
 
 
-    const handleAddWallSessionAndMovingWall = useCallback((newCursorPos: Position) => {
-        if(addWallSession){
-            const node = addWallSession.draggingNode;
+    const handleAddSegSessionAndMovingSeg = useCallback((newCursorPos: Position) => {
+        if(addSegSession){
+            const node = addSegSession.draggingNode;
             
             // if(!magnetData){
             //     node.position = new Position(newCursorPos.x, newCursorPos.y);
-            //     dispatch(updatePlanElement(addWallSession.joinedWalls));
+            //     dispatch(updatePlanElement(addSegSession.jointSegs));
             //     return;
             // }
 
-            const nodeOrWall: Wall | WallNode | null = addWallSession.joinedWalls.getNodeOrWallPenetratedByPoint(newCursorPos, node);
-            // console.log("nodeOrWall",nodeOrWall)
+            const nodeOrSeg: Seg | SegNode | null = addSegSession.jointSegs.getNodeOrSegPenetratedByPoint(newCursorPos, node);
+            // console.log("nodeOrSeg",nodeOrSeg)
 
             const [movingNodePosWithMagnet, linePoints] = getMovingNodePositionWithMagnet(node, newCursorPos, magnetData);
 
@@ -736,8 +551,8 @@ const Plan: React.FC = () => {
             dispatch(setMagnetData(
               {
                 activeOnAxes: magnetData.activeOnAxes,
-                node: nodeOrWall && nodeOrWall.id.length > 36? null: nodeOrWall as WallNode, //36 is uuid length, Wall id is 36*2
-                wall: nodeOrWall && nodeOrWall.id.length > 36? nodeOrWall as Wall: null,
+                node: nodeOrSeg && nodeOrSeg.id.length > 36? null: nodeOrSeg as SegNode, //36 is uuid length, Seg id is 36*2
+                seg: nodeOrSeg && nodeOrSeg.id.length > 36? nodeOrSeg as Seg: null,
                 linePoints
               }
             ))
@@ -745,12 +560,12 @@ const Plan: React.FC = () => {
             node.position = movingNodePosWithMagnet;
 
             // node.position = getMovingNodePositionWithMagnet(node, newCursorPos, magnetData);              
-            dispatch(updatePlanElement(addWallSession.joinedWalls));
+            dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
         }
         else{
-            handleMovingWall(newCursorPos);
+            handleMovingSeg(newCursorPos);
         }
-    },[addWallSession, dispatch, handleMovingWall, magnetData])
+    },[addSegSession, dispatch, handleMovingSeg, magnetData, planElements])
 
     return (
         // <div onClick={e =>{console.log("Click on parent")}}>Parent
@@ -787,7 +602,7 @@ const Plan: React.FC = () => {
                 //onDoubleClick={setPlanScaleCallback}
                 //onDblTap={setPlanScaleCallback}
                 onPointerDown={e => {
-                    handleDblClick(e, addLineAndSetToAddMode);
+                    // handleDblClick(e, addLineAndSetToAddMode);
                     // alert("currentTarget x = "+e.currentTarget.getPosition().x + ", currentTarget y = "+e.currentTarget.getPosition().y);
                     // setCursorPosWithEventPos(e, false);
                     const newCursorPos = getCursorPosWithEventPos(e, false);
@@ -801,30 +616,31 @@ const Plan: React.FC = () => {
 
 
 
-                    //ADD POINT:
-                    if(planMode === PlanMode.AddWall){
+                    //ADD SEG:
+                    if(planMode === PlanMode.AddSeg){
+                        //TODO : here addSeg means addWall but there are also other segs
                         dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
-                        const jw = planElements[0] as JoinedWalls;
-                        const [addedWall, endingNode] = jw.addWallFromVoid(newCursorPos, newCursorPos);
-                        dispatch(setAddWallSession(
-                            new AddWallSession(
+                        const jw = PlanElementsHelper.getAllJointSegs(planElements).jointWalls;
+                        const [addedSeg, endingNode] = jw.addSegFromVoid(newCursorPos, newCursorPos);
+                        dispatch(setAddSegSession(
+                            new AddSegSession(
                                 jw,
-                                addedWall,
+                                addedSeg,
                                 endingNode 
                             )
                         ));
     
-                        if(!sheetData) return; //should throw error
-                        addedWall.numero = sheetData.numero;
-                        dispatch(updatePlanElement(jw));
+                        // if(!sheetData) return; //should throw error
+                        // addedSeg.numero = sheetData.numero;
+                        dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
                         
-                        const newSheetData:PlanElementSheetData = {
-                            planElementId: jw.id, 
-                            wallId:addedWall.id, 
-                            typeName:sheetData.typeName, 
-                            numero:sheetData.numero
-                        };
-                        dispatch(setPlanElementSheetData(newSheetData));
+                        // const newSheetData:PlanElementSheetData = {
+                        //     planElementId: PlanElementsHelper.getAllJointSegs(planElements).id,
+                        //     segId:addedSeg.id, 
+                        //     typeName:sheetData.typeName, 
+                        //     numero:sheetData.numero
+                        // };
+                        // dispatch(setPlanElementSheetData(newSheetData));
                     }
 
                 }}
@@ -842,7 +658,7 @@ const Plan: React.FC = () => {
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     // dispatch(setPlanCursorPos(newCursorPos));
 
-                    handleAddWallSessionAndMovingWall(newCursorPos);
+                    handleAddSegSessionAndMovingSeg(newCursorPos);
                 }}
                 onTouchMove={e => {
                     // var touchPos = e.target.getStage()?.getPointerPosition();
@@ -850,7 +666,7 @@ const Plan: React.FC = () => {
                     // setCursorPos(new Point(touchPos.x - e.currentTarget.getPosition().x, touchPos.y - e.currentTarget.getPosition().y));
                     const newCursorPos = getCursorPosWithEventPos(e, true);
                     dispatch(setPlanCursorPos(newCursorPos));
-                    handleAddWallSessionAndMovingWall(newCursorPos);
+                    handleAddSegSessionAndMovingSeg(newCursorPos);
                     e.evt.preventDefault(); //for pinch
                     handlePinchTouchMove(e.evt.touches);
                     dispatch(setUnselectAllOnPlanMouseUp(false));
@@ -862,7 +678,7 @@ const Plan: React.FC = () => {
 
                 }}
                 // onMouseUp={handleMouseUp}
-                draggable = {!scaling && !pointingOnWall && !addingPointLineIdPointId && !addWallSession} //&& planMode !== PlanMode.AddPoint}
+                draggable = {!scaling && !pointingOnSeg && !addingPointLineIdPointId && !addSegSession} //&& planMode !== PlanMode.AddPoint}
                 onDragStart={e => {
                     dispatch(setPlanIsDragging(true));
                     // dispatch(setUnselectAllOnPlanMouseUp(false));

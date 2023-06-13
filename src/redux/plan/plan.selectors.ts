@@ -77,9 +77,9 @@ export const selectMagnetData= createSelector(
   (plan) => plan.magnetData
 );
 
-export const selectAddWallSession= createSelector(
+export const selectAddSegSession= createSelector(
   [selectPlan],
-  (plan) => plan.addWallSession
+  (plan) => plan.addSegSession
 );
 
 export const selectPlanElementsSnapshot= createSelector(

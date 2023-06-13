@@ -2,12 +2,11 @@ import { Group, Layer, Path, Rect, Shape, Stage } from "react-konva";
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, Line, LinePointMode, PlanElement, Point, Position, Rectangle } from "@/entities";
+import { Dimensions, PlanElement, Point, Position } from "@/entities";
 import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElements, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectSelectingPlanElement, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
-import LineAddPoint from "../line-add-point/line-add-point.component";
 
 
 const StageTest: React.FC = () => {

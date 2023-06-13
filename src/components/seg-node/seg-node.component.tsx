@@ -1,9 +1,8 @@
-import { useAddPoint } from "@/custom-hooks/use-add-point.hook";
-import { useRemLine } from "@/custom-hooks/use-rem-line.hook";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
-import { Line, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, PlanPointerUpActionsHandler, Vector2D, JoinedWalls, WallNode, TestPoint, AddWallSession, PlanElementSheetData, MagnetData, Wall } from "@/entities";
-import { setAddWallSession, setAddingPointLineIdPointId, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanMode, setPlanPointerUpActionsHandler, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAddWallSession, selectAddingPointLineIdPointId, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, PlanElementsRecordsHandler, Vector2D, SegNode, TestPoint, AddSegSession, PlanElementSheetData, MagnetData, Seg, JointSegs } from "@/entities";
+import { NODE_RADIUS } from "@/global";
+import { setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanMode, setSelectingPlanElement, setTestPoints, setUnselectAllOnPlanMouseUp, updatePlanElement } from "@/redux/plan/plan.actions";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { cloneArray, doSegmentsIntersect, getMovingNodePositionWithMagnet, getOrthogonalProjection } from "@/utils";
 import { useCallback, useEffect, useState } from "react";
 import { Circle, Group, Text } from "react-konva";
@@ -11,12 +10,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { v4 } from 'uuid';
 
 type Props = {
-  joinedWalls: JoinedWalls,
-  node: WallNode,
-  pointingOnWall: boolean
+  jointSegs: JointSegs,
+  node: SegNode,
+  pointingOnSeg: boolean
 };
  
-const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall}) => {
+const SegNodeComponent: React.FC<Props> = ({jointSegs, node, pointingOnSeg}) => {
   const dispatch = useDispatch();
   const savePlan = useSavePlan();
   const planElements: PlanElement[] = useSelector(selectPlanElements);
@@ -25,15 +24,15 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
   const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
   const [visible, setVisible] = useState<boolean>(false); 
   const magnetData: MagnetData = useSelector(selectMagnetData);
-  const addWallSession: AddWallSession = useSelector(selectAddWallSession);
+  const addSegSession: AddSegSession = useSelector(selectAddSegSession);
   const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
   const planMode: PlanMode = useSelector(selectPlanMode);
   const planElementsSnapshot: PlanElement[] | null = useSelector(selectPlanElementsSnapshot);
 
   const updateNodePosition = useCallback((p:Position) =>{
         node.position = p;
-        dispatch(updatePlanElement(joinedWalls));
-      }, [dispatch, joinedWalls, node]);
+        dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
+      }, [dispatch, node, planElements]);
       
 
   return (
@@ -41,9 +40,9 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
       <Circle
           x = {node.position.x}
           y = {node.position.y}
-          radius = {node.radius * 1 / planProps.scale}
+          radius = {NODE_RADIUS / planProps.scale}
           fill="#428BCA"
-          opacity={(visible || addWallSession && addWallSession.draggingNode.id === node.id) && !pointingOnWall? 1 : 0} //(addWallSession && addWallSession.wall.nodes[1].id === node.id) and !pointingOnWall conditions are just a fix
+          opacity={(visible || addSegSession && addSegSession.draggingNode.id === node.id) && !pointingOnSeg? 1 : 0} //(addSegSession && addSegSession.seg.nodes[1].id === node.id) and !pointingOnSeg conditions are just a fix
           listening = {false}
           // onClick={handleOnClick}
           
@@ -89,12 +88,12 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
       <Circle
         x = {node.position.x}
         y = {node.position.y}
-        radius = {node.radius * 1 / planProps.scale}
+        radius = {NODE_RADIUS / planProps.scale}
         opacity={0}
         // stroke="black"
         // strokeWidth={1}
-        listening = {!addWallSession && !pointingOnWall}//!pointingOnWall condition is just a fix
-        draggable = {!addWallSession}
+        listening = {!addSegSession && !pointingOnSeg}//!pointingOnSeg condition is just a fix
+        draggable = {!addSegSession}
         onClick={e => {
           e.cancelBubble = true;
         }}
@@ -113,32 +112,32 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
 
           //REPETITION OF CODE IN WALL COMPONENT
 
-          if(planMode === PlanMode.AddWall){
+          if(planMode === PlanMode.AddSeg){
             const pointerPos = e.target.getPosition();
-            const [addedWall, draggingNode] = joinedWalls.addWallFromNode(node, pointerPos);
+            const [addedSeg, draggingNode] = jointSegs.addSegFromNode(node, pointerPos);
             // const draggingNode = 
-            // addedWall.nodes[0].id === node.id ?
-            // addedWall.nodes[1] : addedWall.nodes[0];
+            // addedSeg.nodes[0].id === node.id ?
+            // addedSeg.nodes[1] : addedSeg.nodes[0];
 
-            dispatch(setAddWallSession(
-                new AddWallSession(
-                  joinedWalls,
-                  addedWall,
+            dispatch(setAddSegSession(
+                new AddSegSession(
+                  jointSegs,
+                  addedSeg,
                   draggingNode 
                 )
             ));
 
-            if(!sheetData) return; //should throw error
-            addedWall.numero = sheetData.numero;
-            dispatch(updatePlanElement(joinedWalls));
+            // if(!sheetData) return; //should throw error
+            // addedSeg.numero = sheetData.numero;
+            dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
             
-            const newSheetData:PlanElementSheetData = {
-                planElementId: joinedWalls.id, 
-                wallId:addedWall.id, 
-                typeName:sheetData.typeName, 
-                numero:sheetData.numero
-            };
-            dispatch(setPlanElementSheetData(newSheetData));
+            // const newSheetData:PlanElementSheetData = {
+            //     planElementId: PlanElementsHelper.getAllJointSegs(planElements).id, 
+            //     segId:addedSeg.id, 
+            //     typeName:sheetData.typeName, 
+            //     numero:sheetData.numero
+            // };
+            // dispatch(setPlanElementSheetData(newSheetData));
             setVisible(false);
 
           }
@@ -181,6 +180,7 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
             e.cancelBubble = true;
             //save position at start
             // setDragStartPos(new Position(e.target.position().x, e.target.position().y));
+
         }}
         onDragMove={e => {
             e.cancelBubble = true;
@@ -197,8 +197,8 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
             // console.log("node.position.y", node.position.y)
 
             // console.log("")
-            const nodeOrWall: Wall | WallNode | null = joinedWalls.getNodeOrWallPenetratedByPoint(e.target.position(), node);
-            // console.log("nodeOrWall",nodeOrWall)
+            const nodeOrSeg: Seg | SegNode | null = jointSegs.getNodeOrSegPenetratedByPoint(e.target.position(), node);
+            // console.log("nodeOrSeg",nodeOrSeg)
 
 
             const [movingNodePosWithMagnet, linePoints] = getMovingNodePositionWithMagnet(node, e.target.position(), magnetData);
@@ -208,8 +208,8 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
             dispatch(setMagnetData(
               {
                 activeOnAxes: magnetData.activeOnAxes,
-                node: nodeOrWall && nodeOrWall.id.length > 36? null: nodeOrWall as WallNode, //36 is uuid length, Wall id is 36*2
-                wall: nodeOrWall && nodeOrWall.id.length > 36? nodeOrWall as Wall: null,
+                node: nodeOrSeg && nodeOrSeg.id.length > 36? null: nodeOrSeg as SegNode, //36 is uuid length, Seg id is 36*2
+                seg: nodeOrSeg && nodeOrSeg.id.length > 36? nodeOrSeg as Seg: null,
                 linePoints
               }
             ))
@@ -230,7 +230,7 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
             // const testPoints: TestPoint[] = [];
             
             // for(const id in nodesToMark){
-            //     const node = joinedWalls.nodes[id];
+            //     const node = jointSegs.nodes[id];
             //     testPoints.push(new TestPoint( id, node.position.x, node.position.y, "red") );
             // }
 
@@ -248,22 +248,22 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
 
             //join nodes
             if(magnetData.node){
-              joinedWalls.joinNodes(node, magnetData.node);              
-            }else if(magnetData.wall){
-              joinedWalls.joinDraggedNodeAndCreatedNodeOnWall(node, magnetData.wall);
+              jointSegs.joinNodes(node, magnetData.node);              
+            }else if(magnetData.seg){
+              jointSegs.joinDraggedNodeAndCreatedNodeOnSeg(node, magnetData.seg);
             }
-            dispatch(setMagnetData({activeOnAxes:magnetData.activeOnAxes, node:null, wall:null, linePoints:null}));
+            dispatch(setMagnetData({activeOnAxes:magnetData.activeOnAxes, node:null, seg:null, linePoints:null}));
 
 
-            joinedWalls.cleanWalls();
+            jointSegs.cleanSegs();
 
             //save
             // if(!dragStartPos) return;
             if(!planElementsSnapshot) return;
             // const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
             const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
-            // const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, joinedWalls.id);
-            // (currentPlanElementsClone[jwIdx] as JoinedWalls).nodes[node.id].position = new Position(dragStartPos.x, dragStartPos.y);
+            // const jwIdx = PlanElementsHelper.findElementIndexById(nextPlanElementsClone, jointSegs.id);
+            // (currentPlanElementsClone[jwIdx] as JoinedSegs).nodes[node.id].position = new Position(dragStartPos.x, dragStartPos.y);
             
             savePlan(PlanElementsHelper.clone(planElementsSnapshot), nextPlanElementsClone);
 
@@ -275,21 +275,21 @@ const WallNodeComponent: React.FC<Props> = ({joinedWalls, node, pointingOnWall})
           y = {node.position.y}
           text={node.id}
       /> */}
-
-      <Circle
-        x = {node.position.x}
-        y = {node.position.y}
-        radius = {node.radius * 1 / planProps.scale}
-        stroke="green"
-        strokeWidth={5}
-        opacity={magnetData.node?.id === node.id? 1:0}
-        listening = {false}
-      />
+      {magnetData.node?.id === node.id?
+        <Circle
+          x = {node.position.x}
+          y = {node.position.y}
+          radius = {NODE_RADIUS / planProps.scale}
+          stroke="green"
+          strokeWidth={5}
+          listening = {false}
+        />:null
+      }
     </Group>
   )
 };
 
-export default WallNodeComponent;
+export default SegNodeComponent;
 
 
 // class PointKonvaProperties {

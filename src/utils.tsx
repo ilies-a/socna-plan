@@ -1,4 +1,4 @@
-import { MagnetData, Position, Vector2D, Wall, WallNode, linePoints } from "./entities";
+import { MagnetData, Position, Vector2D, Seg, SegNode, linePoints } from "./entities";
 import { BIG_NUMBER } from "./global";
 
 export const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
@@ -135,20 +135,20 @@ export const getOrthogonalProjection = (lp1:Vector2D, lp2:Vector2D, p:Vector2D):
   return new Position(projectionX, projectionY);
 }
 
-export const getMovingNodePositionWithMagnet = (fixedNode:WallNode, movingNodePosition:Vector2D, magnetData:MagnetData):[Vector2D, linePoints | null] => {
+export const getMovingNodePositionWithMagnet = (fixedNode:SegNode, movingNodePosition:Vector2D, magnetData:MagnetData):[Vector2D, linePoints | null] => {
   // node.position = new Position(newCursorPos.x, newCursorPos.y);
-  // dispatch(updatePlanElement(addWallSession.joinedWalls));
+  // dispatch(updatePlanElement(addSegSession.joinedSegs));
 
   if(magnetData.node){
       return [new Position(magnetData.node.position.x, magnetData.node.position.y), null];
-  }else if(magnetData.wall){
-      const op = getOrthogonalProjection(magnetData.wall.nodes[0].position, magnetData.wall.nodes[1].position, movingNodePosition);
+  }else if(magnetData.seg){
+      const op = getOrthogonalProjection(magnetData.seg.nodes[0].position, magnetData.seg.nodes[1].position, movingNodePosition);
       return [new Position(op.x, op.y), null];
   }else if(magnetData.activeOnAxes){
-    let lockHorizontally: WallNode | null = null;
-    let lockVertically: WallNode | null = null;
-    let lockDiagonallyTopLeftBottomRight: WallNode | null = null;
-    let lockDiagonallyTopRightBottomLeft: WallNode | null = null;
+    let lockHorizontally: SegNode | null = null;
+    let lockVertically: SegNode | null = null;
+    let lockDiagonallyTopLeftBottomRight: SegNode | null = null;
+    let lockDiagonallyTopRightBottomLeft: SegNode | null = null;
     let lineP1: Vector2D | null = null;
     let lineP2: Vector2D | null = null;
 

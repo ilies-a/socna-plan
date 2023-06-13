@@ -1,4 +1,4 @@
-import { AddWallSession, Line, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanPointerUpActionsHandler, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
 
 export const updatePlanProps = (planProps: PlanProps) => ({
@@ -29,11 +29,6 @@ export const setPlanElements = (planElements: PlanElement[]) => ({
 export const setAddingPointLineIdPointId = (addingPointLineIdPointId: [string, string] | null) => ({
   type: PlanActionTypes.SET_ADDING_POINT_LINE_ID_POINT_ID,
   payload: addingPointLineIdPointId,
-});
-
-export const setPlanPointerUpActionsHandler = (planPointerUpActionsHandler: PlanPointerUpActionsHandler) => ({
-  type: PlanActionTypes.SET_PLAN_POINTER_UP_ACTIONS_HANDLER,
-  payload: planPointerUpActionsHandler,
 });
 
 export const setPlanElementsRecords = (planElementsRecords: PlanElementsRecordsHandler) => ({
@@ -71,11 +66,6 @@ export const setUnselectAllOnPlanMouseUp = (unselect: boolean) => ({
   payload: unselect,
 });
 
-export const setLineToAdd = (line: Line | null) => ({
-  type: PlanActionTypes.SET_LINE_TO_ADD,
-  payload: line,
-});
-
 export const setPlanElementSheetData= (planElementSheetData: PlanElementSheetData | null) => ({
   type: PlanActionTypes.SET_PLAN_ELEMENT_SHEET_DATA,
   payload: planElementSheetData,
@@ -91,9 +81,9 @@ export const setMagnetData= (magnetData: MagnetData) => ({
   payload: magnetData,
 });
 
-export const setAddWallSession= (addWallSession: AddWallSession | null) => ({
-  type: PlanActionTypes.SET_ADD_WALL_SESSION,
-  payload: addWallSession,
+export const setAddSegSession= (addSegSession: AddSegSession | null) => ({
+  type: PlanActionTypes.SET_ADD_SEG_SESSION,
+  payload: addSegSession,
 });
 
 export const setPlanElementsSnapshot= (planElements: PlanElement[] | null) => ({
