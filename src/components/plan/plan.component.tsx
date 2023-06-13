@@ -4,7 +4,6 @@ import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, PlanElementClassName, AllJointSegs } from "@/entities";
 import { cloneArray, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
-import LinePoint from "../line-point/line-point.component";
 import { useDispatch, useSelector } from "react-redux";
 import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
 import { selectAddSegSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
