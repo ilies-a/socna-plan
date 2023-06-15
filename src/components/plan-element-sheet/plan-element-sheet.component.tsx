@@ -133,7 +133,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
 
   const convertTypeNameToString = useCallback(()=>{
     if(sheetData instanceof SheetDataWall){
-      return "Wall";
+      return "Mur";
     }
     else if(sheetData instanceof SheetDataREP){
       return "REP";
