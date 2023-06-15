@@ -231,18 +231,29 @@ const Plan: React.FC = () => {
     }, [magnetData.linePoints, magnetData.seg, movingSeg, pointerStartPos, pointingOnSeg]);
 
     const getPlanElement = useCallback((el:PlanElement)=> {
-        switch(el.instantiatedClassName){
-            case(PlanElementClassName.AllJointSegs): {
-                const ajs = el as AllJointSegs;
-                const jointSegs:JointSegs[] = new Array<JointSegs>(3);
-                jointSegs.push(ajs.jointWalls);
-                jointSegs.push(ajs.jointREPs);
-                jointSegs.push(ajs.jointREUs);
-                return jointSegs.map((js, i)=>{
-                    return getJointSegsDrawings(js, i);
-                });
-            };
+        if(el instanceof AllJointSegs){
+            const ajs = el as AllJointSegs;
+            const jointSegs:JointSegs[] = new Array<JointSegs>(3);
+            jointSegs.push(ajs.jointWalls);
+            jointSegs.push(ajs.jointREPs);
+            jointSegs.push(ajs.jointREUs);
+            jointSegs.push(ajs.jointAEPs);
+            return jointSegs.map((js, i)=>{
+                return getJointSegsDrawings(js, i);
+            });
         }
+        // switch(el.instantiatedClassName){
+        //     case(PlanElementClassName.AllJointSegs): {
+        //         const ajs = el as AllJointSegs;
+        //         const jointSegs:JointSegs[] = new Array<JointSegs>(3);
+        //         jointSegs.push(ajs.jointWalls);
+        //         jointSegs.push(ajs.jointREPs);
+        //         jointSegs.push(ajs.jointREUs);
+        //         return jointSegs.map((js, i)=>{
+        //             return getJointSegsDrawings(js, i);
+        //         });
+        //     };
+        // }
     },[getJointSegsDrawings]);
 
     const unselectAllPlanElements = useCallback(() => {

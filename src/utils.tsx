@@ -28,13 +28,13 @@ interface Point {
     y: number;
 }
   
-interface ISegment {
+interface Segment {
     p1: Point;
     p2: Point;
 }
 
 
-export function doSegmentsIntersect(seg1: ISegment, seg2: ISegment): boolean {
+export function doSegmentsIntersect(seg1: Segment, seg2: Segment): boolean {
     const { p1: a, p2: b } = seg1;
     const { p1: c, p2: d } = seg2;
   
@@ -302,3 +302,112 @@ export function isPointInPolygon (p:Vector2D, polygon:Point[]) {
 
   return inside
 };
+
+export function shrinkOrEnlargeSegment(segment: Segment, percentage: number): Segment {
+    const { p1, p2 } = segment;
+    
+    // Calculate the midpoint of the segment
+    const midpoint: Point = {
+    x: (p1.x + p2.x) / 2,
+    y: (p1.y + p2.y) / 2,
+    };
+
+    // Calculate the distance between the p1 and p2 points
+    const distanceX: number = p2.x - p1.x;
+    const distanceY: number = p2.y - p1.y;
+
+    // Calculate the new distance based on the percentage
+    const newDistanceX: number = distanceX * (percentage / 100);
+    const newDistanceY: number = distanceY * (percentage / 100);
+
+    // Calculate the new p1 and p2 points
+    const newP1: Point = {
+    x: midpoint.x - newDistanceX / 2,
+    y: midpoint.y - newDistanceY / 2,
+    };
+
+    const newP2: Point = {
+    x: midpoint.x + newDistanceX / 2,
+    y: midpoint.y + newDistanceY / 2,
+    };
+
+    // Create and return the new segment
+    const newSegment: Segment = {
+    p1: newP1,
+    p2: newP2,
+    };
+
+    return newSegment;
+}
+
+export function calculateSidelinesPoints(p1:Vector2D, p2:Vector2D, p1p2Distance:number): [[Vector2D, Vector2D], [Vector2D, Vector2D]]{
+  const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+
+  const p1p2AngleMinHalfPI = p1p2Angle - Math.PI/2;
+  let diff = p1p2AngleMinHalfPI;
+  diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
+
+  // console.log("diff = "+diff);
+
+  const d = p1p2Distance / 2;
+  const hyp = d;
+  const a = diff;
+  const adj = Math.cos(a) * hyp;
+  const opp = Math.sin(a) * hyp;
+
+  // console.log("adj = "+adj);
+  // console.log("opp = "+opp);
+
+  const sl1p1X = p1.x + adj; 
+  const sl1p1Y = p1.y + opp; 
+
+  const sl2p1X = p1.x - adj; 
+  const sl2p1Y = p1.y - opp; 
+
+  // console.log("node1 = "+this.nodes[0].id, ", node2 = "+this.nodes[1].id)
+
+  const sl1p1 = new Position(sl1p1X, sl1p1Y);
+  const sl2p1 = new Position(sl2p1X, sl2p1Y);
+
+
+  //l1s1p2 and l1s1p2 
+
+  const sl1p2X = p2.x + adj; 
+  const sl1p2Y = p2.y + opp; 
+
+  const sl2p2X = p2.x - adj; 
+  const sl2p2Y = p2.y - opp; 
+
+
+  const sl1p2 = new Position(sl1p2X, sl1p2Y);
+  const sl2p2 = new Position(sl2p2X, sl2p2Y);
+  
+  return [[sl1p1, sl1p2],[sl2p1, sl2p2]];
+}
+
+export function createShrinkedSegment(seg: Segment, start: Point, d: number): Segment {
+  const { p1: segP1, p2: segP2 } = seg;
+
+  // Calculate the length of the original segment
+  const segLength = Math.sqrt(
+    Math.pow(segP2.x - segP1.x, 2) + Math.pow(segP2.y - segP1.y, 2)
+  );
+
+  // Calculate the ratio of the desired length to the original length
+  const ratio = (segLength - d) / segLength;
+
+  // Calculate the new end point based on the desired length
+  const newP2: Point = {
+    x: segP1.x + (segP2.x - segP1.x) * ratio,
+    y: segP1.y + (segP2.y - segP1.y) * ratio
+  };
+
+  // Create and return the new segment
+  const newSegment: Segment = {
+    p1: start,
+    p2: newP2
+  };
+
+  return newSegment;
+}

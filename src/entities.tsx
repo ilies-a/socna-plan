@@ -1,10 +1,10 @@
 import { v4 } from 'uuid';
-import { cloneArray, doSegmentsIntersect, getDistance, isPointInPolygon, sortPointsClockwise } from './utils';
+import { calculateSidelinesPoints, cloneArray, doSegmentsIntersect, getDistance, isPointInPolygon, sortPointsClockwise } from './utils';
 import { BIG_NUMBER, NODE_RADIUS, PRECISION } from './global';
 
 export enum PlanElementClassName {AllJointSegs};
-export enum SegClassName {Wall, REU, REP};
-export enum JointSegsClassName {JointWalls, JointREUs, JointREPs};
+export enum SegClassName {Wall, REU, REP, AEP};
+export enum JointSegsClassName {JointWalls, JointREUs, JointREPs, JointAEPs};
 
 
 export class PlanProps {
@@ -117,7 +117,7 @@ export abstract class PlanElement {
     id:string;
     onPointerDown:boolean = false;
     // typeName:PlanElementTypeName;
-    instantiatedClassName: PlanElementClassName | undefined;
+    // instantiatedClassName: PlanElementClassName | undefined;
 
     constructor(id:string){
         this.id = id;
@@ -197,26 +197,28 @@ export const iconDataArr:IconData[] = [
 
 
 export class AllJointSegs extends PlanElement{
-    public readonly NAME:PlanElementClassName = PlanElementClassName.AllJointSegs;
+    // public readonly NAME:PlanElementClassName = PlanElementClassName.AllJointSegs;
     jointWalls: JointWalls = new JointWalls({});
     jointREPs: JointREPs = new JointREPs({});
     jointREUs: JointREUs = new JointREUs({});
+    jointAEPs: JointAEPs = new JointAEPs({});
 
     constructor(id:string){
         super(id);
-        this.instantiatedClassName = this.NAME;
+        // this.instantiatedClassName = this.NAME;
     }
+
     setJointSegs(jointSegs: JointSegs){
-        switch(jointSegs.instantiatedClassName){
-            case JointSegsClassName.JointREPs:
-                this.jointREPs = jointSegs as JointREPs;
-                break;
-            case JointSegsClassName.JointREUs:
-                this.jointREUs = jointSegs as JointREUs;
-                break;
-            default:
-                this.jointWalls = jointSegs as JointWalls;
-                break;
+        if(jointSegs instanceof JointWalls){
+            this.jointWalls = jointSegs as JointWalls;
+        }
+        else if(jointSegs instanceof JointREPs){
+            this.jointREPs = jointSegs as JointREPs;
+        }else if(jointSegs instanceof JointREUs){
+            this.jointREUs = jointSegs as JointREUs;
+        }
+        else if(jointSegs instanceof JointAEPs){
+            this.jointAEPs = jointSegs as JointAEPs;
         }
     }
 
@@ -224,6 +226,7 @@ export class AllJointSegs extends PlanElement{
         if(this.jointWalls.selectedSegId!=null) return this.jointWalls;
         if(this.jointREPs.selectedSegId!=null) return this.jointREPs;
         if(this.jointREUs.selectedSegId!=null) return this.jointREUs;
+        if(this.jointAEPs.selectedSegId!=null) return this.jointAEPs;
         return null;
     }
 
@@ -231,6 +234,7 @@ export class AllJointSegs extends PlanElement{
         return (this.jointWalls.selectedSegId!=null
             || this.jointREPs.selectedSegId!=null
             || this.jointREUs.selectedSegId!=null
+            || this.jointAEPs.selectedSegId!=null
             ); // todo : || the other jointsSegs are selected...
     }
 
@@ -238,15 +242,18 @@ export class AllJointSegs extends PlanElement{
         this.jointWalls.unselect();
         this.jointREPs.unselect();
         this.jointREUs.unselect();
+        this.jointAEPs.unselect();
     }
     override clone(): AllJointSegs {
         const ajsClone = new AllJointSegs(this.id);
         const jwClone = this.jointWalls.clone();
         const jREPsClone = this.jointREPs.clone();
         const jREUsClone = this.jointREUs.clone();
+        const jAEPsClone = this.jointAEPs.clone();
         ajsClone.jointWalls = jwClone as JointWalls;
         ajsClone.jointREPs = jREPsClone as JointREPs;
         ajsClone.jointREUs = jREUsClone as JointREUs;
+        ajsClone.jointAEPs = jAEPsClone as JointAEPs;
         return ajsClone;
     }
 
@@ -258,7 +265,7 @@ export abstract class JointSegs {
     // width: number = WALL_WIDTH;
     selectedSegId:string | null = null;
     nodesToPrint:SegNode[][] = [];
-    instantiatedClassName: JointSegsClassName | undefined;
+    // instantiatedClassName: JointSegsClassName | undefined;
 
     constructor(nodes: {[nodeId: string]: SegNode;}){
         this.nodes = nodes;
@@ -855,6 +862,9 @@ export abstract class JointSegs {
         return this.selectedSegId? this.segs[this.selectedSegId] : null;
     }
 
+    createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes); //will be overridden, must return a Seg here to to avoid error 
+    }
 
     addSegFromSeg(startingSeg:Seg, nodesPositions:[Vector2D, Vector2D]):[Seg, SegNode]{
         const startingSegNode1 = startingSeg.nodes[0];
@@ -862,8 +872,11 @@ export abstract class JointSegs {
 
         //nodesPositions[0] is the point on segNode1-segNode2 segment
 
-        const newSegNode1 = new SegNode(v4(), nodesPositions[0], [], this.instantiatedClassName!);
-        const newSegNode2 = new SegNode(v4(), nodesPositions[1], [], this.instantiatedClassName!);
+        // const newSegNode1 = new SegNode(v4(), nodesPositions[0], [], this.instantiatedClassName!);
+        // const newSegNode2 = new SegNode(v4(), nodesPositions[1], [], this.instantiatedClassName!);
+
+        const newSegNode1 = this.createNode(v4(), nodesPositions[0], []);
+        const newSegNode2 = this.createNode(v4(), nodesPositions[1], []);
 
         newSegNode1.linkedNodes = newSegNode1.linkedNodes.concat([startingSegNode1, startingSegNode2, newSegNode2]);
         newSegNode2.linkedNodes = newSegNode2.linkedNodes.concat([newSegNode1]);
@@ -889,7 +902,7 @@ export abstract class JointSegs {
     }
 
     addSegFromNode(startingNode:SegNode, endingNodePosition:Vector2D):[Seg, SegNode]{
-        const endingNode = new SegNode(v4(), endingNodePosition, [startingNode], this.instantiatedClassName!);
+        const endingNode = this.createNode(v4(), endingNodePosition, [startingNode]);
         startingNode.linkedNodes.push(endingNode);
         this.nodes[endingNode.id] = endingNode;
         this.setSegs();
@@ -898,8 +911,8 @@ export abstract class JointSegs {
     }
 
     addSegFromVoid(startingNodePosition:Vector2D, endingNodePosition:Vector2D):[Seg, SegNode]{
-        const startingNode = new SegNode(v4(), startingNodePosition, [], this.instantiatedClassName!);
-        const endingNode = new SegNode(v4(), endingNodePosition, [startingNode], this.instantiatedClassName!);
+        const startingNode = this.createNode(v4(), startingNodePosition, []);
+        const endingNode = this.createNode(v4(), endingNodePosition, [startingNode]);
         startingNode.linkedNodes.push(endingNode);
         this.nodes[startingNode.id] = startingNode;
         this.nodes[endingNode.id] = endingNode;
@@ -1097,14 +1110,18 @@ export abstract class JointSegs {
   }
 
 export class JointWalls extends JointSegs {
-    public readonly NAME = JointSegsClassName.JointWalls;
+    // public readonly NAME = JointSegsClassName.JointWalls;
     constructor(nodes:{ [nodeId: string]: SegNode;}){
         super(nodes);
-        this.instantiatedClassName = this.NAME;
+        // this.instantiatedClassName = this.NAME;
     }
 
     override createSeg(nodes: [SegNode, SegNode]):Wall{
         return new Wall(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointWalls);
     }
 
     override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointSegs{
@@ -1113,14 +1130,18 @@ export class JointWalls extends JointSegs {
 }
 
 export class JointREPs extends JointSegs {
-    public readonly NAME = JointSegsClassName.JointREPs;
+    // public readonly NAME = JointSegsClassName.JointREPs;
     constructor(nodes:{ [nodeId: string]: SegNode;}){
         super(nodes);
-        this.instantiatedClassName = this.NAME;
+        // this.instantiatedClassName = this.NAME;
     }
 
     override createSeg(nodes: [SegNode, SegNode]):REP{
         return new REP(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointREPs);
     }
 
     override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointREPs{
@@ -1129,18 +1150,40 @@ export class JointREPs extends JointSegs {
 }
 
 export class JointREUs extends JointSegs {
-    public readonly NAME = JointSegsClassName.JointREUs;
+    // public readonly NAME = JointSegsClassName.JointREUs;
     constructor(nodes:{ [nodeId: string]: SegNode;}){
         super(nodes);
-        this.instantiatedClassName = this.NAME;
+        // this.instantiatedClassName = this.NAME;
     }
 
     override createSeg(nodes: [SegNode, SegNode]):REU{
         return new REU(nodes);
     }
 
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointREUs);
+    }
+
     override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointREUs{
         return new JointREUs(nodes);
+    }
+}
+
+export class JointAEPs extends JointSegs {
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+    }
+
+    override createSeg(nodes: [SegNode, SegNode]):AEP{
+        return new AEP(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointAEPs);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointAEPs{
+        return new JointAEPs(nodes);
     }
 }
 
@@ -1149,49 +1192,49 @@ export class SegNode {
     position: Position;
     linkedNodes: SegNode[];
     // segChildClassName: SegClassName;
-    jointSegClassName: JointSegsClassName;
+    jointSegClassName: JointSegsClassName | undefined;
     // radius: number = WALL_WIDTH / 2;
 
-    constructor(id:string, position:Position, linkedNodes:SegNode[], jointSegClassName: JointSegsClassName){
+    constructor(id:string, position:Position, linkedNodes:SegNode[], jointSegClassName?: JointSegsClassName){
         this.id = id;
         this.position = position;
         this.linkedNodes = linkedNodes;
         this.jointSegClassName = jointSegClassName;
     }
 
-    createSeg(nodes:[SegNode, SegNode]): Seg{
-        switch(this.jointSegClassName){
-            default:
-                return new Wall(nodes);
-        }
-    }
+    // createSeg(nodes:[SegNode, SegNode]): Seg{
+    //     switch(this.jointSegClassName){
+    //         default:
+    //             return new Wall(nodes);
+    //     }
+    // }
 
-    getSegmentsJoinedWithNode(){
-        const segments: Seg[] = [];
-        for(const linkedNode of this.linkedNodes){
-            segments.push(this.createSeg([this, linkedNode]));
-        }
-        return segments;
-    }
+    // getSegmentsJoinedWithNode(){
+    //     const segments: Seg[] = [];
+    //     for(const linkedNode of this.linkedNodes){
+    //         segments.push(this.createSeg([this, linkedNode]));
+    //     }
+    //     return segments;
+    // }
 
-    getClockwiseSortedSegment(): Seg[]{
-        const segments: Seg[] = this.getSegmentsJoinedWithNode();
-        const angles: [Seg, number][] = [];
+    // getClockwiseSortedSegment(): Seg[]{
+    //     const segments: Seg[] = this.getSegmentsJoinedWithNode();
+    //     const angles: [Seg, number][] = [];
 
-        for(const seg of segments){
-            // console.log("seg.nodes[0].id = "+ seg.nodes[0].id +", seg.nodes[1].id = "+ seg.nodes[1].id)
+    //     for(const seg of segments){
+    //         // console.log("seg.nodes[0].id = "+ seg.nodes[0].id +", seg.nodes[1].id = "+ seg.nodes[1].id)
 
-            const p1: Position = seg.nodes[0].position;
-            const p2: Position = seg.nodes[1].position;
+    //         const p1: Position = seg.nodes[0].position;
+    //         const p2: Position = seg.nodes[1].position;
 
-            const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-            angles.push([seg, p1p2Angle]);
-            // console.log("node.id = "+ node.id +", p1p2Angle = "+p1p2Angle+"\n\n\n")
+    //         const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    //         angles.push([seg, p1p2Angle]);
+    //         // console.log("node.id = "+ node.id +", p1p2Angle = "+p1p2Angle+"\n\n\n")
 
-        }
+    //     }
 
-        return angles.sort((v1, v2) => v1[1] - v2[1]).map(v => v[0]);
-    }
+    //     return angles.sort((v1, v2) => v1[1] - v2[1]).map(v => v[0]);
+    // }
 
     getClockwiseSortedLinkedNodes(): SegNode[]{
         const angles: [SegNode, number][] = [];
@@ -1217,7 +1260,7 @@ export class SegNode {
 
 export abstract class Seg {
     id: string;
-    instantiatedSegClassName: SegClassName | undefined;
+    // instantiatedSegClassName: SegClassName | undefined;
     numero: string = "";
     nodes: [SegNode, SegNode];
     sideline1Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
@@ -1245,60 +1288,58 @@ export abstract class Seg {
     setSidelinesPoints(){
         const p1 = this.nodes[0].position;
         const p2 = this.nodes[1].position;
+
+        const sideLinePoints = calculateSidelinesPoints(p1, p2, this.width);
         
         
-        const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+        // const p1p2Angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
     
     
-        const p1p2AngleMinHalfPI = p1p2Angle - Math.PI/2;
-        let diff = p1p2AngleMinHalfPI;
-        diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
+        // const p1p2AngleMinHalfPI = p1p2Angle - Math.PI/2;
+        // let diff = p1p2AngleMinHalfPI;
+        // diff += (diff>Math.PI) ? -Math.PI*2 : (diff<-Math.PI) ? Math.PI*2 : 0;
     
-        // console.log("diff = "+diff);
+        // // console.log("diff = "+diff);
     
-        const d = this.width / 2;
-        const hyp = d;
-        const a = diff;
-        const adj = Math.cos(a) * hyp;
-        const opp = Math.sin(a) * hyp;
+        // const d = this.width / 2;
+        // const hyp = d;
+        // const a = diff;
+        // const adj = Math.cos(a) * hyp;
+        // const opp = Math.sin(a) * hyp;
     
-        // console.log("adj = "+adj);
-        // console.log("opp = "+opp);
+        // // console.log("adj = "+adj);
+        // // console.log("opp = "+opp);
     
-        const sl1p1X = p1.x + adj; 
-        const sl1p1Y = p1.y + opp; 
+        // const sl1p1X = p1.x + adj; 
+        // const sl1p1Y = p1.y + opp; 
     
-        const sl2p1X = p1.x - adj; 
-        const sl2p1Y = p1.y - opp; 
+        // const sl2p1X = p1.x - adj; 
+        // const sl2p1Y = p1.y - opp; 
     
-        // console.log("node1 = "+this.nodes[0].id, ", node2 = "+this.nodes[1].id)
+        // // console.log("node1 = "+this.nodes[0].id, ", node2 = "+this.nodes[1].id)
     
-        const sl1p1 = new Position(sl1p1X, sl1p1Y);
-        const sl2p1 = new Position(sl2p1X, sl2p1Y);
-    
-    
-        //l1s1p2 and l1s1p2 
-    
-        const sl1p2X = p2.x + adj; 
-        const sl1p2Y = p2.y + opp; 
-    
-        const sl2p2X = p2.x - adj; 
-        const sl2p2Y = p2.y - opp; 
+        // const sl1p1 = new Position(sl1p1X, sl1p1Y);
+        // const sl2p1 = new Position(sl2p1X, sl2p1Y);
     
     
-        const sl1p2 = new Position(sl1p2X, sl1p2Y);
-        const sl2p2 = new Position(sl2p2X, sl2p2Y);
+        // //l1s1p2 and l1s1p2 
+    
+        // const sl1p2X = p2.x + adj; 
+        // const sl1p2Y = p2.y + opp; 
+    
+        // const sl2p2X = p2.x - adj; 
+        // const sl2p2Y = p2.y - opp; 
+    
+    
+        // const sl1p2 = new Position(sl1p2X, sl1p2Y);
+        // const sl2p2 = new Position(sl2p2X, sl2p2Y);
         
-        this.sideline1Points = [sl1p1, sl1p2];
-        this.sideline2Points = [sl2p1, sl2p2];
+        this.sideline1Points = sideLinePoints[0];
+        this.sideline2Points = sideLinePoints[1];
     }
 
     createSeg():Seg{
-        switch(this.instantiatedSegClassName){
-            default: {
-                return new Wall(this.nodes);
-            }
-        }
+        return new Wall(this.nodes); //will be overriden
     }
 
     cloneWithoutNodes():Seg{
@@ -1331,35 +1372,72 @@ export abstract class Seg {
 
 
 export class Wall extends Seg{
-    public readonly NAME:SegClassName = SegClassName.Wall;
+    // public readonly NAME:SegClassName = SegClassName.Wall;
     width: number = 30;
     color: string = "#AAAAAA";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        this.instantiatedSegClassName = this.NAME;
+        // this.instantiatedSegClassName = this.NAME;
+        this.setSidelinesPoints();
+    }
+
+    override createSeg():Wall{
+        return new Wall(this.nodes);
+    }
+}
+
+enum ResArrowStatus {None, Forwards, Backwards}
+
+abstract class Res extends Seg{
+    // public readonly NAME:SegClassName = SegClassName.Wall;
+    width: number = 7;
+    arrowStatus: ResArrowStatus = ResArrowStatus.None;
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        // this.instantiatedSegClassName = this.NAME;
         this.setSidelinesPoints();
     }
 }
 
-export class REP extends Seg{
-    public readonly NAME:SegClassName = SegClassName.REP;
-    width: number = 10;
+export class REP extends Res{
+    // public readonly NAME:SegClassName = SegClassName.REP;
     color: string = "#058e1e";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        this.instantiatedSegClassName = this.NAME;
+        // this.instantiatedSegClassName = this.NAME;
         this.setSidelinesPoints();
+    }
+
+    override createSeg():REP{
+        return new REP(this.nodes);
     }
 }
 
-export class REU extends Seg{
-    public readonly NAME:SegClassName = SegClassName.REU;
-    width: number = 10;
+export class REU extends Res{
+    // public readonly NAME:SegClassName = SegClassName.REU;
     color: string = "#fa8c06";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        this.instantiatedSegClassName = this.NAME;
+        // this.instantiatedSegClassName = this.NAME;
         this.setSidelinesPoints();
+    }
+
+    override createSeg():REU{
+        return new REU(this.nodes);
+    }
+}
+
+export class AEP extends Res{
+    // public readonly NAME:SegClassName = SegClassName.REU;
+    color: string = "#0d33f4";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        // this.instantiatedSegClassName = this.NAME;
+        this.setSidelinesPoints();
+    }
+
+    override createSeg():AEP{
+        return new AEP(this.nodes);
     }
 }
 
@@ -1413,7 +1491,7 @@ export interface MagnetData{
 }
 
 
-export enum SheetDataChildClassName {Seg, Wall, REP, REU};
+// export enum SheetDataChildClassName {Seg, Wall, REP, REU};
 
 export abstract class SheetData {
     // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Seg;
@@ -1457,6 +1535,15 @@ export class SheetDataREU extends SheetDataSeg {
         // this.instantiatedSegClassName = this.NAME;
     }
 }
+
+export class SheetDataAEP extends SheetDataSeg {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
+        // this.instantiatedSegClassName = this.NAME;
+    }
+}
+
 
 export type SegOnCreationData = {
     segClassName: SegClassName,

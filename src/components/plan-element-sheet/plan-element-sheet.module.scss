@@ -1,6 +1,12 @@
 @import "../../styles/variables";
 
 .main{
+    .sheet-header{
+        text-align: center;
+        background-color: rgb(240, 173, 78);
+        padding: 10px;
+    }
+
     .table{
         display: flex;
         flex-direction: row;

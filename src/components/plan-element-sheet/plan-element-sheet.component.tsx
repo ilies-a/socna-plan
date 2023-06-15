@@ -2,7 +2,7 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, SegOnCreationData, SheetData, SheetDataChildClassName, SheetDataREP, SheetDataREU, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
+import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setSegOnCreationData, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
@@ -55,7 +55,23 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       }
       else if(sheetData.planElementId != undefined){
         // let segId:string | undefined;
-        if(sheetData instanceof SheetDataREP){
+        if(sheetData instanceof SheetDataWall){
+          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+          const wall = (sheetDataPlanElement as AllJointSegs).jointWalls.segs[segId];
+          wall.numero = newNumero;
+
+          //update planElements saves with the updated numero
+          // if(!segId) return;
+          for(const planElementsRecord of planElementsRecords.records){
+            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+            if(elIdx === -1) continue;
+            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointWalls.segs[segId];
+            if(wallInPlanElementsRecord){
+              wallInPlanElementsRecord.numero = newNumero;
+            }
+          }
+        }
+        else if(sheetData instanceof SheetDataREP){
           sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
           const res = (sheetDataPlanElement as AllJointSegs).jointREPs.segs[segId];
           res.numero = newNumero;
@@ -86,18 +102,17 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
               wallInPlanElementsRecord.numero = newNumero;
             }
           }
-
-        }else{
+        }else if(sheetData instanceof SheetDataAEP){
           sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-          const wall = (sheetDataPlanElement as AllJointSegs).jointWalls.segs[segId];
-          wall.numero = newNumero;
+          const res = (sheetDataPlanElement as AllJointSegs).jointAEPs.segs[segId];
+          res.numero = newNumero;
 
           //update planElements saves with the updated numero
           // if(!segId) return;
           for(const planElementsRecord of planElementsRecords.records){
             const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
             if(elIdx === -1) continue;
-            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointWalls.segs[segId];
+            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointAEPs.segs[segId];
             if(wallInPlanElementsRecord){
               wallInPlanElementsRecord.numero = newNumero;
             }
@@ -117,20 +132,27 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   },[dispatch, planElements, planElementsRecords, segOnCreationData, sheetData]);
 
   const convertTypeNameToString = useCallback(()=>{
-    if(sheetData instanceof SheetDataREP){
+    if(sheetData instanceof SheetDataWall){
+      return "Wall";
+    }
+    else if(sheetData instanceof SheetDataREP){
       return "REP";
     }else if(sheetData instanceof SheetDataREU){
       return "REU";
-    }else{
-      return "Wall";
+    }else if(sheetData instanceof SheetDataAEP){
+      return "AEP";
     }
   },[sheetData]);
 
   const deleteElement = useCallback(()=>{
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
     let sheetDataPlanElement:PlanElement | undefined;
-
-    if(sheetData instanceof SheetDataREP){
+    if(sheetData instanceof SheetDataWall){
+      sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+      (sheetDataPlanElement as AllJointSegs)
+      .jointWalls.deleteSeg((sheetData as SheetDataWall).segId!);
+    }
+    else if(sheetData instanceof SheetDataREP){
       sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       (sheetDataPlanElement as AllJointSegs)
       .jointREPs.deleteSeg((sheetData as SheetDataREP).segId!);
@@ -138,12 +160,11 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       (sheetDataPlanElement as AllJointSegs)
       .jointREUs.deleteSeg((sheetData as SheetDataREU).segId!);
-    }else{
+    }else if(sheetData instanceof SheetDataAEP){
       sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       (sheetDataPlanElement as AllJointSegs)
-      .jointWalls.deleteSeg((sheetData as SheetDataWall).segId!);
+      .jointAEPs.deleteSeg((sheetData as SheetDataAEP).segId!);
     }
-
 
     if(!sheetDataPlanElement) return; //theorically not possible but just in case
     dispatch(updatePlanElement(sheetDataPlanElement));
@@ -163,15 +184,21 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         return segOnCreationData!.numero;
       }
       else if(sheetData.planElementId != undefined){
-        if(sheetData instanceof SheetDataREP){
+        if(sheetData instanceof SheetDataWall){
+          const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[segId];
+          return wall? wall.numero : ""; //wall can be undefined, 
+          //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
+          //with a deleted (undefined) wall
+        }
+        else if(sheetData instanceof SheetDataREP){
           const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointREPs.segs[segId];
           return res? res.numero : ""; 
         }else if(sheetData instanceof SheetDataREU){
           const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointREUs.segs[segId];
           return res? res.numero : ""; 
-        }else{
-          const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[segId];
-          return wall? wall.numero : ""; //wall can be undefined, 
+        }else if(sheetData instanceof SheetDataAEP){
+          const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointAEPs.segs[segId];
+          return res? res.numero : ""; //wall can be undefined, 
           //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
           //with a deleted (undefined) wall
           
@@ -198,9 +225,41 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   }, [planElements, segOnCreationData, sheetData]);
 
 
+  const getSheetTitle = ():string=>{
+    if(segOnCreationData){
+      switch(segOnCreationData.segClassName){
+        case(SegClassName.Wall):{
+          return "Mur";
+        }
+        case(SegClassName.REP):{
+          return "REP";
+        }
+        case(SegClassName.REU):{
+          return "REU";
+        }
+        case(SegClassName.AEP):{
+          return "AEP";
+        }
+        default:{
+          return "";
+        }
+      }
+    }
+    if(sheetData instanceof SheetDataWall){
+      return "Mur";
+    }else if(sheetData instanceof SheetDataREP){
+      return "REP";
+    }else if(sheetData instanceof SheetDataREU){
+      return "REU";
+    }else if(sheetData instanceof SheetDataAEP){
+      return "AEP";
+    }
+    return "";
+  }
 
   return (
     <div className={`${styles['main']}`} >
+      <div className={styles['sheet-header']}>{getSheetTitle()}</div>
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>Ref</div>
         <div className={`${styles['content']}`}>{convertTypeNameToString() + "_" + getNumero()}</div>

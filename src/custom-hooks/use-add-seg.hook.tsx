@@ -1,4 +1,4 @@
-import { AddSegSession, JointSegs, JointSegsClassName, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, Position, Seg, SegClassName, SegNode, SegOnCreationData, Vector2D } from '@/entities';
+import { AEP, AddSegSession, JointSegs, JointSegsClassName, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, Position, REP, REU, Seg, SegClassName, SegNode, SegOnCreationData, Vector2D, Wall } from '@/entities';
 import { setAddSegSession, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, updatePlanElement } from '@/redux/plan/plan.actions';
 import { selectPlanElements, selectPlanElementsRecords, selectSegOnCreationData } from '@/redux/plan/plan.selectors';
 import { getOrthogonalProjection } from '@/utils';
@@ -38,6 +38,10 @@ export function useAddSeg() {
     let jointSegs:JointSegs | undefined;
     if(!segOnCreationData) return false; //should throw error
     switch(segOnCreationData.segClassName){
+        case(SegClassName.Wall):{
+            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointWalls;
+            break;
+        }
         case(SegClassName.REP):{
             jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointREPs;
             break;
@@ -46,9 +50,10 @@ export function useAddSeg() {
             jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointREUs;
             break;
         }
-        default:
-            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointWalls;
+        case(SegClassName.AEP):{
+            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointAEPs;
             break;
+        }
     }
 
     let addedSeg:Seg;
@@ -58,16 +63,18 @@ export function useAddSeg() {
         if(
             !(segOnCreationData.segClassName === SegClassName.Wall && node.jointSegClassName === JointSegsClassName.JointWalls) &&
             !(segOnCreationData.segClassName === SegClassName.REP && node.jointSegClassName === JointSegsClassName.JointREPs) &&
-            !(segOnCreationData.segClassName === SegClassName.REU && node.jointSegClassName === JointSegsClassName.JointREUs)
+            !(segOnCreationData.segClassName === SegClassName.REU && node.jointSegClassName === JointSegsClassName.JointREUs) &&
+            !(segOnCreationData.segClassName === SegClassName.AEP && node.jointSegClassName === JointSegsClassName.JointAEPs)
         ){
             return false;
         }
         [addedSeg, draggingNode] = jointSegs.addSegFromNode(node, pointerPos);
     }else if(seg){ //check if seg on creation and seg are the from same category of segs
         if(
-            !(segOnCreationData.segClassName === SegClassName.Wall && seg.instantiatedSegClassName === SegClassName.Wall) &&
-            !(segOnCreationData.segClassName === SegClassName.REP && seg.instantiatedSegClassName === SegClassName.REP) &&
-            !(segOnCreationData.segClassName === SegClassName.REU && seg.instantiatedSegClassName === SegClassName.REU)
+            !(segOnCreationData.segClassName === SegClassName.Wall && seg instanceof Wall) &&
+            !(segOnCreationData.segClassName === SegClassName.REP && seg instanceof REP) &&
+            !(segOnCreationData.segClassName === SegClassName.REU && seg instanceof REU) &&
+            !(segOnCreationData.segClassName === SegClassName.AEP && seg instanceof AEP)
         ){
             return false;
         }

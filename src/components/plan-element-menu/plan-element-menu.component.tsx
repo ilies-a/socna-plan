@@ -3,7 +3,7 @@ import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { useCallback, useEffect, useState } from "react";
 import styles from './plan-element-menu.module.scss';
 import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData } from "@/redux/plan/plan.actions";
-import { AddSegSession, AllJointSegs, Dimensions, JointSegsClassName, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataREP, SheetDataREU, SheetDataWall, Wall } from "@/entities";
+import { AEP, AddSegSession, AllJointSegs, Dimensions, JointAEPs, JointREPs, JointREUs, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataWall, Wall } from "@/entities";
 import { v4 } from 'uuid';
 import { selectAddSegSession, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH } from "@/global";
@@ -29,36 +29,83 @@ const PlanElementMenu: React.FC = () => {
   useEffect(()=>{
     const selectedEl = PlanElementsHelper.getSelectedElement(planElements);
     if(selectedEl != null){
-      switch(selectedEl.instantiatedClassName){
-        default: //AllJointSegs
-          const ajs = selectedEl as AllJointSegs;
-          const js = ajs.getSelectedJointSegs();
-          if(!js) return; //should throw error
-          switch(js.instantiatedClassName){
-            case(JointSegsClassName.JointREPs):{
-              const selectedREP = js.getSelectedSeg() as Wall; 
-              if(!selectedREP) return; //should throw error
-              setSheetData(new SheetDataREP(ajs.id, selectedREP.id));
-              break;
-            }
-            case(JointSegsClassName.JointREUs):{
-              const selectedREP = js.getSelectedSeg() as Wall; 
-              if(!selectedREP) return; //should throw error
-              setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
-              break;
-            }
-            default:{
-              const selectedWall = js.getSelectedSeg() as Wall; 
-              if(!selectedWall) return; //should throw error
-              setSheetData(new SheetDataWall(ajs.id, selectedWall.id));
-              break;
-            }
-          }
-          break;
+      if(selectedEl instanceof AllJointSegs){
+        const ajs = selectedEl as AllJointSegs;
+        const js = ajs.getSelectedJointSegs();
+        if(!js) return; //should throw error
+        if(js instanceof JointWalls){
+          const selectedWall = js.getSelectedSeg() as Wall; 
+          if(!selectedWall) return; //should throw error
+          setSheetData(new SheetDataWall(ajs.id, selectedWall.id));
+        }else if(js instanceof JointREPs){
+          const selectedREP = js.getSelectedSeg() as Wall; 
+          if(!selectedREP) return; //should throw error
+          setSheetData(new SheetDataREP(ajs.id, selectedREP.id));
+        }else if(js instanceof JointREUs){
+          const selectedREP = js.getSelectedSeg() as Wall; 
+          if(!selectedREP) return; //should throw error
+          setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
+        }
+        else if(js instanceof JointAEPs){
+          const selectedAEP = js.getSelectedSeg() as AEP; 
+          if(!selectedAEP) return; //should throw error
+          setSheetData(new SheetDataAEP(ajs.id, selectedAEP.id));
+        }
+        // switch(js.instantiatedClassName){
+        //   case(JointSegsClassName.JointREPs):{
+        //     const selectedREP = js.getSelectedSeg() as Wall; 
+        //     if(!selectedREP) return; //should throw error
+        //     setSheetData(new SheetDataREP(ajs.id, selectedREP.id));
+        //     break;
+        //   }
+        //   case(JointSegsClassName.JointREUs):{
+        //     const selectedREP = js.getSelectedSeg() as Wall; 
+        //     if(!selectedREP) return; //should throw error
+        //     setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
+        //     break;
+        //   }
+        //   default:{
+        //     const selectedWall = js.getSelectedSeg() as Wall; 
+        //     if(!selectedWall) return; //should throw error
+        //     setSheetData(new SheetDataWall(ajs.id, selectedWall.id));
+        //     break;
+        //   }
+        // }
       }
+      // switch(selectedEl.instantiatedClassName){
+      //   default: //AllJointSegs
+      //     const ajs = selectedEl as AllJointSegs;
+      //     const js = ajs.getSelectedJointSegs();
+      //     if(!js) return; //should throw error
+      //     switch(js.instantiatedClassName){
+      //       case(JointSegsClassName.JointREPs):{
+      //         const selectedREP = js.getSelectedSeg() as Wall; 
+      //         if(!selectedREP) return; //should throw error
+      //         setSheetData(new SheetDataREP(ajs.id, selectedREP.id));
+      //         break;
+      //       }
+      //       case(JointSegsClassName.JointREUs):{
+      //         const selectedREP = js.getSelectedSeg() as Wall; 
+      //         if(!selectedREP) return; //should throw error
+      //         setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
+      //         break;
+      //       }
+      //       default:{
+      //         const selectedWall = js.getSelectedSeg() as Wall; 
+      //         if(!selectedWall) return; //should throw error
+      //         setSheetData(new SheetDataWall(ajs.id, selectedWall.id));
+      //         break;
+      //       }
+      //     }
+      //     break;
+      // }
     }else if(segOnCreationData != null){ //we could use PlanMode.AddSeg but it would overload dependencies array and then rerenders (imo)
       //todo setSheetData with data inside adding element data (not implemented yet)
       switch(segOnCreationData.segClassName){
+        case(SegClassName.Wall):{
+          setSheetData(new SheetDataWall());
+          break;
+        }
         case(SegClassName.REP):{
           setSheetData(new SheetDataREP());
           break;
@@ -67,8 +114,8 @@ const PlanElementMenu: React.FC = () => {
           setSheetData(new SheetDataREU());
           break;
         }
-        default:{
-          setSheetData(new SheetDataWall());
+        case(SegClassName.AEP):{
+          setSheetData(new SheetDataAEP());
           break;
         }
       }
@@ -96,6 +143,11 @@ const PlanElementMenu: React.FC = () => {
     dispatch(setSegOnCreationData({segClassName: SegClassName.REU, numero:"0"}));
   },[dispatch]);
 
+  const handleClickOnAddAEP = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.AEP, numero:"0"}));
+  },[dispatch]);
+
   const goBack = useCallback(()=>{
     dispatch(setPlanElementSheetData(null));
     dispatch(setSegOnCreationData(null));
@@ -119,6 +171,7 @@ const PlanElementMenu: React.FC = () => {
             <PlanElementButton name="Ajouter un mur" onClick={handleClickOnAddWall}/>
             <PlanElementButton name="Ajouter un REP" onClick={handleClickOnAddREP}/>
             <PlanElementButton name="Ajouter un REU" onClick={handleClickOnAddREU}/>
+            <PlanElementButton name="Ajouter un AEP" onClick={handleClickOnAddAEP}/>
           </div>
         </div>
       }
