@@ -330,6 +330,9 @@ export abstract class JointSegs {
         for(const segId in this.segs){
             if(segs.hasOwnProperty(segId)){
                 segs[segId].numero = this.segs[segId].numero;
+                if(segs[segId] instanceof Res){
+                    (segs[segId] as Res).arrowStatus = (this.segs[segId] as Res).arrowStatus;
+                }
             }
         }
 
@@ -365,7 +368,7 @@ export abstract class JointSegs {
         this.segs = this.getSegs();
     }
 
-    cleanSegs(){
+    cleanSegs(selectNewCreatedSegAfterClean:boolean){
         this.setSegs();
         const segs = this.segs;
 
@@ -592,7 +595,28 @@ export abstract class JointSegs {
         }
         // console.log("\n\n\n")
 
-        if(updateSegs) this.setSegs();
+        if(updateSegs) {
+            if(selectNewCreatedSegAfterClean){
+                const segsIdsBefore: {[id: string]: boolean;} = {};
+                for(const segId in this.segs){
+                    segsIdsBefore[segId] = true;
+                }
+                this.setSegs();
+                const segsIdsAfter: {[id: string]: boolean;} = {};
+    
+                for(const segId in this.segs){
+                    segsIdsAfter[segId] = true;
+                }
+                for(const segIdAfter in segsIdsAfter){
+                    if(!segsIdsBefore.hasOwnProperty(segIdAfter)){
+                        this.selectedSegId  = segIdAfter;
+                        break;
+                    }
+                }
+            }else{
+                this.setSegs();
+            }
+        }
 
     }
 
@@ -862,6 +886,9 @@ export abstract class JointSegs {
         return this.selectedSegId? this.segs[this.selectedSegId] : null;
     }
 
+    hasSelectedSeg():boolean{
+        return this.selectedSegId? true : false;
+    }
     createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
         return new SegNode(id, position, linkedNodes); //will be overridden, must return a Seg here to to avoid error 
     }
@@ -1105,7 +1132,7 @@ export abstract class JointSegs {
             }
         }
         this.selectedSegId = null;
-        this.cleanSegs();
+        this.cleanSegs(false);
     }
   }
 
@@ -1342,19 +1369,7 @@ export abstract class Seg {
         return new Wall(this.nodes); //will be overriden
     }
 
-    cloneWithoutNodes():Seg{
-
-        // id: string;
-        // instantiatedSegClassName: SegClassName | undefined;
-        // numero: string = "";
-        // nodes: [SegNode, SegNode];
-        // sideline1Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
-        // sideline2Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
-        // points: Vector2D[] = [];
-        // width:number = 0;
-
-
-        
+    cloneWithoutNodes():Seg{        
         const segmentClone = this.createSeg();
         segmentClone.id = this.id;
         segmentClone.numero = this.numero;
@@ -1386,9 +1401,9 @@ export class Wall extends Seg{
     }
 }
 
-enum ResArrowStatus {None, Forwards, Backwards}
+export enum ResArrowStatus {None, Forwards, Backwards}
 
-abstract class Res extends Seg{
+export abstract class Res extends Seg{
     // public readonly NAME:SegClassName = SegClassName.Wall;
     width: number = 7;
     arrowStatus: ResArrowStatus = ResArrowStatus.None;
@@ -1396,6 +1411,22 @@ abstract class Res extends Seg{
         super(nodes);
         // this.instantiatedSegClassName = this.NAME;
         this.setSidelinesPoints();
+    }
+
+    override cloneWithoutNodes():Res{        
+        const segmentClone:Res = this.createSeg() as Res;
+        segmentClone.id = this.id;
+        segmentClone.numero = this.numero;
+        segmentClone.arrowStatus = this.arrowStatus;
+        segmentClone.sideline1Points = [
+            new Position(this.sideline1Points[0].x, this.sideline1Points[0].y),
+            new Position(this.sideline1Points[1].x, this.sideline1Points[1].y),
+        ];
+        segmentClone.sideline2Points = [
+            new Position(this.sideline2Points[0].x, this.sideline2Points[0].y),
+            new Position(this.sideline2Points[1].x, this.sideline2Points[1].y),
+        ];
+        return segmentClone;
     }
 }
 
@@ -1512,6 +1543,12 @@ export abstract class SheetDataSeg extends SheetData{
     }
 }
 
+export abstract class SheetDataRes extends SheetDataSeg{
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
+    }
+}
+
 export class SheetDataWall extends SheetDataSeg {
     // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.Wall;
     constructor(planElementId?:string, segId?: string){
@@ -1520,7 +1557,7 @@ export class SheetDataWall extends SheetDataSeg {
     }
 }
 
-export class SheetDataREP extends SheetDataSeg {
+export class SheetDataREP extends SheetDataRes {
     // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REP;
     constructor(planElementId?:string, segId?: string){
         super(planElementId, segId);
@@ -1528,7 +1565,7 @@ export class SheetDataREP extends SheetDataSeg {
     }
 }
 
-export class SheetDataREU extends SheetDataSeg {
+export class SheetDataREU extends SheetDataRes {
     // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
     constructor(planElementId?:string, segId?: string){
         super(planElementId, segId);
@@ -1536,7 +1573,7 @@ export class SheetDataREU extends SheetDataSeg {
     }
 }
 
-export class SheetDataAEP extends SheetDataSeg {
+export class SheetDataAEP extends SheetDataRes {
     // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
     constructor(planElementId?:string, segId?: string){
         super(planElementId, segId);
@@ -1548,4 +1585,5 @@ export class SheetDataAEP extends SheetDataSeg {
 export type SegOnCreationData = {
     segClassName: SegClassName,
     numero: string,
+    resArrowStatus: ResArrowStatus,
 }

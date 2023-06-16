@@ -3,6 +3,7 @@
 .button{
     text-align: center;
     border: 1px solid $button-border-color-grey;
+    border-top: none;
     width: 100%;
     padding: 10px;
     &:hover{

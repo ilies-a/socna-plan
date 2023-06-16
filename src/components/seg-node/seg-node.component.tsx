@@ -245,7 +245,7 @@ const SegNodeComponent: React.FC<Props> = ({jointSegs, node, pointingOnSeg}) => 
             dispatch(setMagnetData({activeOnAxes:magnetData.activeOnAxes, node:null, seg:null, linePoints:null}));
 
 
-            jointSegs.cleanSegs();
+            jointSegs.cleanSegs(jointSegs.hasSelectedSeg());
 
             //save
             // if(!dragStartPos) return;

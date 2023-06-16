@@ -1,8 +1,8 @@
 
-import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback } from "react";
+import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback, useEffect } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
-import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData } from "@/entities";
+import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData, Res, ResArrowStatus } from "@/entities";
 import { Arrow, Group, Path } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
@@ -11,6 +11,7 @@ import { selectAddSegSession, selectMagnetData, selectPlanElementSheetData, sele
 import { getOrthogonalProjection, shrinkOrEnlargeSegment } from "@/utils";
 import { v4 } from 'uuid';
 import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
+import ArrowDrawing from "../arrow-drawing/arrow-drawing.component";
 
 type Props = {
     id: string,
@@ -46,19 +47,19 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
     },[planProps.scale]); 
 
 
-    const calculateArrowPoints = ():number[] =>{
-        // const p1:Vector2D = new Position((points[0].x + points[1].x)/2, (points[0].y + points[1].y)/2);
-        // const p2:Vector2D = new Position((points[2].x + points[3].x)/2, (points[2].y + points[3].y)/2);
+    // const calculateArrowPoints = ():number[] =>{
+    //     // const p1:Vector2D = new Position((points[0].x + points[1].x)/2, (points[0].y + points[1].y)/2);
+    //     // const p2:Vector2D = new Position((points[2].x + points[3].x)/2, (points[2].y + points[3].y)/2);
 
-        // return [p1.x, p1.y, p2.x, p2.y];
+    //     // return [p1.x, p1.y, p2.x, p2.y];
 
-        const p1:Vector2D = nodes[0].position;
-        const p2:Vector2D = nodes[1].position;
+    //     const p1:Vector2D = nodes[0].position;
+    //     const p2:Vector2D = nodes[1].position;
 
-        const seg = shrinkOrEnlargeSegment({p1:p1, p2:p2}, 50);
+    //     const seg = shrinkOrEnlargeSegment({p1:p1, p2:p2}, 50);
 
-        return [seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y];
-    }
+    //     return [seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y];
+    // }
 
     return (
         <Group>
@@ -126,23 +127,17 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
                         // dispatch(setTestPoints([
                         //     new TestPoint("", pointOnSegMiddleLine.x, pointOnSegMiddleLine.y, "blue")
                         // ]))
-
-
-
                     }
                 }}
             />
-            {/* <Arrow 
-                points={calculateArrowPoints()}
-                stroke="#5CB85C"
-                strokeWidth={20}
-                // pointerLength={20}              // length of arrow pointer
-                // pointerWidth={20}               // width of arrow pointer
-                fill="black"                    // arrow color
-       
-
-                listening={false}   
-            /> */}
+            {
+                seg instanceof Res && seg.arrowStatus != ResArrowStatus.None?
+                    <ArrowDrawing 
+                        points={[nodes[0].position, nodes[1].position]} 
+                        width={20} 
+                        reversed={seg.arrowStatus === ResArrowStatus.Backwards? true: false}/>
+                    :null
+            }
         </Group>
     )
 };

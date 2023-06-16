@@ -132,7 +132,7 @@ const Plan: React.FC = () => {
             if(d>MIN_SHIFT_TO_ALLOW_SAVE)
             {
                 if(!planElementsSnapshot) return; //should throw error
-                movingSeg.jointSegs.cleanSegs();
+                movingSeg.jointSegs.cleanSegs(movingSeg.jointSegs.hasSelectedSeg());
                 const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
                 savePlan(planElementsSnapshot, nextPlanElementsClone);
                 dispatch(setPlanElementsSnapshot(null));
@@ -493,15 +493,17 @@ const Plan: React.FC = () => {
             // dispatch(updatePlanElement(addSegSession.jointSegs));
             if(!planElementsSnapshot) return; //should throw error
 
-            addSegSession.jointSegs.cleanSegs();
+            addSegSession.jointSegs.cleanSegs(true);
+
+            
             //if sheetData is opened, cleanSegs may have deleted the seg opened in sheetData, which can cause error
             //so we check if sheetData is opened with seg data, then if this seg still exists, if not, we close sheetData
-            if(sheetData && sheetData.segId){
-                if(!addSegSession.jointSegs.segs.hasOwnProperty(sheetData.segId)){
-                  dispatch(setPlanElementSheetData(null));
-                }
-              }
-              
+            // if(sheetData && sheetData.segId){
+            //     if(!addSegSession.jointSegs.segs.hasOwnProperty(sheetData.segId)){
+            //       dispatch(setPlanElementSheetData(null));
+            //     }
+            //   }
+            // dispatch(setPlanElementSheetData(null));
             const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
             savePlan(planElementsSnapshot, nextPlanElementsClone);
             dispatch(setPlanElementsSnapshot(null));
@@ -509,11 +511,12 @@ const Plan: React.FC = () => {
             dispatch(setAddSegSession(null));
             dispatch(setPlanMode(PlanMode.Move));
             dispatch(setSegOnCreationData(null));
+            
             setPreventUnselectAllElements(true);
           }else{
             setPreventUnselectAllElements(false);
           }
-    }, [addSegSession, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.seg, movingSeg, planElements, planElementsSnapshot, pointingOnSeg, saveIfMovingSeg, savePlan, sheetData]);
+    }, [addSegSession, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.seg, movingSeg, planElements, planElementsSnapshot, pointingOnSeg, saveIfMovingSeg, savePlan]);
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{

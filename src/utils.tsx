@@ -411,3 +411,27 @@ export function createShrinkedSegment(seg: Segment, start: Point, d: number): Se
 
   return newSegment;
 }
+
+
+export function getPointAlongSegment(seg: Segment, idx: number, d: number): Vector2D {
+
+
+  const p0 = idx? seg.p2 : seg.p1;
+  const p1 = idx? seg.p1 : seg.p2; //seg[idx === seg.length - 1 ? idx - 1 : idx + 1];
+
+  const dx = p1.x - p0.x;
+  const dy = p1.y - p0.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  // if (length === 0) {
+  //   return null; // Invalid segment (zero length)
+  // }
+
+  const ux = dx / length;
+  const uy = dy / length;
+
+  const qx = p0.x + (d * uy);
+  const qy = p0.y - (d * ux);
+
+  return { x: qx, y: qy };
+}

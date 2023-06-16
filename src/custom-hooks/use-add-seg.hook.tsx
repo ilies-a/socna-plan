@@ -1,4 +1,4 @@
-import { AEP, AddSegSession, JointSegs, JointSegsClassName, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, Position, REP, REU, Seg, SegClassName, SegNode, SegOnCreationData, Vector2D, Wall } from '@/entities';
+import { AEP, AddSegSession, JointSegs, JointSegsClassName, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, Position, REP, REU, Res, Seg, SegClassName, SegNode, SegOnCreationData, Vector2D, Wall } from '@/entities';
 import { setAddSegSession, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, updatePlanElement } from '@/redux/plan/plan.actions';
 import { selectPlanElements, selectPlanElementsRecords, selectSegOnCreationData } from '@/redux/plan/plan.selectors';
 import { getOrthogonalProjection } from '@/utils';
@@ -98,6 +98,9 @@ export function useAddSeg() {
 
     if(!segOnCreationData) return false; //should throw error
     addedSeg.numero = segOnCreationData.numero;
+    if(addedSeg instanceof Res){
+        (addedSeg as Res).arrowStatus = segOnCreationData.resArrowStatus;
+    }
     
     dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
     return true;

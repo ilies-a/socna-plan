@@ -5,7 +5,7 @@
     // flex-shrink: 1;
     // width: 300px;
     background-color: $non-dazzling-white;
-    border: 1px solid rgb(233, 188, 188);
+    // border: 1px solid rgb(233, 188, 188);
     height: inherit;
     overflow-y: scroll;
     flex-direction: column;
@@ -16,6 +16,7 @@
         padding-left: 10px;
         font-size: 1.5em;
         border: 1px solid $button-border-color-grey;
+        border-top: none;
         opacity: 0.5;
 
         &.active:hover{
@@ -29,11 +30,13 @@
     
     .linears-wrapper{
         width: 100%;
-        border: 1px solid gray;
+        // border: 1px solid gray;
         .linears-header{
             text-align: center;
             background-color: rgb(240, 173, 78);
             padding: 10px;
+            border: 1px solid $button-border-color-grey;
+            border-top: none;
         }
     }
 }

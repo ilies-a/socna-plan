@@ -2,7 +2,7 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
+import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataRes, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setSegOnCreationData, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
@@ -51,7 +51,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
 
       if(segIsOnCreation){
         segOnCreationData!.numero = newNumero;
-        dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, numero: newNumero}));
+        dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, numero: newNumero, resArrowStatus: segOnCreationData.resArrowStatus}));
       }
       else if(sheetData.planElementId != undefined){
         // let segId:string | undefined;
@@ -127,7 +127,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     
     if(segIsOnCreation || !sheetDataPlanElement) return;
     dispatch(updatePlanElement(sheetDataPlanElement));
-    dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+    // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
   
   },[dispatch, planElements, planElementsRecords, segOnCreationData, sheetData]);
 
@@ -173,6 +173,86 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     dispatch(setPlanElementSheetData(null));
   }, [planElements, sheetData, savePlan, dispatch]);
 
+
+  const toggleArrowVisibility = useCallback(()=>{
+    if(segOnCreationData != null){
+      segOnCreationData.resArrowStatus = segOnCreationData.resArrowStatus == ResArrowStatus.None? ResArrowStatus.Forwards : ResArrowStatus.None;
+
+    }else{
+      const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+
+      const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+      const segId = (sheetData as SheetDataSeg).segId!;
+      let res:Res;
+
+      if(sheetData instanceof SheetDataREP){
+        res = sheetDataPlanElement.jointREPs.segs[segId] as Res;
+      }else if(sheetData instanceof SheetDataREU){
+        res = sheetDataPlanElement.jointREUs.segs[segId] as Res;
+      }else if(sheetData instanceof SheetDataAEP){
+        res = sheetDataPlanElement.jointAEPs.segs[segId] as Res;
+      }
+      else{
+        return; //should throw error
+      }
+      res.arrowStatus = res.arrowStatus == ResArrowStatus.None? ResArrowStatus.Forwards : ResArrowStatus.None;
+
+      const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+      savePlan(currentPlanElementsClone, nextPlanElementsClone);
+      // dispatch(updatePlanElement(sheetDataPlanElement));
+      // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+
+    }
+  },[planElements, savePlan, segOnCreationData, sheetData]);
+
+  const reverseArrow = useCallback(()=>{
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+    const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+    const segId = (sheetData as SheetDataSeg).segId!;
+    let res:Res;
+
+    if(sheetData instanceof SheetDataREP){
+      res = sheetDataPlanElement.jointREPs.segs[segId] as Res;
+    }else if(sheetData instanceof SheetDataREU){
+      res = sheetDataPlanElement.jointREUs.segs[segId] as Res;
+    }else if(sheetData instanceof SheetDataAEP){
+      res = sheetDataPlanElement.jointAEPs.segs[segId] as Res;
+    }
+    else{
+      return; //should throw error
+    }
+
+    res.arrowStatus = res.arrowStatus === ResArrowStatus.Backwards ? ResArrowStatus.Forwards : ResArrowStatus.Backwards;
+
+    const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+    savePlan(currentPlanElementsClone, nextPlanElementsClone);
+    // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+  },[planElements, savePlan, sheetData]);
+
+  const arrowIsVisible = ():boolean=>{
+    if(segOnCreationData != null){
+      return segOnCreationData.resArrowStatus != ResArrowStatus.None;
+    }else{
+      const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+      const segId = (sheetData as SheetDataSeg).segId!;
+      let res:Res;
+  
+      if(sheetData instanceof SheetDataREP){
+        res = sheetDataPlanElement.jointREPs.segs[segId] as Res;
+      }else if(sheetData instanceof SheetDataREU){
+        res = sheetDataPlanElement.jointREUs.segs[segId] as Res;
+      }else if(sheetData instanceof SheetDataAEP){
+        res = sheetDataPlanElement.jointAEPs.segs[segId] as Res;
+      }
+      else{
+        return false; //should throw error
+      }
+      if(!res) return false;
+
+      return res.arrowStatus != ResArrowStatus.None;
+    }
+
+  }
 
   const getNumero = useCallback(():string=>{
     const segIsOnCreation= segOnCreationData != null;
@@ -274,7 +354,25 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
             onChange={(e) => {handleInputOnChange(e)}} 
         />
       </div>
-      {!segOnCreationData?
+      {sheetData instanceof SheetDataRes?
+        <>
+          <button
+            className={styles['toggle-arrow-visibility-btn']}
+            onClick={toggleArrowVisibility}
+          >{arrowIsVisible()?"Cacher":"Afficher"} la flèche</button>
+          {
+            segOnCreationData === null && arrowIsVisible()?
+            <button
+              className={styles['reverse-arrow-btn']}
+              onClick={reverseArrow}
+            >Inverser le sens de la flèche</button>
+            :null
+          }
+
+        </>
+        :null
+      }
+            {!segOnCreationData?
         <button className={styles['del-btn']}
           onClick={deleteElement}
         >

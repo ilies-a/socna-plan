@@ -3,7 +3,7 @@ import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { useCallback, useEffect, useState } from "react";
 import styles from './plan-element-menu.module.scss';
 import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData } from "@/redux/plan/plan.actions";
-import { AEP, AddSegSession, AllJointSegs, Dimensions, JointAEPs, JointREPs, JointREUs, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataWall, Wall } from "@/entities";
+import { AEP, AddSegSession, AllJointSegs, Dimensions, JointAEPs, JointREPs, JointREUs, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, REP, REU, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataWall, Wall } from "@/entities";
 import { v4 } from 'uuid';
 import { selectAddSegSession, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH } from "@/global";
@@ -24,6 +24,8 @@ const PlanElementMenu: React.FC = () => {
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
   const addSegSession: AddSegSession | null = useSelector(selectAddSegSession);
   const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
+  const [sheetDataOpen, setSheetDataOpen] = useState<boolean>(false);
+
 
 
   useEffect(()=>{
@@ -38,11 +40,11 @@ const PlanElementMenu: React.FC = () => {
           if(!selectedWall) return; //should throw error
           setSheetData(new SheetDataWall(ajs.id, selectedWall.id));
         }else if(js instanceof JointREPs){
-          const selectedREP = js.getSelectedSeg() as Wall; 
+          const selectedREP = js.getSelectedSeg() as REP; 
           if(!selectedREP) return; //should throw error
           setSheetData(new SheetDataREP(ajs.id, selectedREP.id));
         }else if(js instanceof JointREUs){
-          const selectedREP = js.getSelectedSeg() as Wall; 
+          const selectedREP = js.getSelectedSeg() as REU; 
           if(!selectedREP) return; //should throw error
           setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
         }
@@ -71,6 +73,7 @@ const PlanElementMenu: React.FC = () => {
         //     break;
         //   }
         // }
+        setSheetDataOpen(true);
       }
       // switch(selectedEl.instantiatedClassName){
       //   default: //AllJointSegs
@@ -119,8 +122,11 @@ const PlanElementMenu: React.FC = () => {
           break;
         }
       }
+      setSheetDataOpen(true);
     }else{
       setSheetData(null);
+      console.log("setSheetData null")
+      setSheetDataOpen(false);
     }
   },[planElements, segOnCreationData]);
 
@@ -129,31 +135,33 @@ const PlanElementMenu: React.FC = () => {
     // const sheetData:PlanElementSheetData = {planElementId:newJoinedSegsId, segId:undefined, typeName: PlanElementSheetTypeName.Seg, numero:""};
     // dispatch(setPlanElementSheetData(sheetData));
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.Wall, numero:"0"}));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.Wall, numero:"0", resArrowStatus: ResArrowStatus.None}));
     
   },[dispatch]);
 
   const handleClickOnAddREP = useCallback(() =>{
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.REP, numero:"0"}));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.REP, numero:"0", resArrowStatus: ResArrowStatus.None}));
   },[dispatch]);
 
   const handleClickOnAddREU = useCallback(() =>{
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.REU, numero:"0"}));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.REU, numero:"0", resArrowStatus: ResArrowStatus.None}));
   },[dispatch]);
 
   const handleClickOnAddAEP = useCallback(() =>{
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.AEP, numero:"0"}));
+    dispatch(setSegOnCreationData({segClassName: SegClassName.AEP, numero:"0", resArrowStatus: ResArrowStatus.None}));
   },[dispatch]);
 
   const goBack = useCallback(()=>{
-    dispatch(setPlanElementSheetData(null));
-    dispatch(setSegOnCreationData(null));
+    // dispatch(setPlanElementSheetData(null));
     PlanElementsHelper.unselectAllElements(planElements);
     dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
     dispatch(setPlanMode(PlanMode.Move));
+    dispatch(setSegOnCreationData(null));
+    setSheetDataOpen(false);
+
   }, [dispatch, planElements]);
 
 
@@ -162,7 +170,7 @@ const PlanElementMenu: React.FC = () => {
       style={{"width":""+LEFT_MENU_WIDTH+"px", "maxWidth":""+LEFT_MENU_WIDTH+"px"}}
     >
       <button className={`${styles['back-button']} ${sheetData? styles['active']: null}`} onClick={goBack}>&#8592;</button>
-      {sheetData?
+      {sheetDataOpen && sheetData?
         <PlanElementSheet sheetData={sheetData}/>
         :
         <div className={styles['linears-wrapper']}>
