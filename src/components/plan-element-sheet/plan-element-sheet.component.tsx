@@ -2,11 +2,12 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataRes, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
+import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRes, SheetDataRoadDrain, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setSegOnCreationData, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
+import { NAME_TEXT_DEFAULT_FONT_SIZE } from "@/global";
 
 type Props = {
     sheetData: SheetData,
@@ -38,6 +39,27 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   //   setInputNumero("");
   // },[sheetData])
 
+  const getRightJointSegs = useCallback((allJointSegs:AllJointSegs):JointSegs | undefined=>{
+    if(sheetData instanceof SheetDataWall){
+      return allJointSegs.jointWalls;
+    } else if(sheetData instanceof SheetDataREP){
+      return allJointSegs.jointREPs;
+    } else if(sheetData instanceof SheetDataREU){
+      return allJointSegs.jointREUs;
+    } else if(sheetData instanceof SheetDataAEP){
+      return allJointSegs.jointAEPs;
+    } else if(sheetData instanceof SheetDataGutter){
+      return allJointSegs.jointGutters;
+    } else if(sheetData instanceof SheetDataPool){
+      return allJointSegs.jointPools;
+    } else if(sheetData instanceof SheetDataRoadDrain){
+      return allJointSegs.jointRoadDrains;
+    } else if(sheetData instanceof SheetDataAgrDrain){
+      return allJointSegs.jointAgrDrains;
+    }
+  }, [sheetData]);
+
+
   const handleInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
     const newNumero = e.currentTarget.value;
     // setInputNumero(newNumero);
@@ -51,74 +73,28 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
 
       if(segIsOnCreation){
         segOnCreationData!.numero = newNumero;
-        dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, numero: newNumero, resArrowStatus: segOnCreationData.resArrowStatus}));
+        dispatch(setSegOnCreationData({
+          segClassName: segOnCreationData.segClassName, 
+          numero: newNumero, 
+          nameTextVisibility: segOnCreationData.nameTextVisibility, 
+          resArrowStatus: segOnCreationData.resArrowStatus,
+          nameTextFontSize: segOnCreationData.nameTextFontSize,
+          nameTextRotation: segOnCreationData.nameTextRotation,
+        }));
       }
       else if(sheetData.planElementId != undefined){
         // let segId:string | undefined;
-        if(sheetData instanceof SheetDataWall){
-          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-          const wall = (sheetDataPlanElement as AllJointSegs).jointWalls.segs[segId];
-          wall.numero = newNumero;
-
-          //update planElements saves with the updated numero
-          // if(!segId) return;
-          for(const planElementsRecord of planElementsRecords.records){
-            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
-            if(elIdx === -1) continue;
-            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointWalls.segs[segId];
-            if(wallInPlanElementsRecord){
-              wallInPlanElementsRecord.numero = newNumero;
-            }
+        sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+        const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId];
+        seg.numero = newNumero;
+        for(const planElementsRecord of planElementsRecords.records){
+          const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+          if(elIdx === -1) continue;
+          const segInPlanElementsRecord = getRightJointSegs(planElementsRecord[elIdx] as AllJointSegs)!.segs[segId];
+          if(segInPlanElementsRecord){
+            segInPlanElementsRecord.numero = newNumero;
           }
         }
-        else if(sheetData instanceof SheetDataREP){
-          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-          const res = (sheetDataPlanElement as AllJointSegs).jointREPs.segs[segId];
-          res.numero = newNumero;
-
-          //update planElements saves with the updated numero
-          // if(!segId) return;
-          for(const planElementsRecord of planElementsRecords.records){
-            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
-            if(elIdx === -1) continue;
-            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointREPs.segs[segId];
-            if(wallInPlanElementsRecord){
-              wallInPlanElementsRecord.numero = newNumero;
-            }
-          }
-
-        }else if(sheetData instanceof SheetDataREU){
-          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-          const res = (sheetDataPlanElement as AllJointSegs).jointREUs.segs[segId];
-          res.numero = newNumero;
-
-          //update planElements saves with the updated numero
-          // if(!segId) return;
-          for(const planElementsRecord of planElementsRecords.records){
-            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
-            if(elIdx === -1) continue;
-            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointREUs.segs[segId];
-            if(wallInPlanElementsRecord){
-              wallInPlanElementsRecord.numero = newNumero;
-            }
-          }
-        }else if(sheetData instanceof SheetDataAEP){
-          sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-          const res = (sheetDataPlanElement as AllJointSegs).jointAEPs.segs[segId];
-          res.numero = newNumero;
-
-          //update planElements saves with the updated numero
-          // if(!segId) return;
-          for(const planElementsRecord of planElementsRecords.records){
-            const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
-            if(elIdx === -1) continue;
-            const wallInPlanElementsRecord = (planElementsRecord[elIdx] as AllJointSegs).jointAEPs.segs[segId];
-            if(wallInPlanElementsRecord){
-              wallInPlanElementsRecord.numero = newNumero;
-            }
-          }
-        }
-
 
       }
 
@@ -126,75 +102,62 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     }
     
     if(segIsOnCreation || !sheetDataPlanElement) return;
-    dispatch(updatePlanElement(sheetDataPlanElement));
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+    // dispatch(updatePlanElement(sheetDataPlanElement));
     // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
   
-  },[dispatch, planElements, planElementsRecords, segOnCreationData, sheetData]);
+  },[dispatch, getRightJointSegs, planElements, planElementsRecords.records, segOnCreationData, sheetData]);
 
   const convertTypeNameToString = useCallback(()=>{
     if(sheetData instanceof SheetDataWall){
       return "Mur";
-    }
-    else if(sheetData instanceof SheetDataREP){
+    }else if(sheetData instanceof SheetDataREP){
       return "REP";
     }else if(sheetData instanceof SheetDataREU){
       return "REU";
-    }else if(sheetData instanceof SheetDataAEP){
-      return "AEP";
+    }else if(sheetData instanceof SheetDataGutter){
+      return "Gouttière";
+    }else if(sheetData instanceof SheetDataPool){
+      return "Rés. Piscine";
+    }else if(sheetData instanceof SheetDataRoadDrain){
+      return "Drain Routier";
+    }else if(sheetData instanceof SheetDataAgrDrain){
+      return "Drain Agricole";
     }
   },[sheetData]);
 
   const deleteElement = useCallback(()=>{
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    let sheetDataPlanElement:PlanElement | undefined;
-    if(sheetData instanceof SheetDataWall){
-      sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-      (sheetDataPlanElement as AllJointSegs)
-      .jointWalls.deleteSeg((sheetData as SheetDataWall).segId!);
-    }
-    else if(sheetData instanceof SheetDataREP){
-      sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-      (sheetDataPlanElement as AllJointSegs)
-      .jointREPs.deleteSeg((sheetData as SheetDataREP).segId!);
-    }else if(sheetData instanceof SheetDataREU){
-      sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-      (sheetDataPlanElement as AllJointSegs)
-      .jointREUs.deleteSeg((sheetData as SheetDataREU).segId!);
-    }else if(sheetData instanceof SheetDataAEP){
-      sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-      (sheetDataPlanElement as AllJointSegs)
-      .jointAEPs.deleteSeg((sheetData as SheetDataAEP).segId!);
-    }
+    const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+    getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.deleteSeg((sheetData as SheetDataSeg).segId!);
 
     if(!sheetDataPlanElement) return; //theorically not possible but just in case
-    dispatch(updatePlanElement(sheetDataPlanElement));
+    // dispatch(updatePlanElement(sheetDataPlanElement));
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+
     const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
     savePlan(currentPlanElementsClone, nextPlanElementsClone);
     dispatch(setPlanElementSheetData(null));
-  }, [planElements, sheetData, savePlan, dispatch]);
+  }, [planElements, getRightJointSegs, sheetData, dispatch, savePlan]);
 
 
   const toggleArrowVisibility = useCallback(()=>{
     if(segOnCreationData != null){
       segOnCreationData.resArrowStatus = segOnCreationData.resArrowStatus == ResArrowStatus.None? ResArrowStatus.Forwards : ResArrowStatus.None;
-
+      dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, 
+        numero: segOnCreationData.numero, 
+        nameTextVisibility: segOnCreationData.nameTextVisibility, 
+        resArrowStatus: segOnCreationData.resArrowStatus,
+        nameTextFontSize: segOnCreationData.nameTextFontSize,
+        nameTextRotation: segOnCreationData.nameTextRotation,
+      }));
     }else{
       const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
 
       const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
       const segId = (sheetData as SheetDataSeg).segId!;
-      let res:Res;
+      const res:Res = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId] as Res;
 
-      if(sheetData instanceof SheetDataREP){
-        res = sheetDataPlanElement.jointREPs.segs[segId] as Res;
-      }else if(sheetData instanceof SheetDataREU){
-        res = sheetDataPlanElement.jointREUs.segs[segId] as Res;
-      }else if(sheetData instanceof SheetDataAEP){
-        res = sheetDataPlanElement.jointAEPs.segs[segId] as Res;
-      }
-      else{
-        return; //should throw error
-      }
       res.arrowStatus = res.arrowStatus == ResArrowStatus.None? ResArrowStatus.Forwards : ResArrowStatus.None;
 
       const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
@@ -203,54 +166,82 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
 
     }
-  },[planElements, savePlan, segOnCreationData, sheetData]);
+  },[dispatch, getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
+
+  const toggleNameVisibility = useCallback(()=>{
+    if(segOnCreationData != null){
+      segOnCreationData.nameTextVisibility = !segOnCreationData.nameTextVisibility;
+      dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, 
+        numero: segOnCreationData.numero, 
+        nameTextVisibility: segOnCreationData.nameTextVisibility, 
+        resArrowStatus: segOnCreationData.resArrowStatus,
+        nameTextFontSize: segOnCreationData.nameTextFontSize,
+        nameTextRotation: segOnCreationData.nameTextRotation,
+      }));
+    }else{
+
+      const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+
+      const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+      const segId = (sheetData as SheetDataSeg).segId!;
+      const seg:Seg = getRightJointSegs(sheetDataPlanElement)!.segs[segId];
+
+      if(seg.nameTextVisibility){
+        seg.nameTextVisibility = false;
+      }else{
+        seg.nameTextPosition = {x:seg.nodes[0].position.x, y:seg.nodes[0].position.y};
+        seg.nameTextFontSize = seg.nameTextFontSize;
+        seg.nameTextRotation = seg.nameTextRotation;
+        seg.nameTextVisibility = true;
+      }
+
+      const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+      savePlan(currentPlanElementsClone, nextPlanElementsClone);
+      // dispatch(updatePlanElement(sheetDataPlanElement));
+      // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+
+    }
+
+  },[dispatch, getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
+
+  const nameIsVisible = useCallback(():boolean=>{
+    if(segOnCreationData != null){
+      return segOnCreationData.nameTextVisibility;
+    }else if(sheetData.planElementId != undefined){
+      const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+      const segId = (sheetData as SheetDataSeg).segId!;
+      const seg:Seg = getRightJointSegs(sheetDataPlanElement)!.segs[segId];
+
+      return seg? seg.nameTextVisibility:false;
+
+    }
+    return false;
+  },[getRightJointSegs, planElements, segOnCreationData, sheetData]);
 
   const reverseArrow = useCallback(()=>{
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
     const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
     const segId = (sheetData as SheetDataSeg).segId!;
-    let res:Res;
-
-    if(sheetData instanceof SheetDataREP){
-      res = sheetDataPlanElement.jointREPs.segs[segId] as Res;
-    }else if(sheetData instanceof SheetDataREU){
-      res = sheetDataPlanElement.jointREUs.segs[segId] as Res;
-    }else if(sheetData instanceof SheetDataAEP){
-      res = sheetDataPlanElement.jointAEPs.segs[segId] as Res;
-    }
-    else{
-      return; //should throw error
-    }
+    const res:Res = getRightJointSegs(sheetDataPlanElement)!.segs[segId] as Res;
 
     res.arrowStatus = res.arrowStatus === ResArrowStatus.Backwards ? ResArrowStatus.Forwards : ResArrowStatus.Backwards;
 
     const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
     savePlan(currentPlanElementsClone, nextPlanElementsClone);
     // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
-  },[planElements, savePlan, sheetData]);
+  },[getRightJointSegs, planElements, savePlan, sheetData]);
 
   const arrowIsVisible = ():boolean=>{
     if(segOnCreationData != null){
       return segOnCreationData.resArrowStatus != ResArrowStatus.None;
-    }else{
+    }else if(sheetData.planElementId != undefined){
       const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
       const segId = (sheetData as SheetDataSeg).segId!;
-      let res:Res;
+      const res:Res = getRightJointSegs(sheetDataPlanElement)!.segs[segId] as Res;
   
-      if(sheetData instanceof SheetDataREP){
-        res = sheetDataPlanElement.jointREPs.segs[segId] as Res;
-      }else if(sheetData instanceof SheetDataREU){
-        res = sheetDataPlanElement.jointREUs.segs[segId] as Res;
-      }else if(sheetData instanceof SheetDataAEP){
-        res = sheetDataPlanElement.jointAEPs.segs[segId] as Res;
-      }
-      else{
-        return false; //should throw error
-      }
-      if(!res) return false;
-
-      return res.arrowStatus != ResArrowStatus.None;
+      return res? res.arrowStatus != ResArrowStatus.None : false;
     }
+    return false;
 
   }
 
@@ -264,61 +255,121 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         return segOnCreationData!.numero;
       }
       else if(sheetData.planElementId != undefined){
-        if(sheetData instanceof SheetDataWall){
-          const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[segId];
-          return wall? wall.numero : ""; //wall can be undefined, 
-          //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
-          //with a deleted (undefined) wall
-        }
-        else if(sheetData instanceof SheetDataREP){
-          const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointREPs.segs[segId];
-          return res? res.numero : ""; 
-        }else if(sheetData instanceof SheetDataREU){
-          const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointREUs.segs[segId];
-          return res? res.numero : ""; 
-        }else if(sheetData instanceof SheetDataAEP){
-          const res = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointAEPs.segs[segId];
-          return res? res.numero : ""; //wall can be undefined, 
-          //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
-          //with a deleted (undefined) wall
-          
-        }
+        const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+        const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId];
+        return seg? seg.numero : "";
+      
       }
 
     }
 
-
-    // switch(sheetData.instantiatedSegClassName){
-    //   default:{
-    //     if(segIsOnCreation){
-    //       return segOnCreationData!.numero;
-    //     }else if(sheetData.planElementId != undefined){
-    //       const segId = (sheetData as SheetDataWall).segId!;
-    //       const wall = (PlanElementsHelper.getAllJointSegs(planElements) as AllJointSegs).jointWalls.segs[segId];
-    //       return wall? wall.numero : ""; //wall can be undefined, 
-    //       //because imo after wall deletion, planElements is updated before sheetData and then this function is redefined
-    //       //with a deleted (undefined) wall
-    //     }
-    //   }
-    // }
     return "";
-  }, [planElements, segOnCreationData, sheetData]);
+  }, [getRightJointSegs, planElements, segOnCreationData, sheetData]);
+
+
+  const getTextSize = useCallback(():string=>{
+    const segIsOnCreation= segOnCreationData != null;
+    
+    if(sheetData instanceof SheetDataSeg){
+      const segId = (sheetData as SheetDataSeg).segId!;
+
+      if(segIsOnCreation){
+        return segOnCreationData!.nameTextFontSize.toString();
+      }
+      else if(sheetData.planElementId != undefined){
+
+        const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+        const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId];
+        return seg.nameTextFontSize.toString();
+        
+      }
+
+    }
+    return "";
+  }, [getRightJointSegs, planElements, segOnCreationData, sheetData]);
+
+
+
+  const handleSizeInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    const newSize = e.currentTarget.value;
+    const newSizeNumber = parseFloat(newSize);
+    // setInputNumero(newNumero);
+    let sheetDataPlanElement:PlanElement | undefined;
+
+    //(only a seg can be on creation because a symbol element is created instantly)
+    const segIsOnCreation = segOnCreationData != null;
+
+    if(sheetData instanceof SheetDataSeg){
+      const segId = (sheetData as SheetDataSeg).segId!;
+
+      if(segIsOnCreation){
+        // segOnCreationData!.nameTextFontSize = newSizeNumber;
+        dispatch(setSegOnCreationData({
+          segClassName: segOnCreationData.segClassName, 
+          numero: segOnCreationData.numero, 
+          nameTextVisibility: segOnCreationData.nameTextVisibility, 
+          resArrowStatus: segOnCreationData.resArrowStatus,
+          nameTextFontSize: newSizeNumber,
+          nameTextRotation: segOnCreationData.nameTextRotation,
+        }));
+      }
+      else if(sheetData.planElementId != undefined){
+        // let segId:string | undefined;
+
+        sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+        const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId];
+        seg.nameTextFontSize = newSizeNumber;
+        for(const planElementsRecord of planElementsRecords.records){
+          const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+          if(elIdx === -1) continue;
+          const segInPlanElementsRecord = getRightJointSegs(planElementsRecord[elIdx] as AllJointSegs)!.segs[segId];
+          if(segInPlanElementsRecord){
+            segInPlanElementsRecord.nameTextFontSize = newSizeNumber;
+          }
+        }
+
+      }
+
+    }
+    
+    if(segIsOnCreation || !sheetDataPlanElement) return;
+    // dispatch(updatePlanElement(sheetDataPlanElement));
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+
+    // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+  
+  },[dispatch, getRightJointSegs, planElements, planElementsRecords.records, segOnCreationData, sheetData]);
+
+
 
 
   const getSheetTitle = ():string=>{
+    let preTitle = segOnCreationData != null? " en création": "";
     if(segOnCreationData){
       switch(segOnCreationData.segClassName){
         case(SegClassName.Wall):{
-          return "Mur";
+          return "Mur"+preTitle;
         }
         case(SegClassName.REP):{
-          return "REP";
+          return "REP"+preTitle;
         }
         case(SegClassName.REU):{
-          return "REU";
+          return "REU"+preTitle;
         }
         case(SegClassName.AEP):{
-          return "AEP";
+          return "AEP"+preTitle;
+        }
+        case(SegClassName.Gutter):{
+          return "Gouttière"+preTitle;
+        }
+        case(SegClassName.Pool):{
+          return "Rés. Piscine"+preTitle;
+        }
+        case(SegClassName.RoadDrain):{
+          return "Drain Routier"+preTitle;
+        }
+        case(SegClassName.AgrDrain):{
+          return "Drain Agricole"+preTitle;
         }
         default:{
           return "";
@@ -333,6 +384,14 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       return "REU";
     }else if(sheetData instanceof SheetDataAEP){
       return "AEP";
+    }else if(sheetData instanceof SheetDataGutter){
+      return "Gouttière";
+    }else if(sheetData instanceof SheetDataPool){
+      return "Rés. Piscine";
+    }else if(sheetData instanceof SheetDataRoadDrain){
+      return "Drain Routier";
+    }else if(sheetData instanceof SheetDataAgrDrain){
+      return "Drain Agricole";
     }
     return "";
   }
@@ -354,6 +413,24 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
             onChange={(e) => {handleInputOnChange(e)}} 
         />
       </div>
+      
+      <button className={styles['toggle-name-visibility-btn']}
+        onClick={toggleNameVisibility}
+      >
+        {nameIsVisible()?"Cacher":"Afficher"} le nom
+      </button>
+      {nameIsVisible()?
+        <>
+          <input type="range" id="size" name="size" value={getTextSize()} onChange={(e)=>{handleSizeInputOnChange(e)}}
+          min="16" max="22"/>
+          <label htmlFor="size">Taille</label>
+          {/* <input type="range" id="rotation" name="rotation" value={getTextRotation()} onChange={(e)=>{handleRotationInputOnChange(e)}}
+          min="0" max="360"/>
+          <label htmlFor="volume">Angle</label> */}
+        </>
+        :null
+      }
+
       {sheetData instanceof SheetDataRes?
         <>
           <button
@@ -365,14 +442,14 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
             <button
               className={styles['reverse-arrow-btn']}
               onClick={reverseArrow}
-            >Inverser le sens de la flèche</button>
+            >Inverser la flèche</button>
             :null
           }
 
         </>
         :null
       }
-            {!segOnCreationData?
+      {!segOnCreationData?
         <button className={styles['del-btn']}
           onClick={deleteElement}
         >

@@ -1,4 +1,4 @@
-import { AEP, AddSegSession, JointSegs, JointSegsClassName, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, Position, REP, REU, Res, Seg, SegClassName, SegNode, SegOnCreationData, Vector2D, Wall } from '@/entities';
+import { AEP, AddSegSession, AgrDrain, Gutter, JointSegs, JointSegsClassName, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, Pool, Position, REP, REU, Res, RoadDrain, Seg, SegClassName, SegNode, SegOnCreationData, Vector2D, Wall } from '@/entities';
 import { setAddSegSession, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, updatePlanElement } from '@/redux/plan/plan.actions';
 import { selectPlanElements, selectPlanElementsRecords, selectSegOnCreationData } from '@/redux/plan/plan.selectors';
 import { getOrthogonalProjection } from '@/utils';
@@ -11,29 +11,6 @@ export function useAddSeg() {
   const dispatch = useDispatch();
   const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
 
-//   const addSegOnCompatibleNodeOrSeg = (segClassName: SegClassName, node?:SegNode, seg?:Seg) =>{
-//     if(node){
-//         if(
-//             !(segClassName === SegClassName.Wall && node.jointSegClassName === JointSegsClassName.JointWalls) &&
-//             !(segClassName === SegClassName.REP && node.jointSegClassName === JointSegsClassName.JointREPs) &&
-//             !(segClassName === SegClassName.REU && node.jointSegClassName === JointSegsClassName.JointREUs)
-//         ){
-//             return false;
-//         }
-//     }else if(seg){
-//         if(
-//             !(segClassName === SegClassName.Wall && seg.instantiatedSegClassName === SegClassName.Wall) &&
-//             !(segClassName === SegClassName.REP && seg.instantiatedSegClassName === SegClassName.REP) &&
-//             !(segClassName === SegClassName.REU && seg.instantiatedSegClassName === SegClassName.REU)
-//         ){
-//             return false;
-//         }
-//     }
-//     return true;
-//   };
-
-
-  //lineToRemoveIndex is only for the case of drawing the first segment of a line
   const addSeg = useCallback((pointerPos: Vector2D, node?:SegNode, seg?:Seg): boolean=>{
     let jointSegs:JointSegs | undefined;
     if(!segOnCreationData) return false; //should throw error
@@ -54,6 +31,22 @@ export function useAddSeg() {
             jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointAEPs;
             break;
         }
+        case(SegClassName.Gutter):{
+            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointGutters;
+            break;
+        }
+        case(SegClassName.Pool):{
+            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointPools;
+            break;
+        }
+        case(SegClassName.RoadDrain):{
+            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointRoadDrains;
+            break;
+        }
+        case(SegClassName.AgrDrain):{
+            jointSegs = PlanElementsHelper.getAllJointSegs(planElements).jointAgrDrains;
+            break;
+        }
     }
 
     let addedSeg:Seg;
@@ -64,7 +57,11 @@ export function useAddSeg() {
             !(segOnCreationData.segClassName === SegClassName.Wall && node.jointSegClassName === JointSegsClassName.JointWalls) &&
             !(segOnCreationData.segClassName === SegClassName.REP && node.jointSegClassName === JointSegsClassName.JointREPs) &&
             !(segOnCreationData.segClassName === SegClassName.REU && node.jointSegClassName === JointSegsClassName.JointREUs) &&
-            !(segOnCreationData.segClassName === SegClassName.AEP && node.jointSegClassName === JointSegsClassName.JointAEPs)
+            !(segOnCreationData.segClassName === SegClassName.AEP && node.jointSegClassName === JointSegsClassName.JointAEPs) &&
+            !(segOnCreationData.segClassName === SegClassName.Gutter && node.jointSegClassName === JointSegsClassName.JointGutters) &&
+            !(segOnCreationData.segClassName === SegClassName.Pool && node.jointSegClassName === JointSegsClassName.JointPools) &&
+            !(segOnCreationData.segClassName === SegClassName.RoadDrain && node.jointSegClassName === JointSegsClassName.JointRoadDrains) &&
+            !(segOnCreationData.segClassName === SegClassName.AgrDrain && node.jointSegClassName === JointSegsClassName.JointAgrDrains)
         ){
             return false;
         }
@@ -74,7 +71,11 @@ export function useAddSeg() {
             !(segOnCreationData.segClassName === SegClassName.Wall && seg instanceof Wall) &&
             !(segOnCreationData.segClassName === SegClassName.REP && seg instanceof REP) &&
             !(segOnCreationData.segClassName === SegClassName.REU && seg instanceof REU) &&
-            !(segOnCreationData.segClassName === SegClassName.AEP && seg instanceof AEP)
+            !(segOnCreationData.segClassName === SegClassName.AEP && seg instanceof AEP) &&
+            !(segOnCreationData.segClassName === SegClassName.Gutter && seg instanceof Gutter) &&
+            !(segOnCreationData.segClassName === SegClassName.Pool && seg instanceof Pool) &&
+            !(segOnCreationData.segClassName === SegClassName.RoadDrain && seg instanceof RoadDrain) &&
+            !(segOnCreationData.segClassName === SegClassName.AgrDrain && seg instanceof AgrDrain)
         ){
             return false;
         }
@@ -98,6 +99,11 @@ export function useAddSeg() {
 
     if(!segOnCreationData) return false; //should throw error
     addedSeg.numero = segOnCreationData.numero;
+    addedSeg.nameTextVisibility = segOnCreationData.nameTextVisibility;
+    addedSeg.nameTextFontSize = segOnCreationData.nameTextFontSize;
+    addedSeg.nameTextRotation = segOnCreationData.nameTextRotation;
+    addedSeg.nameTextPosition = {x:addedSeg.nodes[0].position.x, y:addedSeg.nodes[0].position.y};
+
     if(addedSeg instanceof Res){
         (addedSeg as Res).arrowStatus = segOnCreationData.resArrowStatus;
     }

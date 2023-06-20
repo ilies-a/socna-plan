@@ -1,10 +1,10 @@
 import { v4 } from 'uuid';
-import { calculateSidelinesPoints, cloneArray, doSegmentsIntersect, getDistance, isPointInPolygon, sortPointsClockwise } from './utils';
-import { BIG_NUMBER, NODE_RADIUS, PRECISION } from './global';
+import { calculateAngle, calculateSidelinesPoints, calculateSlope, cloneArray, doSegmentsIntersect, getDistance, getOrthogonalPoints, getOrthogonalProjection, getPointAlongSegment, getPositionOnSegment, isPointInPolygon, radiansToDegrees, sortPointsClockwise } from './utils';
+import { BIG_NUMBER, NAME_TEXT_DEFAULT_FONT_SIZE, NODE_RADIUS, PRECISION, RES_WIDTH } from './global';
 
-export enum PlanElementClassName {AllJointSegs};
-export enum SegClassName {Wall, REU, REP, AEP};
-export enum JointSegsClassName {JointWalls, JointREUs, JointREPs, JointAEPs};
+// export enum PlanElementClassName {AllJointSegs};
+export enum SegClassName {Wall, REU, REP, AEP, Gutter, Pool, RoadDrain, AgrDrain};
+export enum JointSegsClassName {JointWalls, JointREUs, JointREPs, JointAEPs, JointGutters, JointPools, JointRoadDrains, JointAgrDrains};
 
 
 export class PlanProps {
@@ -55,6 +55,51 @@ export class PlanElementsHelper {
 
     static getAllJointSegs(planElements:PlanElement[]):AllJointSegs{
         return (planElements[0] as AllJointSegs);
+    }
+
+    static getEditableElements(planElements:PlanElement[]):[PlanElement, SheetDataEditable][]{
+        const result:[PlanElement, SheetDataEditable][] = [];
+        for(const el of planElements){
+            if(el instanceof AllJointSegs){
+                for(const jointSegs of el.jointSegs){
+                    for(const segId in jointSegs.segs){
+                        const seg = jointSegs.segs[segId];
+                        if(!seg.nameTextVisibility) continue;
+                        result.push([el,seg]);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    static selectElement(planElements:PlanElement[], element:SheetDataEditable){
+        if(element instanceof PlanElement){
+
+        }
+        else{
+            const seg = element as Seg;
+            const allJointSegs = this.getAllJointSegs(planElements);
+            allJointSegs.selectSeg(element as Seg);
+            // let jointSegs:JointSegs;
+            // if(seg instanceof Wall){
+            //     jointSegs = allJointSegs.jointWalls;
+            // }
+            // else if (seg instanceof REP){
+            //     jointSegs = allJointSegs.jointREPs;
+            // }
+            // else if (seg instanceof REU){
+            //     jointSegs = allJointSegs.jointREUs;
+            // }
+            // else if (seg instanceof AEP){
+            //     jointSegs = allJointSegs.jointAEPs;
+            // }
+            // else{
+            //     return; //should throw error
+            // }
+            // jointSegs.selectSeg(seg.id);
+        }
+        
     }
 }
 
@@ -147,6 +192,10 @@ export abstract class PlanElement {
     }
 }
 
+export class PlanElementNameText {
+
+}
+
 
 export class PlanElementsRecordsHandler{
     records: PlanElement[][] = [[]];
@@ -202,6 +251,21 @@ export class AllJointSegs extends PlanElement{
     jointREPs: JointREPs = new JointREPs({});
     jointREUs: JointREUs = new JointREUs({});
     jointAEPs: JointAEPs = new JointAEPs({});
+    jointGutters: JointGutters = new JointGutters({});
+    jointPools: JointPools = new JointPools({});
+    jointRoadDrains: JointRoadDrains = new JointRoadDrains({});
+    jointAgrDrains: JointAgrDrains = new JointAgrDrains({});
+
+    jointSegs: JointSegs[] = [
+        this.jointWalls,
+        this.jointREPs,
+        this.jointREUs,
+        this.jointAEPs,
+        this.jointGutters,
+        this.jointPools,
+        this.jointRoadDrains,
+        this.jointAgrDrains,
+    ]; 
 
     constructor(id:string){
         super(id);
@@ -220,29 +284,71 @@ export class AllJointSegs extends PlanElement{
         else if(jointSegs instanceof JointAEPs){
             this.jointAEPs = jointSegs as JointAEPs;
         }
+        else if(jointSegs instanceof JointGutters){
+            this.jointGutters = jointSegs as JointGutters;
+        }
+        else if(jointSegs instanceof JointPools){
+            this.jointPools = jointSegs as JointPools;
+        }
+        else if(jointSegs instanceof JointRoadDrains){
+            this.jointRoadDrains = jointSegs as JointRoadDrains;
+        }
+        else if(jointSegs instanceof JointAgrDrains){
+            this.jointAgrDrains = jointSegs as JointAgrDrains;
+        }
     }
 
     getSelectedJointSegs(): JointSegs | null{
-        if(this.jointWalls.selectedSegId!=null) return this.jointWalls;
-        if(this.jointREPs.selectedSegId!=null) return this.jointREPs;
-        if(this.jointREUs.selectedSegId!=null) return this.jointREUs;
-        if(this.jointAEPs.selectedSegId!=null) return this.jointAEPs;
+        for(const jointSegsItem of this.jointSegs){
+            if(jointSegsItem.selectedSegId!= null) return jointSegsItem;
+        }
         return null;
     }
 
+    selectSeg(seg:Seg){
+        let jointSegs: JointSegs;
+        if(seg instanceof Wall){
+            jointSegs = this.jointWalls;
+        }
+        else if (seg instanceof REP){
+            jointSegs = this.jointREPs;
+        }
+        else if (seg instanceof REU){
+            jointSegs = this.jointREUs;
+        }
+        else if (seg instanceof AEP){
+            jointSegs = this.jointAEPs;
+        }
+        else if (seg instanceof Gutter){
+            jointSegs = this.jointGutters;
+        }
+        else if (seg instanceof Pool){
+            jointSegs = this.jointPools;
+        }
+        else if (seg instanceof RoadDrain){
+            jointSegs = this.jointRoadDrains;
+        }
+        else if (seg instanceof AgrDrain){
+            jointSegs = this.jointAgrDrains;
+        }
+        else{
+            return; //should throw error
+        }
+        jointSegs.selectSeg(seg.id);
+
+    }
+
     override getSelected():boolean{
-        return (this.jointWalls.selectedSegId!=null
-            || this.jointREPs.selectedSegId!=null
-            || this.jointREUs.selectedSegId!=null
-            || this.jointAEPs.selectedSegId!=null
-            ); // todo : || the other jointsSegs are selected...
+        for(const jointSegsItem of this.jointSegs){
+            if(jointSegsItem.selectedSegId!= null) return true;
+        }
+        return false;
     }
 
     override unselect(): void {
-        this.jointWalls.unselect();
-        this.jointREPs.unselect();
-        this.jointREUs.unselect();
-        this.jointAEPs.unselect();
+        for(const jointSegsItem of this.jointSegs){
+            jointSegsItem.unselect();
+        }
     }
     override clone(): AllJointSegs {
         const ajsClone = new AllJointSegs(this.id);
@@ -250,14 +356,49 @@ export class AllJointSegs extends PlanElement{
         const jREPsClone = this.jointREPs.clone();
         const jREUsClone = this.jointREUs.clone();
         const jAEPsClone = this.jointAEPs.clone();
+        const jGuttersClone = this.jointGutters.clone();
+        const jPoolsClone = this.jointPools.clone();
+        const jRoadDrainsClone = this.jointRoadDrains.clone();
+        const jAgrDrainsClone = this.jointAgrDrains.clone();
+
+        ajsClone.jointSegs = [];
+
         ajsClone.jointWalls = jwClone as JointWalls;
+        ajsClone.jointSegs.push(ajsClone.jointWalls);
+
         ajsClone.jointREPs = jREPsClone as JointREPs;
+        ajsClone.jointSegs.push(ajsClone.jointREPs);
+
         ajsClone.jointREUs = jREUsClone as JointREUs;
+        ajsClone.jointSegs.push(ajsClone.jointREUs);
+
         ajsClone.jointAEPs = jAEPsClone as JointAEPs;
+        ajsClone.jointSegs.push(ajsClone.jointAEPs);
+
+        ajsClone.jointGutters = jGuttersClone as JointAEPs;
+        ajsClone.jointSegs.push(ajsClone.jointGutters);
+
+        ajsClone.jointPools = jPoolsClone as JointAEPs;
+        ajsClone.jointSegs.push(ajsClone.jointPools);
+
+        ajsClone.jointRoadDrains = jRoadDrainsClone as JointAEPs;
+        ajsClone.jointSegs.push(ajsClone.jointRoadDrains);
+
+        ajsClone.jointAgrDrains = jAgrDrainsClone as JointAEPs;
+        ajsClone.jointSegs.push(ajsClone.jointAgrDrains);
+
+
+        // ajsClone.jointSegs = [
+        //     jwClone,
+        //     jREPsClone,
+        //     jREUsClone,
+        //     jAEPsClone
+        // ]
         return ajsClone;
     }
 
 }
+
 
 export abstract class JointSegs {
     nodes: {[nodeId: string]: SegNode;};
@@ -329,9 +470,17 @@ export abstract class JointSegs {
         //segs may have some data binded like a numero we need to copy it:
         for(const segId in this.segs){
             if(segs.hasOwnProperty(segId)){
-                segs[segId].numero = this.segs[segId].numero;
-                if(segs[segId] instanceof Res){
-                    (segs[segId] as Res).arrowStatus = (this.segs[segId] as Res).arrowStatus;
+                const seg = segs[segId];
+                const thisSeg = this.segs[segId];
+                seg.numero = thisSeg.numero;
+                seg.elementNameForRendering = thisSeg.elementNameForRendering;
+                seg.nameTextVisibility = thisSeg.nameTextVisibility;
+                seg.nameTextPosition = thisSeg.nameTextPosition;
+                seg.nameTextRotation = thisSeg.nameTextRotation;
+                seg.nameTextFontSize = thisSeg.nameTextFontSize;
+
+                if(seg instanceof Res){
+                    (seg as Res).arrowStatus = (thisSeg as Res).arrowStatus;
                 }
             }
         }
@@ -377,15 +526,6 @@ export abstract class JointSegs {
             y: number;
           }
           
-        function calculateSlope(p1: Point, p2: Point): number {
-            if (p1.x === p2.x) {
-                // Handle vertical line case to avoid division by zero
-                return Infinity;
-            }
-            // console.log("p2.y - p1.y", p2.y - p1.y)
-
-            return (p2.y - p1.y) / (p2.x - p1.x);
-        }
 
 
         function groupAlignedSegs(segs:Seg[]): Seg[][]{
@@ -1074,6 +1214,128 @@ export abstract class JointSegs {
         this.unselectSeg();
     }
 
+    // updateNameTextPositionAndAngle(nodePositionBeforeMove:Vector2D, node:SegNode){
+    //     for(const segId in this.segs){
+    //         const seg = this.segs[segId];
+    //         if(!seg.hasNode(node.id)) continue;
+    //         let angle = radiansToDegrees(calculateAngle(seg.nodes[0].position, seg.nodes[1].position));  
+    //         seg.nameTextRotation = angle > 90 && angle < 270 ? angle + 180 : angle;
+
+    //         const nodeIdx = seg.getNodeIndex(node.id) ;
+    //         const otherNodeIdx = nodeIdx === 0 ? 1 : 0;
+    //         if(nodeIdx === -1) continue; //should throw error
+
+    //         const orthogonalProjection = getOrthogonalProjection(nodePositionBeforeMove, seg.nodes[otherNodeIdx].position,  seg.nameTextPosition);
+    //         const d = getDistance(orthogonalProjection, seg.nameTextPosition);
+
+    //         // const distanceTextNodeBeforeNodeMove = getDistance(orthogonalProjection, seg.nameTextPosition);
+
+    //         let segLengthBeforeNodeMove = getDistance(nodePositionBeforeMove, seg.nodes[otherNodeIdx].position);
+    //         if(segLengthBeforeNodeMove===0) segLengthBeforeNodeMove = 1;
+    //         const node1OrthogonalProjectionDistanceBeforeNodeMove = getDistance(nodePositionBeforeMove, orthogonalProjection);
+
+    //         const node1OrthogonalProjectionDistanceRatioBeforeNodeMove = node1OrthogonalProjectionDistanceBeforeNodeMove / segLengthBeforeNodeMove;
+    //         // console.log("node1OrthogonalProjectionDistanceRatioBeforeNodeMove",node1OrthogonalProjectionDistanceRatioBeforeNodeMove)
+    //         // if(!node1OrthogonalProjectionDistanceRatioBeforeNodeMove) node1OrthogonalProjectionDistanceRatioBeforeNodeMove = Infinity;
+    //         // console.log("afterr node1OrthogonalProjectionDistanceRatioBeforeNodeMove",node1OrthogonalProjectionDistanceRatioBeforeNodeMove)
+
+    //         const segLengthAfterNodeMove = getDistance(seg.nodes[0].position, seg.nodes[1].position);
+    //         const calculatedRatioOnSegLengthAfterNodeMoveLength = segLengthAfterNodeMove * node1OrthogonalProjectionDistanceRatioBeforeNodeMove;
+    //         // console.log("calculatedRatioOnSegLengthAfterNodeMoveLength",calculatedRatioOnSegLengthAfterNodeMoveLength);
+
+    //         const p = getPositionOnSegment({p1:seg.nodes[nodeIdx].position, p2:seg.nodes[otherNodeIdx].position}, seg.nodes[nodeIdx].position, calculatedRatioOnSegLengthAfterNodeMoveLength);
+            
+    //         if(!p) continue; //should throw error
+
+    //         const orthogonalPoints = getOrthogonalPoints({p1:seg.nodes[0].position, p2:seg.nodes[1].position}, p, d);
+
+    //         const newTextPosition = getDistance(orthogonalPoints[0], seg.nameTextPosition) < getDistance(orthogonalPoints[1], seg.nameTextPosition) ? 
+    //             orthogonalPoints[0] : orthogonalPoints[1];
+            
+    //         seg.nameTextPosition = newTextPosition;
+    //     }
+    // }
+
+
+    updateAllNameTextPositionsAndAngles(jointSegsBeforeMove:JointSegs, jointSegsAfterMove:JointSegs){
+        for(const segId in jointSegsBeforeMove.segs){
+            const prevSeg = jointSegsBeforeMove.segs[segId];
+            const nextSeg = jointSegsAfterMove.segs[segId];
+
+            //calculating angle
+            let angle = radiansToDegrees(calculateAngle(nextSeg.nodes[0].position, nextSeg.nodes[1].position));  
+            nextSeg.nameTextRotation = angle > 90 && angle < 270 ? angle + 180 : angle;  
+
+            //calculating position
+            
+            const orthogonalProjectionBeforeMove = getOrthogonalProjection(prevSeg.nodes[0].position, prevSeg.nodes[1].position, prevSeg.nameTextPosition);
+            const dBeforeMove = getDistance(orthogonalProjectionBeforeMove, prevSeg.nameTextPosition);
+
+            let prevSegLength = getDistance(prevSeg.nodes[0].position, prevSeg.nodes[1].position);
+            if(prevSegLength===0) prevSegLength = 1; //to avoid division by zero
+            const node1OrthogonalProjectionDistanceBeforeNodeMove = getDistance(prevSeg.nodes[0].position, orthogonalProjectionBeforeMove);
+            const node1OrthogonalProjectionDistanceRatioBeforeNodeMove = node1OrthogonalProjectionDistanceBeforeNodeMove / prevSegLength;
+            
+            const nextSegLength = getDistance(nextSeg.nodes[0].position, nextSeg.nodes[1].position);
+            const calculatedRatioOnSegLengthAfterNodeMoveLength = nextSegLength * node1OrthogonalProjectionDistanceRatioBeforeNodeMove;
+
+            
+            
+            
+            const pOnNextSeg = getPositionOnSegment({p1:nextSeg.nodes[0].position, p2:nextSeg.nodes[1].position}, nextSeg.nodes[0].position, calculatedRatioOnSegLengthAfterNodeMoveLength);
+            
+            if(!pOnNextSeg) continue; //should throw error
+
+            const orthogonalPoints = getOrthogonalPoints({p1:nextSeg.nodes[0].position, p2:nextSeg.nodes[1].position}, pOnNextSeg, dBeforeMove);
+        
+            const newTextPosition = getDistance(orthogonalPoints[0], nextSeg.nameTextPosition) < getDistance(orthogonalPoints[1], nextSeg.nameTextPosition) ? 
+            orthogonalPoints[0] : orthogonalPoints[1];
+
+            nextSeg.nameTextPosition = newTextPosition;
+        }
+
+
+
+        // for(const segId in this.segs){
+        //     const seg = this.segs[segId];
+        //     if(!seg.hasNode(node.id)) continue;
+        //     let angle = radiansToDegrees(calculateAngle(seg.nodes[0].position, seg.nodes[1].position));  
+        //     seg.nameTextRotation = angle > 90 && angle < 270 ? angle + 180 : angle;
+
+        //     const nodeIdx = seg.getNodeIndex(node.id) ;
+        //     const otherNodeIdx = nodeIdx === 0 ? 1 : 0;
+        //     if(nodeIdx === -1) continue; //should throw error
+
+        //     const orthogonalProjection = getOrthogonalProjection(nodePositionBeforeMove, seg.nodes[otherNodeIdx].position,  seg.nameTextPosition);
+        //     const d = getDistance(orthogonalProjection, seg.nameTextPosition);
+
+        //     // const distanceTextNodeBeforeNodeMove = getDistance(orthogonalProjection, seg.nameTextPosition);
+
+        //     let segLengthBeforeNodeMove = getDistance(nodePositionBeforeMove, seg.nodes[otherNodeIdx].position);
+        //     if(segLengthBeforeNodeMove===0) segLengthBeforeNodeMove = 1;
+        //     const node1OrthogonalProjectionDistanceBeforeNodeMove = getDistance(nodePositionBeforeMove, orthogonalProjection);
+
+        //     const node1OrthogonalProjectionDistanceRatioBeforeNodeMove = node1OrthogonalProjectionDistanceBeforeNodeMove / segLengthBeforeNodeMove;
+        //     // console.log("node1OrthogonalProjectionDistanceRatioBeforeNodeMove",node1OrthogonalProjectionDistanceRatioBeforeNodeMove)
+        //     // if(!node1OrthogonalProjectionDistanceRatioBeforeNodeMove) node1OrthogonalProjectionDistanceRatioBeforeNodeMove = Infinity;
+        //     // console.log("afterr node1OrthogonalProjectionDistanceRatioBeforeNodeMove",node1OrthogonalProjectionDistanceRatioBeforeNodeMove)
+
+        //     const segLengthAfterNodeMove = getDistance(seg.nodes[0].position, seg.nodes[1].position);
+        //     const calculatedRatioOnSegLengthAfterNodeMoveLength = segLengthAfterNodeMove * node1OrthogonalProjectionDistanceRatioBeforeNodeMove;
+        //     // console.log("calculatedRatioOnSegLengthAfterNodeMoveLength",calculatedRatioOnSegLengthAfterNodeMoveLength);
+
+        //     const p = getPositionOnSegment({p1:seg.nodes[nodeIdx].position, p2:seg.nodes[otherNodeIdx].position}, seg.nodes[nodeIdx].position, calculatedRatioOnSegLengthAfterNodeMoveLength);
+            
+        //     if(!p) continue; //should throw error
+
+        //     const orthogonalPoints = getOrthogonalPoints({p1:seg.nodes[0].position, p2:seg.nodes[1].position}, p, d);
+
+        //     const newTextPosition = getDistance(orthogonalPoints[0], seg.nameTextPosition) < getDistance(orthogonalPoints[1], seg.nameTextPosition) ? 
+        //         orthogonalPoints[0] : orthogonalPoints[1];
+            
+        //     seg.nameTextPosition = newTextPosition;
+        // }
+    }
 
     clone():JointSegs{
 
@@ -1214,6 +1476,79 @@ export class JointAEPs extends JointSegs {
     }
 }
 
+
+export class JointGutters extends JointSegs {
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+    }
+
+    override createSeg(nodes: [SegNode, SegNode]):Gutter{
+        return new Gutter(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointGutters);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointGutters{
+        return new JointGutters(nodes);
+    }
+}
+
+export class JointPools extends JointSegs {
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+    }
+
+    override createSeg(nodes: [SegNode, SegNode]):Pool{
+        return new Pool(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointPools);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointPools{
+        return new JointPools(nodes);
+    }
+}
+
+export class JointRoadDrains extends JointSegs {
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+    }
+
+    override createSeg(nodes: [SegNode, SegNode]):RoadDrain{
+        return new RoadDrain(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointRoadDrains);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointRoadDrains{
+        return new JointRoadDrains(nodes);
+    }
+}
+
+export class JointAgrDrains extends JointSegs {
+    constructor(nodes:{ [nodeId: string]: SegNode;}){
+        super(nodes);
+    }
+
+    override createSeg(nodes: [SegNode, SegNode]):AgrDrain{
+        return new AgrDrain(nodes);
+    }
+
+    override createNode(id:string, position: Vector2D, linkedNodes:SegNode[]):SegNode{
+        return new SegNode(id, position, linkedNodes, JointSegsClassName.JointAgrDrains);
+    }
+
+    override createJointSegs(nodes: {[nodeId: string]: SegNode;}):JointAgrDrains{
+        return new JointAgrDrains(nodes);
+    }
+}
+
 export class SegNode {
     id: string;
     position: Position;
@@ -1285,18 +1620,61 @@ export class SegNode {
     }
 }
 
-export abstract class Seg {
+// type NameTextInfo = {
+//     position:Vector2D;
+//     visible:boolean;
+// }
+
+// interface NameTextInfoHolder {
+//     nameTextInfo:NameTextInfo
+//     getNameTextContent: ()=>string
+// }
+
+export abstract class SheetDataEditable {
+    id:string="";
+    elementNameForRendering:string = "";
+    numero:string = "0";
+    nameTextVisibility:boolean = false;
+    nameTextPosition:Vector2D = {x:0, y:0};
+    nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
+    nameTextRotation:number = 0;
+
+    constructor(id:string){
+        this.id = id;
+    }
+
+    getRef():string{
+        return this.elementNameForRendering+"_"+this.numero;
+    }
+
+    // getNameTextContent():string{
+    //     return "";
+    // }
+
+
+
+}
+
+
+export abstract class Seg extends SheetDataEditable{
     id: string;
     // instantiatedSegClassName: SegClassName | undefined;
-    numero: string = "";
+    // numero: string = "";
     nodes: [SegNode, SegNode];
     sideline1Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
     sideline2Points: [Position, Position] = [new Position(0,0), new Position(0,0)];
     points: Vector2D[] = [];
     width:number = 0;
     color:string = "";
+    // nameTextInfo: NameTextInfo = {
+    //     position: {x:0, y:0},
+    //     visible: false
+    // };
+
 
     constructor(nodes:[SegNode, SegNode]){
+        const id = nodes[0].id + nodes[1].id;
+        super(id);
         // this.nodes = nodes.sort((a, b) => { 
         //     const sortedIds = [a.id, b.id].sort();
         //     const aIdIndex = sortedIds.findIndex(id => id === a.id);
@@ -1304,13 +1682,27 @@ export abstract class Seg {
         //     return aIdIndex - bIdIndex;
         // });
         this.nodes = nodes;
-        this.id = this.nodes[0].id + this.nodes[1].id;
+        this.id = id;
     }
+
+    // getNameTextContent():string{
+    //     return "";
+    // };
+
+
 
     sortUUIDs(uuid1: string, uuid2: string): [string, string] {
         const sortedUUIDs = [uuid1, uuid2].sort();
         return [sortedUUIDs[0], sortedUUIDs[1]];
       }
+
+    hasNode(nodeId:string):boolean{
+        return this.nodes[0].id === nodeId || this.nodes[1].id === nodeId;
+    }
+
+    getNodeIndex(nodeId:string):number{
+        return this.nodes.findIndex(node => node.id === nodeId);
+    }
 
     setSidelinesPoints(){
         const p1 = this.nodes[0].position;
@@ -1373,6 +1765,12 @@ export abstract class Seg {
         const segmentClone = this.createSeg();
         segmentClone.id = this.id;
         segmentClone.numero = this.numero;
+        segmentClone.elementNameForRendering = this.elementNameForRendering;
+        segmentClone.nameTextVisibility = this.nameTextVisibility;
+        segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
+        segmentClone.nameTextFontSize = this.nameTextFontSize;
+        segmentClone.nameTextRotation = this.nameTextRotation;
+
         segmentClone.sideline1Points = [
             new Position(this.sideline1Points[0].x, this.sideline1Points[0].y),
             new Position(this.sideline1Points[1].x, this.sideline1Points[1].y),
@@ -1387,25 +1785,27 @@ export abstract class Seg {
 
 
 export class Wall extends Seg{
-    // public readonly NAME:SegClassName = SegClassName.Wall;
+    public readonly NAME:string = "Wall";
+    public readonly NAME_FOR_RENDERING:string = "Mur";
     width: number = 30;
-    color: string = "#AAAAAA";
+    color: string = "#000000";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        // this.instantiatedSegClassName = this.NAME;
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
     }
 
     override createSeg():Wall{
         return new Wall(this.nodes);
     }
+
 }
 
 export enum ResArrowStatus {None, Forwards, Backwards}
 
 export abstract class Res extends Seg{
     // public readonly NAME:SegClassName = SegClassName.Wall;
-    width: number = 7;
+    width: number = RES_WIDTH;
     arrowStatus: ResArrowStatus = ResArrowStatus.None;
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
@@ -1417,7 +1817,14 @@ export abstract class Res extends Seg{
         const segmentClone:Res = this.createSeg() as Res;
         segmentClone.id = this.id;
         segmentClone.numero = this.numero;
+        segmentClone.elementNameForRendering = this.elementNameForRendering;
+        segmentClone.nameTextVisibility = this.nameTextVisibility;
+        segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
+        segmentClone.nameTextFontSize = this.nameTextFontSize;
+        segmentClone.nameTextRotation = this.nameTextRotation;
+
         segmentClone.arrowStatus = this.arrowStatus;
+
         segmentClone.sideline1Points = [
             new Position(this.sideline1Points[0].x, this.sideline1Points[0].y),
             new Position(this.sideline1Points[1].x, this.sideline1Points[1].y),
@@ -1431,11 +1838,12 @@ export abstract class Res extends Seg{
 }
 
 export class REP extends Res{
-    // public readonly NAME:SegClassName = SegClassName.REP;
-    color: string = "#058e1e";
+    public readonly NAME:string = "REP";
+    public readonly NAME_FOR_RENDERING:string = "REP";
+    color: string = "#00b050";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        // this.instantiatedSegClassName = this.NAME;
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
     }
 
@@ -1445,11 +1853,12 @@ export class REP extends Res{
 }
 
 export class REU extends Res{
-    // public readonly NAME:SegClassName = SegClassName.REU;
-    color: string = "#fa8c06";
+    public readonly NAME:string = "REU";
+    public readonly NAME_FOR_RENDERING:string = "REU";
+    color: string = "#c65911";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        // this.instantiatedSegClassName = this.NAME;
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
     }
 
@@ -1459,11 +1868,12 @@ export class REU extends Res{
 }
 
 export class AEP extends Res{
-    // public readonly NAME:SegClassName = SegClassName.REU;
-    color: string = "#0d33f4";
+    public readonly NAME:string = "AEP";
+    public readonly NAME_FOR_RENDERING:string = "AEP";
+    color: string = "#00b0f0";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
-        // this.instantiatedSegClassName = this.NAME;
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
     }
 
@@ -1472,7 +1882,65 @@ export class AEP extends Res{
     }
 }
 
+export class Gutter extends Res{
+    public readonly NAME:string = "Gutter";
+    public readonly NAME_FOR_RENDERING:string = "Gouttière";
+    color: string = "#00b050";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.setSidelinesPoints();
+    }
 
+    override createSeg():Gutter{
+        return new Gutter(this.nodes);
+    }
+}
+
+export class Pool extends Res{
+    public readonly NAME:string = "Pool";
+    public readonly NAME_FOR_RENDERING:string = "Rés. Piscine";
+    color: string = "#305496";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.setSidelinesPoints();
+    }
+
+    override createSeg():Pool{
+        return new Pool(this.nodes);
+    }
+}
+
+export class RoadDrain extends Res{
+    public readonly NAME:string = "RoadDrain";
+    public readonly NAME_FOR_RENDERING:string = "Drain Routier";
+    color: string = "#bfbfbf";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.setSidelinesPoints();
+    }
+
+    override createSeg():RoadDrain{
+        return new RoadDrain(this.nodes);
+    }
+}
+
+export class AgrDrain extends Res{
+    public readonly NAME:string = "AgrDrain";
+    public readonly NAME_FOR_RENDERING:string = "Drain Agricole";
+    color: string = "#ffc000";
+    constructor(nodes:[SegNode, SegNode]){
+        super(nodes);
+        this.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.setSidelinesPoints();
+    }
+
+    override createSeg():AgrDrain{
+        return new AgrDrain(this.nodes);
+    }
+}
 
 export class TestPoint{
     id:string;
@@ -1581,9 +2049,55 @@ export class SheetDataAEP extends SheetDataRes {
     }
 }
 
+export class SheetDataGutter extends SheetDataRes {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
+        // this.instantiatedSegClassName = this.NAME;
+    }
+}
+
+export class SheetDataPool extends SheetDataRes {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
+        // this.instantiatedSegClassName = this.NAME;
+    }
+}
+
+export class SheetDataRoadDrain extends SheetDataRes {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
+        // this.instantiatedSegClassName = this.NAME;
+    }
+}
+
+export class SheetDataAgrDrain extends SheetDataRes {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string, segId?: string){
+        super(planElementId, segId);
+        // this.instantiatedSegClassName = this.NAME;
+    }
+}
 
 export type SegOnCreationData = {
     segClassName: SegClassName,
     numero: string,
+    nameTextVisibility: boolean,
     resArrowStatus: ResArrowStatus,
+    nameTextFontSize: number,
+    nameTextRotation: number,
+}
+
+type Size = {
+    width: number,
+    height: number,
+}
+
+export type AppDynamicProps = {
+    planSize:Size,
+    planPosition:Vector2D;
+    planScale: number,
+    leftMenuWidth: number
 }

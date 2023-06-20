@@ -1,4 +1,4 @@
-import { PlanElement, PlanProps, Point } from "@/entities";
+import { AppDynamicProps, PlanElement, PlanProps, Point } from "@/entities";
 import { cloneArray } from "@/utils";
 
 // export const setPlanElements = (planElements:{ [key: string]: PlanElement }):{ [key: string]: PlanElement } => {
@@ -8,6 +8,11 @@ import { cloneArray } from "@/utils";
 //     };
 //       return initialPlanElements
 //   };
+
+// export const setAppDynamicProps = (appDynamicProps : AppDynamicProps):AppDynamicProps => {
+//   return {...appDynamicProps};
+// };
+
 
 export const updatePlanProps = (planProps: PlanProps):PlanProps => {
   return {...planProps};

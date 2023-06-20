@@ -1,5 +1,10 @@
-import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, AppDynamicProps, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
+
+export const setAppDynamicProps = (appDynamicProps: AppDynamicProps) => ({
+  type: PlanActionTypes.SET_APP_DYNAMIC_PROPS,
+  payload: appDynamicProps,
+});
 
 export const updatePlanProps = (planProps: PlanProps) => ({
   type: PlanActionTypes.UPDATE_PLAN_PROPS,

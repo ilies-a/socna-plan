@@ -9,7 +9,6 @@ export function useSavePlan() {
   // const planElements: PlanElement[] = useSelector(selectPlanElements);
   const dispatch = useDispatch();
 
-  //lineToRemoveIndex is only for the case of drawing the first segment of a line
   const savePlan = useCallback((currentPlanElements: PlanElement[], nextPlanElements:PlanElement[])=>{
     console.log("savePlan")
 

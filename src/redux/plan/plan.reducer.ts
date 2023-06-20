@@ -1,11 +1,12 @@
 import PlanActionTypes from "./plan.types";
-import { AddSegSession, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, AppDynamicProps, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { v4 } from "uuid";
 import { initialPlanElements } from "@/global-for-tests";
 
 const INITIAL_STATE = {
-  planProps: new PlanProps(),
+  // planProps: new PlanProps(),
+  appDynamicProps: {planSize:{width:0, height:0}, planPosition:{x:0, y:0}, planScale:1, leftMenuWidth:0} as AppDynamicProps,
   // planIsScaling: false,
   planIsDragging: false,
   planElements: initialPlanElements as PlanElement[],
@@ -27,11 +28,16 @@ const INITIAL_STATE = {
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
   switch (action.type) {
-    case PlanActionTypes.UPDATE_PLAN_PROPS:
+    case PlanActionTypes.SET_APP_DYNAMIC_PROPS:
       return {
         ...state,
-        planProps: updatePlanProps(action.payload)
+        appDynamicProps: action.payload
       };
+    // case PlanActionTypes.UPDATE_PLAN_PROPS:
+    //   return {
+    //     ...state,
+    //     planProps: updatePlanProps(action.payload)
+    //   };
     // case PlanActionTypes.SET_PLAN_IS_SCALING:
     //   return {
     //     ...state,

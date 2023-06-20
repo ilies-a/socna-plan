@@ -1,6 +1,6 @@
 import { MagnetData, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
 import { addPlanElement, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectPlanProps } from "@/redux/plan/plan.selectors";
+import { selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode } from "@/redux/plan/plan.selectors";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,7 +13,6 @@ import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 const {v4} = require("uuid");
 
 const ActionMenu: React.FC = () => {
-  const planProps:PlanProps = useSelector(selectPlanProps);
   const planElements: PlanElement[] = useSelector(selectPlanElements);
   const planMode: PlanMode = useSelector(selectPlanMode);
   const planElementsRecords: PlanElementsRecordsHandler = useSelector(selectPlanElementsRecords);

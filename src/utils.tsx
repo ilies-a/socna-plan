@@ -107,8 +107,20 @@ export function doSegmentsIntersect(seg1: Segment, seg2: Segment): boolean {
 
 
 
-  function calculateAngle(p1: Point, p2: Point): number {
+  export function calculateAngle(p1: Point, p2: Point): number {
     return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+  }
+
+  export function radiansToDegrees(angleRadians: number): number {
+    // Convert radians to degrees
+    let angleDegrees = (angleRadians * 180) / Math.PI;
+  
+    // Adjust the angle to be between 0 and 360 degrees
+    angleDegrees = angleDegrees % 360;
+    if (angleDegrees < 0) {
+      angleDegrees += 360;
+    }
+    return angleDegrees;
   }
   
   export function sortPointsClockwise(points: Point[]): Point[] {
@@ -434,4 +446,63 @@ export function getPointAlongSegment(seg: Segment, idx: number, d: number): Vect
   const qy = p0.y - (d * ux);
 
   return { x: qx, y: qy };
+}
+
+export function calculateSlope(p1: Point, p2: Point): number {
+  if (p1.x === p2.x) {
+      // Handle vertical line case to avoid division by zero
+      return Infinity;
+  }
+  // console.log("p2.y - p1.y", p2.y - p1.y)
+
+  return (p2.y - p1.y) / (p2.x - p1.x);
+}
+
+export function getPositionOnSegment(s: Segment, p: Point, d: number): Point | null {
+  const length = Math.sqrt(Math.pow(s.p2.x - s.p1.x, 2) + Math.pow(s.p2.y - s.p1.y, 2));
+  
+  if (length === 0) {
+    return null; // Segment has zero length, cannot determine position
+  }
+  
+  const t = d / length;
+  const position = {
+    x: p.x + t * (s.p2.x - s.p1.x),
+    y: p.y + t * (s.p2.y - s.p1.y),
+  };
+  
+  return position;
+}
+
+export function getOrthogonalPoints(segment: Segment, point: Point, distance: number): [Point, Point] {
+  const { p1, p2 } = segment;
+
+  // Calculate the vector representing the segment
+  const segmentVector = { x: p2.x - p1.x, y: p2.y - p1.y };
+
+  // Normalize the segment vector
+  const segmentLength = Math.sqrt(segmentVector.x ** 2 + segmentVector.y ** 2);
+  const normalizedSegmentVector = {
+    x: segmentVector.x / segmentLength,
+    y: segmentVector.y / segmentLength,
+  };
+
+  // Calculate the orthogonal vector
+  const orthogonalVector = {
+    x: -normalizedSegmentVector.y,
+    y: normalizedSegmentVector.x,
+  };
+
+  // Calculate the offset points
+  const offsetDistance = distance;
+  const offsetPoint1 = {
+    x: point.x + orthogonalVector.x * offsetDistance,
+    y: point.y + orthogonalVector.y * offsetDistance,
+  };
+  const offsetPoint2 = {
+    x: point.x - orthogonalVector.x * offsetDistance,
+    y: point.y - orthogonalVector.y * offsetDistance,
+  };
+
+  return [offsetPoint1, offsetPoint2];
 }

@@ -2,10 +2,15 @@ import { createSelector } from "reselect";
 
 export const selectPlan = (state: { plan: any; }) => state.plan;
 
-export const selectPlanProps = createSelector(
+export const selectAppDynamicProps = createSelector(
   [selectPlan],
-  (plan) => plan.planProps
+  (plan) => plan.appDynamicProps
 );
+
+// export const selectPlanProps = createSelector(
+//   [selectPlan],
+//   (plan) => plan.planProps
+// );
 
 // export const selectPlanIsScaling= createSelector(
 //   [selectPlan],

@@ -7,7 +7,7 @@ import { Arrow, Group, Path, Shape } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
 import { JointSegsAndSegNodes } from "../plan/plan.component";
-import { selectAddSegSession, selectMagnetData, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectPlanProps, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
+import { selectAddSegSession, selectMagnetData, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { calculateSidelinesPoints, createShrinkedSegment, getDistance, getOrthogonalProjection, getPointAlongSegment, shrinkOrEnlargeSegment, sortPointsClockwise } from "@/utils";
 import { v4 } from 'uuid';
 import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";

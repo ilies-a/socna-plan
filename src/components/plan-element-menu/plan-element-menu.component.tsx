@@ -3,12 +3,13 @@ import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { useCallback, useEffect, useState } from "react";
 import styles from './plan-element-menu.module.scss';
 import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData } from "@/redux/plan/plan.actions";
-import { AEP, AddSegSession, AllJointSegs, Dimensions, JointAEPs, JointREPs, JointREUs, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, REP, REU, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataREP, SheetDataREU, SheetDataWall, Wall } from "@/entities";
+import { AEP, AddSegSession, AgrDrain, AllJointSegs, AppDynamicProps, Dimensions, Gutter, JointAEPs, JointAgrDrains, JointGutters, JointPools, JointREPs, JointREUs, JointRoadDrains, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Pool, REP, REU, ResArrowStatus, RoadDrain, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRoadDrain, SheetDataWall, Wall } from "@/entities";
 import { v4 } from 'uuid';
-import { selectAddSegSession, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
-import { LEFT_MENU_WIDTH } from "@/global";
+import { selectAddSegSession, selectAppDynamicProps, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
+// import { LEFT_MENU_WIDTH } from "@/global";
 import PlanElementSheet from "../plan-element-sheet/plan-element-sheet.component";
 import PlanElementButton from "../plan-element-button/plan-element-button.component";
+import { NAME_TEXT_DEFAULT_FONT_SIZE } from "@/global";
 
 
 const PlanElementMenu: React.FC = () => {
@@ -25,6 +26,7 @@ const PlanElementMenu: React.FC = () => {
   const addSegSession: AddSegSession | null = useSelector(selectAddSegSession);
   const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
   const [sheetDataOpen, setSheetDataOpen] = useState<boolean>(false);
+  const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
 
 
 
@@ -47,11 +49,26 @@ const PlanElementMenu: React.FC = () => {
           const selectedREP = js.getSelectedSeg() as REU; 
           if(!selectedREP) return; //should throw error
           setSheetData(new SheetDataREU(ajs.id, selectedREP.id));
-        }
-        else if(js instanceof JointAEPs){
+        }else if(js instanceof JointAEPs){
           const selectedAEP = js.getSelectedSeg() as AEP; 
           if(!selectedAEP) return; //should throw error
           setSheetData(new SheetDataAEP(ajs.id, selectedAEP.id));
+        }else if(js instanceof JointGutters){
+          const selectedGutter = js.getSelectedSeg() as Gutter; 
+          if(!selectedGutter) return; //should throw error
+          setSheetData(new SheetDataGutter(ajs.id, selectedGutter.id));
+        }else if(js instanceof JointPools){
+          const selectedPool = js.getSelectedSeg() as Pool; 
+          if(!selectedPool) return; //should throw error
+          setSheetData(new SheetDataPool(ajs.id, selectedPool.id));
+        }else if(js instanceof JointRoadDrains){
+          const selectedRoadDrain = js.getSelectedSeg() as RoadDrain; 
+          if(!selectedRoadDrain) return; //should throw error
+          setSheetData(new SheetDataRoadDrain(ajs.id, selectedRoadDrain.id));
+        }else if(js instanceof JointAgrDrains){
+          const selectedAgrDrain = js.getSelectedSeg() as AgrDrain; 
+          if(!selectedAgrDrain) return; //should throw error
+          setSheetData(new SheetDataAgrDrain(ajs.id, selectedAgrDrain.id));
         }
         // switch(js.instantiatedClassName){
         //   case(JointSegsClassName.JointREPs):{
@@ -121,37 +138,82 @@ const PlanElementMenu: React.FC = () => {
           setSheetData(new SheetDataAEP());
           break;
         }
+        case(SegClassName.Gutter):{
+          setSheetData(new SheetDataGutter());
+          break;
+        }
+        case(SegClassName.Pool):{
+          setSheetData(new SheetDataPool());
+          break;
+        }
+        case(SegClassName.RoadDrain):{
+          setSheetData(new SheetDataRoadDrain());
+          break;
+        }
+        case(SegClassName.AgrDrain):{
+          setSheetData(new SheetDataAgrDrain());
+          break;
+        }
       }
       setSheetDataOpen(true);
     }else{
       setSheetData(null);
-      console.log("setSheetData null")
+      // console.log("setSheetData null")
       setSheetDataOpen(false);
     }
   },[planElements, segOnCreationData]);
 
+  const createNewStandardSegOnCreationData = (segClassName:SegClassName):SegOnCreationData=>{
+    return {
+      segClassName: segClassName, 
+      numero:"0", 
+      resArrowStatus: ResArrowStatus.None,
+      nameTextVisibility: false,
+      nameTextFontSize: NAME_TEXT_DEFAULT_FONT_SIZE,
+      nameTextRotation: 0,
+    }
+  }
 
   const handleClickOnAddWall = useCallback(() =>{
     // const sheetData:PlanElementSheetData = {planElementId:newJoinedSegsId, segId:undefined, typeName: PlanElementSheetTypeName.Seg, numero:""};
     // dispatch(setPlanElementSheetData(sheetData));
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.Wall, numero:"0", resArrowStatus: ResArrowStatus.None}));
-    
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.Wall)));
   },[dispatch]);
 
   const handleClickOnAddREP = useCallback(() =>{
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.REP, numero:"0", resArrowStatus: ResArrowStatus.None}));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.REP)));
   },[dispatch]);
 
   const handleClickOnAddREU = useCallback(() =>{
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.REU, numero:"0", resArrowStatus: ResArrowStatus.None}));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.REU)));
   },[dispatch]);
 
   const handleClickOnAddAEP = useCallback(() =>{
     dispatch(setPlanMode(PlanMode.AddSeg));
-    dispatch(setSegOnCreationData({segClassName: SegClassName.AEP, numero:"0", resArrowStatus: ResArrowStatus.None}));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.AEP)));
+  },[dispatch]);
+
+  const handleClickOnAddGutter = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.Gutter)));
+  },[dispatch]);
+
+  const handleClickOnAddPool = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.Pool)));
+  },[dispatch]);
+
+  const handleClickOnAddRoadDrain = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.RoadDrain)));
+  },[dispatch]);
+
+  const handleClickOnAddAgrDrain = useCallback(() =>{
+    dispatch(setPlanMode(PlanMode.AddSeg));
+    dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.AgrDrain)));
   },[dispatch]);
 
   const goBack = useCallback(()=>{
@@ -167,19 +229,24 @@ const PlanElementMenu: React.FC = () => {
 
   return (
     <div className={styles['main']}
-      style={{"width":""+LEFT_MENU_WIDTH+"px", "maxWidth":""+LEFT_MENU_WIDTH+"px"}}
+      style={{"width":""+appDynamicProps.leftMenuWidth+"px", "maxWidth":""+appDynamicProps.leftMenuWidth+"px"}}
     >
       <button className={`${styles['back-button']} ${sheetData? styles['active']: null}`} onClick={goBack}>&#8592;</button>
       {sheetDataOpen && sheetData?
         <PlanElementSheet sheetData={sheetData}/>
         :
         <div className={styles['linears-wrapper']}>
-          <div className={styles['linears-header']}>LINEAIRES</div>
+          <div className={styles['linears-header']}>AJOUTER UN LINEAIRE</div>
           <div className={styles['linears-body']}>
-            <PlanElementButton name="Ajouter un mur" onClick={handleClickOnAddWall}/>
-            <PlanElementButton name="Ajouter un REP" onClick={handleClickOnAddREP}/>
-            <PlanElementButton name="Ajouter un REU" onClick={handleClickOnAddREU}/>
-            <PlanElementButton name="Ajouter un AEP" onClick={handleClickOnAddAEP}/>
+            <PlanElementButton name="Mur" onClick={handleClickOnAddWall}/>
+            <PlanElementButton name="REP" onClick={handleClickOnAddREP}/>
+            <PlanElementButton name="REU" onClick={handleClickOnAddREU}/>
+            <PlanElementButton name="AEP" onClick={handleClickOnAddAEP}/>
+            <PlanElementButton name="Gouttière" onClick={handleClickOnAddGutter}/>
+            <PlanElementButton name="Rés. Piscine" onClick={handleClickOnAddPool}/>
+            <PlanElementButton name="Drain Routier" onClick={handleClickOnAddRoadDrain}/>
+            <PlanElementButton name="Drain Agricole" onClick={handleClickOnAddAgrDrain}/>
+
           </div>
         </div>
       }

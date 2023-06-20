@@ -2,16 +2,17 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, PlanElementClassName, AllJointSegs, SegOnCreationData } from "@/entities";
-import { cloneArray, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
+import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable } from "@/entities";
+import { cloneArray, getDistance, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddSegSession, selectAddingPointLineIdPointId, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectPlanProps, selectSegOnCreationData, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
-import { LEFT_MENU_WIDTH, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
+import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setAppDynamicProps, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { LEFT_MENU_WIDTH_LARGE_SCREEN, LEFT_MENU_WIDTH_MEDIUM_SCREEN, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import SegNodeComponent from "../seg-node/seg-node.component";
 import SegComponent from "../seg-component/seg-component.component";
 import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
+import RefText from "../ref-text/ref-text.component";
 
 
 export type JointSegsAndSegNodes ={
@@ -28,7 +29,7 @@ const Plan: React.FC = () => {
     const [cursorPos, setCursorPos] = useState<Point>(new Point(v4(), 0,0));
     const planCursorPos: Vector2D = useSelector(selectPlanCursorPos);
 
-    const planProps:PlanProps = useSelector(selectPlanProps);
+    // const planProps:PlanProps = useSelector(selectPlanProps);
     const planMode: PlanMode = useSelector(selectPlanMode);
 
     const planElements: PlanElement[] = useSelector(selectPlanElements);
@@ -77,15 +78,27 @@ const Plan: React.FC = () => {
     const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
     const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
 
+    const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
 
     useEffect(()=>{
         const handleResize = ()=>{
             console.log("resize")
-            const newPlanProps = new PlanProps();
+            // const newPlanProps = new PlanProps();
+            // const newAppDynamicProps: AppDynamicProps = {
+            //     planSize: { width: 0, height: 0 },
+            //     leftMenuWidth: 0,
+            //     planScale: 1,
+            //     planPosition: {x:0, y:0}
+            // };
             // newPlanProps.dimensions = new Dimensions(planWrapperRef.getBoundingClientRect().width, planWrapperRef.getBoundingClientRect().height);
+            const newAppDynamicProps = {... appDynamicProps};
 
-            newPlanProps.dimensions = new Dimensions(window.innerWidth - LEFT_MENU_WIDTH, window.innerHeight - TOP_MENU_HEIGHT);
-            dispatch(updatePlanProps(newPlanProps));
+            newAppDynamicProps.leftMenuWidth = window.innerWidth > 1000 ? LEFT_MENU_WIDTH_LARGE_SCREEN : LEFT_MENU_WIDTH_MEDIUM_SCREEN;
+
+            newAppDynamicProps.planSize = { width: window.innerWidth  - newAppDynamicProps.leftMenuWidth, height: window.innerHeight - TOP_MENU_HEIGHT };
+
+            // newPlanProps.dimensions = new Dimensions(window.innerWidth - leftMenuWidth, window.innerHeight - TOP_MENU_HEIGHT);
+            dispatch(setAppDynamicProps(newAppDynamicProps));
         }
         window.addEventListener('resize', handleResize);
         handleResize();
@@ -233,12 +246,7 @@ const Plan: React.FC = () => {
     const getPlanElement = useCallback((el:PlanElement)=> {
         if(el instanceof AllJointSegs){
             const ajs = el as AllJointSegs;
-            const jointSegs:JointSegs[] = new Array<JointSegs>(3);
-            jointSegs.push(ajs.jointWalls);
-            jointSegs.push(ajs.jointREPs);
-            jointSegs.push(ajs.jointREUs);
-            jointSegs.push(ajs.jointAEPs);
-            return jointSegs.map((js, i)=>{
+            return ajs.jointSegs.map((js, i)=>{
                 return getJointSegsDrawings(js, i);
             });
         }
@@ -338,10 +346,24 @@ const Plan: React.FC = () => {
             </>
     }
 
+    const getPlanElementsNameTexts = useCallback(()=>{
+        const editableElements:[PlanElement, SheetDataEditable][] = PlanElementsHelper.getEditableElements(planElements);
+        return editableElements.map((editableElement, i) => {            
+            return <RefText 
+                        key={i}
+                        planElement={editableElement[0]}
+                        editableElement = {editableElement[1]}
+                        setPointingOnSeg= {setPointingOnSeg}
+                    />
+            }
+        )
+    
+    },[planElements]);
 
-    function getDistance(p1:{ x: number; y: number; }, p2:{ x: number; y: number; }) {
-        return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      }
+
+    // function getDistance(p1:{ x: number; y: number; }, p2:{ x: number; y: number; }) {
+    //     return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    //   }
 
     function getCenter(p1:{ x: number; y: number; }, p2:{ x: number; y: number; }) {
         return {
@@ -427,7 +449,7 @@ const Plan: React.FC = () => {
           var scale = stage.scaleX() * (dist / lastDistLocalVar);
           scale = scale > scaleMax ? scaleMax : scale < scaleMin ? scaleMin : scale;
 
-          planProps.scale = scale;
+          appDynamicProps.planScale = scale;
         //   stage.scaleX(scale);
         //   stage.scaleY(scale);
 
@@ -440,7 +462,7 @@ const Plan: React.FC = () => {
             y: newCenter.y - pointTo.y * scale + dy,
           };
 
-          planProps.position = newPos;
+          appDynamicProps.planPosition = newPos;
         //   dispatch(updatePlanProps(planProps));
         //   setStagePosition(newPos);
 
@@ -450,15 +472,16 @@ const Plan: React.FC = () => {
         //   setMsg("scale = "+ scale);
 
         }
-    },[addingPointLineIdPointId, dispatch, lastCenter, lastDist, planElements, planProps, scaleMin]);
+    },[addingPointLineIdPointId, appDynamicProps, dispatch, lastCenter, lastDist, planElements, scaleMin]);
 
     const handlePinchTouchEnd = useCallback(()=>{
         // setMsg("handlePinchTouchMove")
         setScaling(false);
         setLastDist(0);
         setLastCenter(null);
-        dispatch(updatePlanProps(planProps));
-    }, [dispatch, planProps]);
+        // dispatch(updatePlanProps(planProps));
+        dispatch(setAppDynamicProps({...appDynamicProps}));
+    }, [appDynamicProps, dispatch]);
 
 
     const handleOnPointerUp = useCallback(()=>{
@@ -522,9 +545,9 @@ const Plan: React.FC = () => {
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
         const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
         // setCursorPos(new Point((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale));
-        return new Position((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale);
+        return new Position((ePos.x - e.currentTarget.getPosition().x) * 1/appDynamicProps.planScale, (ePos.y - e.currentTarget.getPosition().y) * 1/appDynamicProps.planScale);
     
-    },[planProps.scale]); 
+    },[appDynamicProps.planScale]); 
 
     // const setCursorPosWithEventPos = useCallback((e:any, touch:boolean)=>{
     //     const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
@@ -535,6 +558,8 @@ const Plan: React.FC = () => {
 
     const handleMovingSeg = useCallback((newCursorPos: Position) => {
         if(!movingSeg || !pointerStartPos) return;
+        const jointSegsBeforeMoveClone = movingSeg.jointSegs.clone();
+
         const cursorOffset = new Position(
             newCursorPos.x - pointerStartPos.x,
             newCursorPos.y - pointerStartPos.y
@@ -543,6 +568,10 @@ const Plan: React.FC = () => {
             movingSeg.segNodes[i].position.x = movingSeg.startingNodesPos[i].x + cursorOffset.x;
             movingSeg.segNodes[i].position.y = movingSeg.startingNodesPos[i].y + cursorOffset.y;
         }
+
+        movingSeg.jointSegs.updateAllNameTextPositionsAndAngles(jointSegsBeforeMoveClone, movingSeg.jointSegs);
+
+
         dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
     }, [dispatch, movingSeg, planElements, pointerStartPos]);
 
@@ -562,21 +591,26 @@ const Plan: React.FC = () => {
 
             const [movingNodePosWithMagnet, linePoints] = getMovingNodePositionWithMagnet(node, newCursorPos, magnetData);
 
-            // updateNodePosition(movingNodePosWithMagnet);
+            const jointSegsBeforeMoveClone = addSegSession.jointSegs.clone();
 
-            dispatch(setMagnetData(
-              {
-                activeOnAxes: magnetData.activeOnAxes,
-                node: nodeOrSeg && nodeOrSeg.id.length > 36? null: nodeOrSeg as SegNode, //36 is uuid length, Seg id is 36*2
-                seg: nodeOrSeg && nodeOrSeg.id.length > 36? nodeOrSeg as Seg: null,
-                linePoints
-              }
-            ))
+            // updateNodePosition(movingNodePosWithMagnet);
 
             node.position = movingNodePosWithMagnet;
 
+            addSegSession.jointSegs.updateAllNameTextPositionsAndAngles(jointSegsBeforeMoveClone, addSegSession.jointSegs);
+
             // node.position = getMovingNodePositionWithMagnet(node, newCursorPos, magnetData);              
             dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
+
+            
+            dispatch(setMagnetData(
+                {
+                  activeOnAxes: magnetData.activeOnAxes,
+                  node: nodeOrSeg && nodeOrSeg.id.length > 36? null: nodeOrSeg as SegNode, //36 is uuid length, Seg id is 36*2
+                  seg: nodeOrSeg && nodeOrSeg.id.length > 36? nodeOrSeg as Seg: null,
+                  linePoints
+                }
+              ))
         }
         else{
             handleMovingSeg(newCursorPos);
@@ -596,10 +630,10 @@ const Plan: React.FC = () => {
                 className={styles['plan']}
                 hitOnDragEnabled
                 ref={stageRef}
-                width={planProps.dimensions.w} 
-                height={planProps.dimensions.h}
-                position={planProps.position}
-                scale={{x:planProps.scale, y:planProps.scale}}
+                width={appDynamicProps.planSize.width} 
+                height={appDynamicProps.planSize.height}
+                position={appDynamicProps.planPosition}
+                scale={{x:appDynamicProps.planScale, y:appDynamicProps.planScale}}
                 // style={{"marginTop":""+PLAN_MARGIN_TOP+"px"}}
                 // style={{"width":"inherit", "height":"100vm"}}
                 onClick={handleClick}
@@ -712,8 +746,8 @@ const Plan: React.FC = () => {
                 } }
                 onDragEnd={e => {
                     dispatch(setPlanIsDragging(false));
-                    planProps.position = e.currentTarget.getPosition();
-                    dispatch(updatePlanProps(planProps));
+                    appDynamicProps.planPosition = e.currentTarget.getPosition()
+                    dispatch(setAppDynamicProps({...appDynamicProps}));
                     // dispatch(setUnselectAllOnPlanMouseUp(true));
                 }}
                 >
@@ -733,6 +767,9 @@ const Plan: React.FC = () => {
                     // PlanElementsHelper.planElementsSeparatedBySelection(planElements).map((planElements, _) => {
                     //     return getPlanElement(el);
                     // })
+                }
+                {
+                    getPlanElementsNameTexts()
                 }
                 {                 
 
