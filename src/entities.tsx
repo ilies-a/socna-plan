@@ -1644,7 +1644,7 @@ export abstract class SheetDataEditable {
     }
 
     getRef():string{
-        return this.elementNameForRendering+"_"+this.numero;
+        return this.elementNameForRendering+this.numero;
     }
 
     // getNameTextContent():string{
@@ -1869,7 +1869,7 @@ export class REU extends Res{
 
 export class AEP extends Res{
     public readonly NAME:string = "AEP";
-    public readonly NAME_FOR_RENDERING:string = "AEP";
+    public readonly NAME_FOR_RENDERING:string = "RAEP";
     color: string = "#00b0f0";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
@@ -1884,7 +1884,7 @@ export class AEP extends Res{
 
 export class Gutter extends Res{
     public readonly NAME:string = "Gutter";
-    public readonly NAME_FOR_RENDERING:string = "Gouttière";
+    public readonly NAME_FOR_RENDERING:string = "G";
     color: string = "#00b050";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
@@ -1899,7 +1899,7 @@ export class Gutter extends Res{
 
 export class Pool extends Res{
     public readonly NAME:string = "Pool";
-    public readonly NAME_FOR_RENDERING:string = "Rés. Piscine";
+    public readonly NAME_FOR_RENDERING:string = "RP";
     color: string = "#305496";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
@@ -1914,7 +1914,7 @@ export class Pool extends Res{
 
 export class RoadDrain extends Res{
     public readonly NAME:string = "RoadDrain";
-    public readonly NAME_FOR_RENDERING:string = "Drain Routier";
+    public readonly NAME_FOR_RENDERING:string = "DR";
     color: string = "#bfbfbf";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
@@ -1929,7 +1929,7 @@ export class RoadDrain extends Res{
 
 export class AgrDrain extends Res{
     public readonly NAME:string = "AgrDrain";
-    public readonly NAME_FOR_RENDERING:string = "Drain Agricole";
+    public readonly NAME_FOR_RENDERING:string = "DA";
     color: string = "#ffc000";
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);

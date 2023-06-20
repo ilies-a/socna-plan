@@ -241,7 +241,7 @@ const PlanElementMenu: React.FC = () => {
             <PlanElementButton name="Mur" onClick={handleClickOnAddWall}/>
             <PlanElementButton name="REP" onClick={handleClickOnAddREP}/>
             <PlanElementButton name="REU" onClick={handleClickOnAddREU}/>
-            <PlanElementButton name="AEP" onClick={handleClickOnAddAEP}/>
+            <PlanElementButton name="RAEP" onClick={handleClickOnAddAEP}/>
             <PlanElementButton name="Gouttière" onClick={handleClickOnAddGutter}/>
             <PlanElementButton name="Rés. Piscine" onClick={handleClickOnAddPool}/>
             <PlanElementButton name="Drain Routier" onClick={handleClickOnAddRoadDrain}/>

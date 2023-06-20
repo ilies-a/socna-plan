@@ -115,14 +115,16 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       return "REP";
     }else if(sheetData instanceof SheetDataREU){
       return "REU";
+    }else if(sheetData instanceof SheetDataAEP){
+      return "RAEP";
     }else if(sheetData instanceof SheetDataGutter){
-      return "Gouttière";
+      return "G";
     }else if(sheetData instanceof SheetDataPool){
-      return "Rés. Piscine";
+      return "RP";
     }else if(sheetData instanceof SheetDataRoadDrain){
-      return "Drain Routier";
+      return "DR";
     }else if(sheetData instanceof SheetDataAgrDrain){
-      return "Drain Agricole";
+      return "DA";
     }
   },[sheetData]);
 
@@ -401,7 +403,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       <div className={styles['sheet-header']}>{getSheetTitle()}</div>
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>Ref</div>
-        <div className={`${styles['content']}`}>{convertTypeNameToString() + "_" + getNumero()}</div>
+        <div className={`${styles['content']}`}>{convertTypeNameToString() + getNumero()}</div>
       </div>
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>N°</div>
