@@ -471,6 +471,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     else if(sheetData.planElementId != undefined){
       const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
       const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId] as Wall;
+      if(!seg) return false; //otherwise bug if wall is deleted
       return seg.sinister;
     }
     return false;
