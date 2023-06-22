@@ -2,12 +2,12 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable } from "@/entities";
+import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable, Size, CoordSize } from "@/entities";
 import { cloneArray, getDistance, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setAppDynamicProps, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddSegSession, selectAddingPointLineIdPointId, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
-import { LEFT_MENU_WIDTH_LARGE_SCREEN, LEFT_MENU_WIDTH_MEDIUM_SCREEN, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectAllElementsWrapperCoordSize, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { LEFT_MENU_WIDTH_LARGE_SCREEN, LEFT_MENU_WIDTH_MEDIUM_SCREEN, NON_DAZZLING_WHITE, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, SCALE_MAX, SCALE_MIN, TOP_MENU_HEIGHT } from "@/global";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import SegNodeComponent from "../seg-node/seg-node.component";
 import SegComponent from "../seg-component/seg-component.component";
@@ -40,11 +40,12 @@ const Plan: React.FC = () => {
     const [dragging, setDragging] = useState<boolean>(false);
     const planIsDragging:boolean = useSelector(selectPlanIsDragging);
     const [scaling, setScaling] = useState<boolean>(false);
-    const scaleMax = 2;
-    const scaleMin = 1/9;
+    // const scaleMax = 2;
+    // const scaleMin = 1/9;
 
     const stageRef = useRef<any>();
-
+    const stageToExportRef = useRef<any>();
+    
     // const [stageScale, setStageScale] = useState<{ x: number; y: number; }>({x:1, y:1});
     // const [stagePosition, setStagePosition] = useState<{ x: number; y: number; }>({x:1, y:1});
 
@@ -79,6 +80,7 @@ const Plan: React.FC = () => {
     const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
 
     const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
+    const allElementsWrapperCoordSize: CoordSize = useSelector(selectAllElementsWrapperCoordSize);
 
     useEffect(()=>{
         const handleResize = ()=>{
@@ -109,7 +111,26 @@ const Plan: React.FC = () => {
         
     },[dispatch]);
 
-    
+    const downloadURI = (uri:string, name:string) =>{
+        var link = document.createElement('a');
+        link.download = name;
+        link.href = uri;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    useEffect(()=>{
+        if(!(planMode === PlanMode.Export)) return;
+        if(!stageToExportRef) return;
+        const uri = stageToExportRef.current.toDataURL({pixelRatio: 1});
+        downloadURI(uri, 'plan.png');
+        // console.log("stageRef.current.getSize()", stageRef.current.getSize());
+        // console.log("stageRef.current.getPosition()", stageRef.current.getPosition());
+
+        dispatch(setPlanMode(PlanMode.Move));
+    },[dispatch, planMode])
+
     // useEffect(()=>{
     //     console.log("planElements.length", planElements.length);
     // },[planElements]);
@@ -385,20 +406,20 @@ const Plan: React.FC = () => {
         if (touch1 && touch2) {
           setScaling(true);
 
-          //if were adding a point while scaling, cancel adding
-          if(addingPointLineIdPointId){
-            const lineIndex = PlanElementsHelper.findElementIndexById(planElements, addingPointLineIdPointId[0]);
-            if(lineIndex > -1){
-                // const line = planElements[lineIndex] as Seg;
-                // // removeLineIfNoPoints(lineIndex)
-                // if(line.path.length < 2){ //if line has only one point we remove the line
-                //     const clone = PlanElementsHelper.clone(planElements);
-                //     clone.splice(lineIndex, 1);
-                //     dispatch(setPlanElements(clone));
-                // }
-            }
-            dispatch(setAddingPointLineIdPointId(null));
-          }
+        //   //if were adding a point while scaling, cancel adding
+        //   if(addingPointLineIdPointId){
+        //     const lineIndex = PlanElementsHelper.findElementIndexById(planElements, addingPointLineIdPointId[0]);
+        //     if(lineIndex > -1){
+        //         // const line = planElements[lineIndex] as Seg;
+        //         // // removeLineIfNoPoints(lineIndex)
+        //         // if(line.path.length < 2){ //if line has only one point we remove the line
+        //         //     const clone = PlanElementsHelper.clone(planElements);
+        //         //     clone.splice(lineIndex, 1);
+        //         //     dispatch(setPlanElements(clone));
+        //         // }
+        //     }
+        //     dispatch(setAddingPointLineIdPointId(null));
+        //   }
 
           // if the stage was under Konva's drag&drop
           // we need to stop it, and implement our own pan logic with two pointers
@@ -447,7 +468,7 @@ const Plan: React.FC = () => {
           };
 
           var scale = stage.scaleX() * (dist / lastDistLocalVar);
-          scale = scale > scaleMax ? scaleMax : scale < scaleMin ? scaleMin : scale;
+          scale = scale > SCALE_MAX ? SCALE_MAX : scale < SCALE_MIN ? SCALE_MIN : scale;
 
           appDynamicProps.planScale = scale;
         //   stage.scaleX(scale);
@@ -472,7 +493,7 @@ const Plan: React.FC = () => {
         //   setMsg("scale = "+ scale);
 
         }
-    },[addingPointLineIdPointId, appDynamicProps, dispatch, lastCenter, lastDist, planElements, scaleMin]);
+    },[appDynamicProps, lastCenter, lastDist]);
 
     const handlePinchTouchEnd = useCallback(()=>{
         // setMsg("handlePinchTouchMove")
@@ -621,6 +642,7 @@ const Plan: React.FC = () => {
     //     addSeg(jointSegs, pointerPos, node, seg);
     // }, [addSeg]);
 
+
     return (
         // <div onClick={e =>{console.log("Click on parent")}}>Parent
         //     <div onClick={e =>{console.log("Click on child")}}>Child</div>
@@ -632,7 +654,7 @@ const Plan: React.FC = () => {
                 ref={stageRef}
                 width={appDynamicProps.planSize.width} 
                 height={appDynamicProps.planSize.height}
-                position={appDynamicProps.planPosition}
+                // position={appDynamicProps.planPosition}
                 scale={{x:appDynamicProps.planScale, y:appDynamicProps.planScale}}
                 // style={{"marginTop":""+PLAN_MARGIN_TOP+"px"}}
                 // style={{"width":"inherit", "height":"100vm"}}
@@ -797,6 +819,45 @@ const Plan: React.FC = () => {
                 }
                 </Layer>
             </Stage>
+            {planMode === PlanMode.Export?
+            <div className={styles['to-export-wrapper']}>
+                <Stage
+                className={styles['plan']}
+                ref={stageToExportRef}
+                offsetX={allElementsWrapperCoordSize.x1}
+                offsetY={allElementsWrapperCoordSize.y1}
+                width={Math.abs(allElementsWrapperCoordSize.x2 - allElementsWrapperCoordSize.x1)} 
+                height={Math.abs(allElementsWrapperCoordSize.y2 - allElementsWrapperCoordSize.y1)}
+                // position={{x:0, y:0}}
+                // position={{x:500, y:545}}
+
+                // position={appDynamicProps.planPosition}
+                // scale={{x:appDynamicProps.planScale, y:appDynamicProps.planScale}}
+                listening={false}
+                >
+                    <Layer>
+                        <Rect
+                            x={allElementsWrapperCoordSize.x1}
+                            y={allElementsWrapperCoordSize.y1}
+                            fill={NON_DAZZLING_WHITE}
+                            width={Math.abs(allElementsWrapperCoordSize.x2 - allElementsWrapperCoordSize.x1)} 
+                            height={Math.abs(allElementsWrapperCoordSize.y2 - allElementsWrapperCoordSize.y1)}
+                        />
+                        {
+                            getPlanElements()
+                            // PlanElementsHelper.planElementsSeparatedBySelection(planElements).map((planElements, _) => {
+                            //     return getPlanElement(el);
+                            // })
+                        }
+                        {
+                            getPlanElementsNameTexts()
+                        }
+
+                    </Layer>
+                </Stage>
+            </div>
+            :null
+            }
         {/* <div style={{"position":"absolute"}}>{msg}</div> */}
         </>
 

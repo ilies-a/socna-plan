@@ -15,11 +15,12 @@ import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 type Props = {
     points:[Vector2D, Vector2D],
     width:number,
+    color:string,
     reversed:boolean,
   };
 
 
-const ArrowDrawing: React.FC<Props> = ({points, width, reversed}) => {
+const ArrowDrawing: React.FC<Props> = ({points, width, color, reversed}) => {
     const arrowPointerWidth = 60;
     const dispatch = useDispatch();
 
@@ -116,7 +117,7 @@ const ArrowDrawing: React.FC<Props> = ({points, width, reversed}) => {
     return (
         <Path
             data= {calculatePoints()}
-            stroke="#5CB85C"
+            stroke={color}
             strokeWidth={1}
             // rotation={180}
             // offsetX={-dimensions.width/2}

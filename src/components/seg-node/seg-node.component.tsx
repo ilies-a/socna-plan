@@ -44,7 +44,7 @@ const SegNodeComponent: React.FC<Props> = ({jointSegs, node, pointingOnSeg}) => 
       <Circle
         x = {node.position.x}
         y = {node.position.y}
-        radius = {NODE_RADIUS / appDynamicProps.planScale}
+        radius = {NODE_RADIUS}
         fill="#428BCA"
         opacity={(visible || addSegSession && addSegSession.draggingNode.id === node.id) && !pointingOnSeg? 1 : 0} //(addSegSession && addSegSession.seg.nodes[1].id === node.id) and !pointingOnSeg conditions are just a fix
         listening = {false}
@@ -92,7 +92,7 @@ const SegNodeComponent: React.FC<Props> = ({jointSegs, node, pointingOnSeg}) => 
       <Circle
         x = {node.position.x}
         y = {node.position.y}
-        radius = {NODE_RADIUS / appDynamicProps.planScale}
+        radius = {NODE_RADIUS}
         opacity={0}
         // stroke="black"
         // strokeWidth={1}

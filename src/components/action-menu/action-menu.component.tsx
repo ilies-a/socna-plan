@@ -1,14 +1,15 @@
-import { MagnetData, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
-import { addPlanElement, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode } from "@/redux/plan/plan.selectors";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppDynamicProps, MagnetData, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
+import { addPlanElement, setAllElementsWrapperCoordSize, setAppDynamicProps, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
+import { selectAppDynamicProps, selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode } from "@/redux/plan/plan.selectors";
+import { MutableRefObject, useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import styles from './action-menu.module.scss';
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
-import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO, TOP_MENU_HEIGHT } from "@/global";
+import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO, SCALE_MAX, SCALE_MIN, TOP_MENU_HEIGHT } from "@/global";
 import { cloneArray } from "@/utils";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
+import Link from "next/link";
 // import AddElementMenu from "../add-element-menu/add-element-menu.component";
 const {v4} = require("uuid");
 
@@ -19,7 +20,7 @@ const ActionMenu: React.FC = () => {
   const magnetData: MagnetData = useSelector(selectMagnetData);
   const savePlan = useSavePlan();
   const dispatch = useDispatch();
-
+  const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
 
   const toPreviousRecord = useCallback(()=>{
     if(planElementsRecords.currentRecordIndex === 0 ) return;
@@ -76,6 +77,35 @@ const ActionMenu: React.FC = () => {
 
   }, [dispatch, magnetData]);
 
+  const downloadURI = (uri:string, name:string) =>{
+    var link = document.createElement('a');
+    link.download = name;
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const handleExport = () => {
+    const allElementsWrapperCoordSize = PlanElementsHelper.calculateAllElementsWrapperCoordSize(planElements);
+    dispatch(setAllElementsWrapperCoordSize(allElementsWrapperCoordSize));
+    dispatch(setPlanMode(PlanMode.Export));
+  };
+
+  const zoomIn = () => {
+    const newAppDynamicProps = {... appDynamicProps};
+    const newScale = newAppDynamicProps.planScale * 1.5;
+    newAppDynamicProps.planScale = newScale > SCALE_MAX ? SCALE_MAX : newScale;
+    dispatch(setAppDynamicProps(newAppDynamicProps));
+  };
+
+  const zoomOut = () => {
+    const newAppDynamicProps = {... appDynamicProps};
+    const newScale = newAppDynamicProps.planScale * 0.5;
+    newAppDynamicProps.planScale = newScale < SCALE_MIN ? SCALE_MIN : newScale;
+    dispatch(setAppDynamicProps(newAppDynamicProps));
+  };
+
   return (
     <div className={styles['main']}
       style={{"height":""+TOP_MENU_HEIGHT+"px"}}
@@ -90,6 +120,9 @@ const ActionMenu: React.FC = () => {
         <PlanMenuButton iconFileName="arrow-prev.png" handleOnClick={toPreviousRecord} active={false} available={hasPreviousRecords}/>
         <PlanMenuButton iconFileName="arrow-next.png" handleOnClick={toNextRecord} active={false} available={hasNextRecords}/>
         <PlanMenuButton iconFileName="magnet.png" handleOnClick={toggleActivateMagnet} active={magnetData.activeOnAxes} available={true}/>
+        <PlanMenuButton iconFileName="zoom-in.png" handleOnClick={zoomIn} active={false} available={true}/>
+        <PlanMenuButton iconFileName="zoom-out.png" handleOnClick={zoomOut} active={false} available={true}/>
+        <PlanMenuButton iconFileName="export.png" handleOnClick={handleExport} active={false} available={true}/>
       </div>
       {/* {
       planMode === PlanMode.AddPlanElement?

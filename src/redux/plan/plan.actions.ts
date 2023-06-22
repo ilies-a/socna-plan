@@ -1,4 +1,4 @@
-import { AddSegSession, AppDynamicProps, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, AppDynamicProps, CoordSize, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
 
 export const setAppDynamicProps = (appDynamicProps: AppDynamicProps) => ({
@@ -99,4 +99,9 @@ export const setSegOnCreationData= (segOnCreationData: SegOnCreationData | null)
 export const setPlanElementsSnapshot= (planElements: PlanElement[] | null) => ({
   type: PlanActionTypes.SET_PLAN_ELEMENT_SNAPSHOT,
   payload: planElements,
+});
+
+export const setAllElementsWrapperCoordSize = (allElementsWrapperCoordSize: CoordSize) => ({
+  type: PlanActionTypes.SET_ALL_ELEMENTS_WRAPPER_COORD_SIZE,
+  payload: allElementsWrapperCoordSize,
 });

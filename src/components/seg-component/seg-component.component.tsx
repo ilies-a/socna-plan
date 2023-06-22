@@ -134,29 +134,30 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
             {
                 seg instanceof Gutter?
                 <Path
-                data= {
-                    (():string => {
-                        let s:string = "";
-                        s += "M";
-                        for(const node of nodes){
-                            s += " " + node.position.x + " " + node.position.y + " ";
-                        }
-                        return s
-                    })()
-                }
-                stroke={seg.color}
-                strokeWidth={seg.width}
-                dashEnabled
-                dash={[12, 12]}
-                listening={false}
+                    data= {
+                        (():string => {
+                            let s:string = "";
+                            s += "M";
+                            for(const node of nodes){
+                                s += " " + node.position.x + " " + node.position.y + " ";
+                            }
+                            return s
+                        })()
+                    }
+                    stroke={seg.color}
+                    strokeWidth={seg.width}
+                    dashEnabled
+                    dash={[12, 12]}
+                    listening={false}
                 />
                 :null
             }
             {
                 seg instanceof Res && seg.arrowStatus != ResArrowStatus.None?
-                    <ArrowDrawing 
+                    <ArrowDrawing
                         points={[nodes[0].position, nodes[1].position]} 
-                        width={20} 
+                        width={20}
+                        color={seg.color}
                         reversed={seg.arrowStatus === ResArrowStatus.Backwards? true: false}/>
                     :null
             }

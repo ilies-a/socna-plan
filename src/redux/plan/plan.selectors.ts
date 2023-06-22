@@ -7,6 +7,7 @@ export const selectAppDynamicProps = createSelector(
   (plan) => plan.appDynamicProps
 );
 
+
 // export const selectPlanProps = createSelector(
 //   [selectPlan],
 //   (plan) => plan.planProps
@@ -95,4 +96,9 @@ export const selectSegOnCreationData= createSelector(
 export const selectPlanElementsSnapshot= createSelector(
   [selectPlan],
   (plan) => plan.planElementsSnapshot
+);
+
+export const selectAllElementsWrapperCoordSize= createSelector(
+  [selectPlan],
+  (plan) => plan.allElementsWrapperCoordSize
 );

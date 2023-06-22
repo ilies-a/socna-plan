@@ -1,5 +1,5 @@
 import PlanActionTypes from "./plan.types";
-import { AddSegSession, AppDynamicProps, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
+import { AddSegSession, AppDynamicProps, CoordSize, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { v4 } from "uuid";
 import { initialPlanElements } from "@/global-for-tests";
@@ -23,7 +23,8 @@ const INITIAL_STATE = {
   planElementSheetData: null as PlanElementSheetData | null,
   magnetData: {activeOnAxes:true, node:null, seg:null} as MagnetData,
   addSegSession: null as AddSegSession | null,
-  segOnCreationData: null as SegOnCreationData | null
+  segOnCreationData: null as SegOnCreationData | null,
+  allElementsWrapperCoordSize: undefined as CoordSize | undefined
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -132,6 +133,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
       return {
         ...state,
         planElementsSnapshot: action.payload
+      };
+    case PlanActionTypes.SET_ALL_ELEMENTS_WRAPPER_COORD_SIZE:
+      return {
+        ...state,
+        allElementsWrapperCoordSize: action.payload
       };
     default:
       return state;

@@ -13,7 +13,7 @@ export class PlanProps {
     scale: number = 1; 
 }
 
-export enum PlanMode { Move, AddSeg, AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin }
+export enum PlanMode { Move, AddSeg, AddPlanElement, MovePoint, AddPoint, RemovePointThenJoin, RemovePointNoJoin, Export }
 
 export class PlanElementsHelper {
     static clone(planElements:PlanElement[]):PlanElement[]{
@@ -101,6 +101,13 @@ export class PlanElementsHelper {
         }
         
     }
+
+    static calculateAllElementsWrapperCoordSize(planElements:PlanElement[]):CoordSize{
+        const allJointSegs = this.getAllJointSegs(planElements);
+        const allJointSegsCoordSize = allJointSegs.calculateCoordSize();
+        //todo: other symbols coordSize and compare them
+        return allJointSegsCoordSize;
+    } 
 }
 
 
@@ -241,6 +248,9 @@ export const iconDataArr:IconData[] = [
     new IconData("arrow-prev.png", new Dimensions(50,50)),
     new IconData("arrow-next.png", new Dimensions(50,50)),
     new IconData("magnet.png", new Dimensions(50,50)),
+    new IconData("export.png", new Dimensions(50,50)),
+    new IconData("zoom-in.png", new Dimensions(50,50)),
+    new IconData("zoom-out.png", new Dimensions(50,50)),
 
   ];
 
@@ -395,6 +405,46 @@ export class AllJointSegs extends PlanElement{
         //     jAEPsClone
         // ]
         return ajsClone;
+    }
+
+    calculateCoordSize():CoordSize{
+        let xMin;
+        let xMax;
+        let yMin;
+        let yMax;
+        let margin = 50; 
+        for(const jointSegsItem of this.jointSegs){
+            for(const nodeId in jointSegsItem.nodes){
+                const nodePosition = jointSegsItem.nodes[nodeId].position;
+                if(!xMin){
+                    xMin = nodePosition.x;
+                }
+                if(!xMax){
+                    xMax = nodePosition.x;
+                }
+                if(!yMin){
+                    yMin = nodePosition.y;
+                }
+                if(!yMax){
+                    yMax = nodePosition.y;
+                }
+                
+                if(nodePosition.x < xMin){
+                    xMin = nodePosition.x;
+                }
+                if(nodePosition.x > xMax){
+                    xMax = nodePosition.x;
+                }
+                if(nodePosition.y < yMin){
+                    yMin = nodePosition.y;
+                }
+                if(nodePosition.y > yMax){
+                    yMax = nodePosition.y;
+                }
+            }
+        }
+
+        return {x1:xMin! - margin, y1:yMin! - margin, x2:xMax! + margin, y2:yMax! + margin};
     }
 
 }
@@ -2090,10 +2140,18 @@ export type SegOnCreationData = {
     nameTextRotation: number,
 }
 
-type Size = {
+export type Size = {
     width: number,
     height: number,
 }
+
+export type CoordSize = {
+    x1:number,
+    y1:number,
+    x2:number,
+    y2:number,
+}
+
 
 export type AppDynamicProps = {
     planSize:Size,

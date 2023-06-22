@@ -1,4 +1,4 @@
-import { MagnetData, Position, Vector2D, Seg, SegNode, linePoints } from "./entities";
+import { MagnetData, Position, Vector2D, Seg, SegNode, linePoints, CoordSize, Size } from "./entities";
 import { BIG_NUMBER } from "./global";
 
 export const objToArr = (obj:{[key:string | number | symbol]:any}):any[]=>{
@@ -506,3 +506,12 @@ export function getOrthogonalPoints(segment: Segment, point: Point, distance: nu
 
   return [offsetPoint1, offsetPoint2];
 }
+
+// export const coordSizeToSize = (coordSize:CoordSize):Size=>{
+//   let width;
+//   if(coordSize.x1 * coordSize.x2<0){
+//     width = Math.abs(coordSize.x1) + Math.abs(coordSize.x2); 
+//   }else{
+//     width = Math.abs(Math.abs(coordSize.x2) - Math.abs(coordSize.x1)); 
+//   }
+// }
