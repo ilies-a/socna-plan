@@ -171,6 +171,7 @@ const PlanElementMenu: React.FC = () => {
       nameTextVisibility: false,
       nameTextFontSize: NAME_TEXT_DEFAULT_FONT_SIZE,
       nameTextRotation: 0,
+      sinister:false,
     }
   }
 

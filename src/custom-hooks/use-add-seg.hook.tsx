@@ -103,6 +103,9 @@ export function useAddSeg() {
     addedSeg.nameTextFontSize = segOnCreationData.nameTextFontSize;
     addedSeg.nameTextRotation = segOnCreationData.nameTextRotation;
     addedSeg.nameTextPosition = {x:addedSeg.nodes[0].position.x, y:addedSeg.nodes[0].position.y};
+    if(addedSeg instanceof Wall){
+        addedSeg.sinister = segOnCreationData.sinister;
+    }
 
     if(addedSeg instanceof Res){
         (addedSeg as Res).arrowStatus = segOnCreationData.resArrowStatus;

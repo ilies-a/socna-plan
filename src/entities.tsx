@@ -528,7 +528,9 @@ export abstract class JointSegs {
                 seg.nameTextPosition = thisSeg.nameTextPosition;
                 seg.nameTextRotation = thisSeg.nameTextRotation;
                 seg.nameTextFontSize = thisSeg.nameTextFontSize;
-
+                if(seg instanceof Wall && thisSeg instanceof Wall){
+                    seg.sinister = thisSeg.sinister;
+                }
                 if(seg instanceof Res){
                     (seg as Res).arrowStatus = (thisSeg as Res).arrowStatus;
                 }
@@ -1839,6 +1841,8 @@ export class Wall extends Seg{
     public readonly NAME_FOR_RENDERING:string = "Mur";
     width: number = 30;
     color: string = "#000000";
+    sinisterColor:string = "#7030A0"
+    sinister: boolean = false;
     constructor(nodes:[SegNode, SegNode]){
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
@@ -1847,6 +1851,29 @@ export class Wall extends Seg{
 
     override createSeg():Wall{
         return new Wall(this.nodes);
+    }
+
+    cloneWithoutNodes():Wall{        
+        const segmentClone = this.createSeg();
+        segmentClone.id = this.id;
+        segmentClone.numero = this.numero;
+        segmentClone.elementNameForRendering = this.elementNameForRendering;
+        segmentClone.nameTextVisibility = this.nameTextVisibility;
+        segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
+        segmentClone.nameTextFontSize = this.nameTextFontSize;
+        segmentClone.nameTextRotation = this.nameTextRotation;
+        segmentClone.sinister = this.sinister;
+
+        segmentClone.sideline1Points = [
+            new Position(this.sideline1Points[0].x, this.sideline1Points[0].y),
+            new Position(this.sideline1Points[1].x, this.sideline1Points[1].y),
+        ];
+        segmentClone.sideline2Points = [
+            new Position(this.sideline2Points[0].x, this.sideline2Points[0].y),
+            new Position(this.sideline2Points[1].x, this.sideline2Points[1].y),
+        ];
+
+        return segmentClone;
     }
 
 }
@@ -2138,6 +2165,7 @@ export type SegOnCreationData = {
     resArrowStatus: ResArrowStatus,
     nameTextFontSize: number,
     nameTextRotation: number,
+    sinister: boolean,
 }
 
 export type Size = {
@@ -2175,5 +2203,72 @@ export abstract class Symbol {
     }
 }
 
+class A extends Symbol{
+    public readonly NAME:string = "A";
+    public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
+}
 
-// class RegVis
+class DEP extends Symbol{
+    public readonly NAME:string = "DEP";
+    public readonly NAME_FOR_RENDERING:string = "Descente d'eau pluviale"; 
+}
+
+class RVEP extends Symbol{
+    public readonly NAME:string = "RVEP";
+    public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux pluviales"; 
+}
+
+class RVEU extends Symbol{
+    public readonly NAME:string = "RVEU";
+    public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux usées"; 
+}
+
+class RB extends Symbol{
+    public readonly NAME:string = "RB";
+    public readonly NAME_FOR_RENDERING:string = "Regard borgne"; 
+}
+
+class FS extends Symbol{
+    public readonly NAME:string = "FS";
+    public readonly NAME_FOR_RENDERING:string = "Fosse sceptique"; 
+}
+
+class CR extends Symbol{
+    public readonly NAME:string = "CR";
+    public readonly NAME_FOR_RENDERING:string = "Cuve récupération eau plvuiale"; 
+}
+
+class VAAEP extends Symbol{
+    public readonly NAME:string = "VAAEP";
+    public readonly NAME_FOR_RENDERING:string = "Vanne d'arrêt AEP"; 
+}
+
+class CAEP extends Symbol{
+    public readonly NAME:string = "Compteur AEP";
+    public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
+}
+
+class Compass extends Symbol{
+    public readonly NAME:string = "Compass";
+    public readonly NAME_FOR_RENDERING:string = "Boussole"; 
+}
+
+class PoolSymbol extends Symbol{
+    public readonly NAME:string = "Pool";
+    public readonly NAME_FOR_RENDERING:string = "Piscine"; 
+}
+
+class Gate extends Symbol{
+    public readonly NAME:string = "Gate";
+    public readonly NAME_FOR_RENDERING:string = "Portail"; 
+}
+
+class Door extends Symbol{
+    public readonly NAME:string = "Door";
+    public readonly NAME_FOR_RENDERING:string = "Porte"; 
+}
+
+class ADJ extends Symbol{
+    public readonly NAME:string = "ADJ";
+    public readonly NAME_FOR_RENDERING:string = "Abri de jardin"; 
+}

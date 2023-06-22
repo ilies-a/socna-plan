@@ -2,7 +2,7 @@
 import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback, useEffect } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
-import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData, Res, ResArrowStatus, AppDynamicProps, Gutter } from "@/entities";
+import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData, Res, ResArrowStatus, AppDynamicProps, Gutter, Wall } from "@/entities";
 import { Arrow, Group, Path, Text } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
@@ -76,7 +76,7 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
                         return s
                     })()
                 }
-                fill={seg instanceof Gutter? undefined: seg.color }
+                fill={seg instanceof Gutter? undefined: seg instanceof Wall? seg.sinister ? seg.sinisterColor : seg.color : seg.color}
                 stroke={SELECTED_ITEM_COLOR}
                 strokeWidth={segIsSelected ? 2 : 0}
                 onPointerDown={e => {

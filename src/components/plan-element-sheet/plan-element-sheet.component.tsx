@@ -2,7 +2,7 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRes, SheetDataRoadDrain, SheetDataSeg, SheetDataWall, iconDataArr } from "@/entities";
+import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRes, SheetDataRoadDrain, SheetDataSeg, SheetDataWall, Wall, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setSegOnCreationData, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
@@ -80,6 +80,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
           resArrowStatus: segOnCreationData.resArrowStatus,
           nameTextFontSize: segOnCreationData.nameTextFontSize,
           nameTextRotation: segOnCreationData.nameTextRotation,
+          sinister: segOnCreationData.sinister
         }));
       }
       else if(sheetData.planElementId != undefined){
@@ -143,15 +144,17 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   }, [planElements, getRightJointSegs, sheetData, dispatch, savePlan]);
 
 
-  const toggleArrowVisibility = useCallback(()=>{
+  const handleShowArrowInputChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    const showArrow = e.currentTarget.checked;
     if(segOnCreationData != null){
-      segOnCreationData.resArrowStatus = segOnCreationData.resArrowStatus == ResArrowStatus.None? ResArrowStatus.Forwards : ResArrowStatus.None;
+      segOnCreationData.resArrowStatus = showArrow ? ResArrowStatus.Forwards : ResArrowStatus.None;
       dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, 
         numero: segOnCreationData.numero, 
         nameTextVisibility: segOnCreationData.nameTextVisibility, 
         resArrowStatus: segOnCreationData.resArrowStatus,
         nameTextFontSize: segOnCreationData.nameTextFontSize,
         nameTextRotation: segOnCreationData.nameTextRotation,
+        sinister: segOnCreationData.sinister
       }));
     }else{
       const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
@@ -160,7 +163,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       const segId = (sheetData as SheetDataSeg).segId!;
       const res:Res = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId] as Res;
 
-      res.arrowStatus = res.arrowStatus == ResArrowStatus.None? ResArrowStatus.Forwards : ResArrowStatus.None;
+      res.arrowStatus = showArrow ? ResArrowStatus.Forwards : ResArrowStatus.None;
 
       const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
       savePlan(currentPlanElementsClone, nextPlanElementsClone);
@@ -170,16 +173,20 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     }
   },[dispatch, getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
 
-  const toggleNameVisibility = useCallback(()=>{
+  const handleShowNameInputChange= useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    const showName = e.currentTarget.checked;
+
     if(segOnCreationData != null){
-      segOnCreationData.nameTextVisibility = !segOnCreationData.nameTextVisibility;
+      segOnCreationData.nameTextVisibility = showName;
       dispatch(setSegOnCreationData({segClassName: segOnCreationData.segClassName, 
         numero: segOnCreationData.numero, 
         nameTextVisibility: segOnCreationData.nameTextVisibility, 
         resArrowStatus: segOnCreationData.resArrowStatus,
         nameTextFontSize: segOnCreationData.nameTextFontSize,
         nameTextRotation: segOnCreationData.nameTextRotation,
+        sinister: segOnCreationData.sinister
       }));
+      return segOnCreationData.nameTextVisibility;
     }else{
 
       const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
@@ -188,7 +195,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       const segId = (sheetData as SheetDataSeg).segId!;
       const seg:Seg = getRightJointSegs(sheetDataPlanElement)!.segs[segId];
 
-      if(seg.nameTextVisibility){
+      if(!showName){
         seg.nameTextVisibility = false;
       }else{
         seg.nameTextPosition = {x:seg.nodes[0].position.x, y:seg.nodes[0].position.y};
@@ -201,7 +208,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       savePlan(currentPlanElementsClone, nextPlanElementsClone);
       // dispatch(updatePlanElement(sheetDataPlanElement));
       // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
-
+      return seg.nameTextVisibility;
     }
 
   },[dispatch, getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
@@ -313,6 +320,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
           resArrowStatus: segOnCreationData.resArrowStatus,
           nameTextFontSize: newSizeNumber,
           nameTextRotation: segOnCreationData.nameTextRotation,
+          sinister: segOnCreationData.sinister
         }));
       }
       else if(sheetData.planElementId != undefined){
@@ -398,6 +406,77 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     return "";
   }
 
+
+
+  const handleSinisterInputChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    const newValue = e.currentTarget.checked;
+    // setInputNumero(newNumero);
+    let sheetDataPlanElement:PlanElement | undefined;
+
+    //(only a seg can be on creation because a symbol element is created instantly)
+    const segIsOnCreation = segOnCreationData != null;
+
+    if(sheetData instanceof SheetDataWall){
+      const segId = (sheetData as SheetDataSeg).segId!;
+
+      if(segIsOnCreation){
+        segOnCreationData!.sinister = newValue;
+        dispatch(setSegOnCreationData({
+          segClassName: segOnCreationData.segClassName, 
+          numero: segOnCreationData.numero,
+          nameTextVisibility: segOnCreationData.nameTextVisibility, 
+          resArrowStatus: segOnCreationData.resArrowStatus,
+          nameTextFontSize: segOnCreationData.nameTextFontSize,
+          nameTextRotation: segOnCreationData.nameTextRotation,
+          sinister: newValue,
+        }));
+      }
+      else if(sheetData.planElementId != undefined){
+        // let segId:string | undefined;
+        sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+        const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId] as Wall;
+        seg.sinister = newValue;
+        for(const planElementsRecord of planElementsRecords.records){
+          const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+          if(elIdx === -1) continue;
+          const segInPlanElementsRecord = getRightJointSegs(planElementsRecord[elIdx] as AllJointSegs)!.segs[segId] as Wall;
+          if(segInPlanElementsRecord){
+            segInPlanElementsRecord.sinister = newValue;
+          }
+        }
+
+      }
+
+  
+    }
+    
+    if(segIsOnCreation || !sheetDataPlanElement) return;
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+    // dispatch(updatePlanElement(sheetDataPlanElement));
+    // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+  
+  },[dispatch, getRightJointSegs, planElements, planElementsRecords.records, segOnCreationData, sheetData]);
+
+  
+  const getSinister = useCallback(():boolean=>{
+    const segIsOnCreation= segOnCreationData != null;
+    
+    if(!(sheetData instanceof SheetDataWall)) return false;
+
+    const segId = (sheetData as SheetDataSeg).segId!;
+
+    if(segIsOnCreation){
+      return segOnCreationData!.sinister;
+    }
+    else if(sheetData.planElementId != undefined){
+      const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+      const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId] as Wall;
+      return seg.sinister;
+    }
+    return false;
+  }, [getRightJointSegs, planElements, segOnCreationData, sheetData]);
+
+
   return (
     <div className={`${styles['main']}`} >
       <div className={styles['sheet-header']}>{getSheetTitle()}</div>
@@ -416,14 +495,24 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         />
       </div>
       
-      <button className={styles['toggle-name-visibility-btn']}
+      <div>
+          <input 
+            type="checkbox" 
+            id="show-name" 
+            className={styles["checkbox"]}
+            onChange={handleShowNameInputChange}
+            checked={nameIsVisible()}
+          />
+          <label htmlFor="show-name">Afficher le nom</label>
+        </div>
+      {/* <button className={styles['toggle-name-visibility-btn']}
         onClick={toggleNameVisibility}
-      >
-        {nameIsVisible()?"Cacher":"Afficher"} le nom
-      </button>
+      > */}
+        {/* {nameIsVisible()?"Cacher":"Afficher"} le nom
+      </button> */}
       {nameIsVisible()?
         <>
-          <input type="range" id="size" name="size" value={getTextSize()} onChange={(e)=>{handleSizeInputOnChange(e)}}
+          <input type="range" id="size" name="size" value={getTextSize()} onChange={handleSizeInputOnChange}
           min="16" max="22"/>
           <label htmlFor="size">Taille</label>
           {/* <input type="range" id="rotation" name="rotation" value={getTextRotation()} onChange={(e)=>{handleRotationInputOnChange(e)}}
@@ -434,11 +523,20 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       }
 
       {sheetData instanceof SheetDataRes?
-        <>
-          <button
+        <div>
+          {/* <button
             className={styles['toggle-arrow-visibility-btn']}
             onClick={toggleArrowVisibility}
-          >{arrowIsVisible()?"Cacher":"Afficher"} la flèche</button>
+          >{arrowIsVisible()?"Cacher":"Afficher"} la flèche</button> */}
+
+          <input 
+            type="checkbox" 
+            id="show-arrow"
+            className={styles["checkbox"]}
+            onChange={handleShowArrowInputChange}
+            checked={arrowIsVisible()}
+          />
+          <label htmlFor="show-arrow">Afficher la flèche</label>
           {
             segOnCreationData === null && arrowIsVisible()?
             <button
@@ -448,7 +546,21 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
             :null
           }
 
-        </>
+        </div>
+        :null
+      }
+      {
+        sheetData instanceof SheetDataWall?
+        <div>
+          <input 
+            type="checkbox"
+            id="sinister"
+            className={styles["checkbox"]}
+            onChange={handleSinisterInputChange}
+            checked={getSinister()}
+          />
+          <label htmlFor="sinister">Sinistre</label>
+        </div>
         :null
       }
       {!segOnCreationData?
