@@ -408,10 +408,10 @@ export class AllJointSegs extends PlanElement{
     }
 
     calculateCoordSize():CoordSize{
-        let xMin;
-        let xMax;
-        let yMin;
-        let yMax;
+        let xMin!:number;
+        let xMax!:number;
+        let yMin!:number;
+        let yMax!:number;
         let margin = 50; 
         for(const jointSegsItem of this.jointSegs){
             for(const nodeId in jointSegsItem.nodes){
@@ -2159,3 +2159,21 @@ export type AppDynamicProps = {
     planScale: number,
     leftMenuWidth: number
 }
+
+
+
+
+export abstract class Symbol {
+    id:string;
+    position:Vector2D;
+    size:Size;
+    
+    constructor(id:string, position:Vector2D, size:Size){
+        this.id = id;
+        this.position = position;
+        this.size = size;
+    }
+}
+
+
+// class RegVis

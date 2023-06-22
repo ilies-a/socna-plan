@@ -246,7 +246,9 @@ const PlanElementMenu: React.FC = () => {
             <PlanElementButton name="Rés. Piscine" onClick={handleClickOnAddPool}/>
             <PlanElementButton name="Drain Routier" onClick={handleClickOnAddRoadDrain}/>
             <PlanElementButton name="Drain Agricole" onClick={handleClickOnAddAgrDrain}/>
-
+          </div>
+          <div className={styles['symbols-header']}>AJOUTER UN SYMBOLE</div>
+          <div className={styles['symbols-body']}>
           </div>
         </div>
       }
