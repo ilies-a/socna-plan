@@ -16,4 +16,5 @@ export const SELECTED_ITEM_COLOR = "red";
 export const RES_WIDTH = 7;
 export const NON_DAZZLING_WHITE = "#fafafa"; //also in _variables.scss !
 export const SCALE_MAX = 2;
-export const SCALE_MIN = 1/9;
+export const SCALE_MIN = 0.25;
+export const SCALE_STEP = 0.25;

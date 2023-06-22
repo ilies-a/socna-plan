@@ -6,7 +6,7 @@ import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import styles from './action-menu.module.scss';
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
-import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO, SCALE_MAX, SCALE_MIN, TOP_MENU_HEIGHT } from "@/global";
+import { PLAN_HEIGHT_SCREEN_RATIO, PLAN_WIDTH_SCREEN_RATIO, SCALE_MAX, SCALE_MIN, SCALE_STEP, TOP_MENU_HEIGHT } from "@/global";
 import { cloneArray } from "@/utils";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import Link from "next/link";
@@ -94,14 +94,14 @@ const ActionMenu: React.FC = () => {
 
   const zoomIn = () => {
     const newAppDynamicProps = {... appDynamicProps};
-    const newScale = newAppDynamicProps.planScale * 1.5;
+    const newScale = newAppDynamicProps.planScale + SCALE_STEP;
     newAppDynamicProps.planScale = newScale > SCALE_MAX ? SCALE_MAX : newScale;
     dispatch(setAppDynamicProps(newAppDynamicProps));
   };
 
   const zoomOut = () => {
     const newAppDynamicProps = {... appDynamicProps};
-    const newScale = newAppDynamicProps.planScale * 0.5;
+    const newScale = newAppDynamicProps.planScale - SCALE_STEP;
     newAppDynamicProps.planScale = newScale < SCALE_MIN ? SCALE_MIN : newScale;
     dispatch(setAppDynamicProps(newAppDynamicProps));
   };
