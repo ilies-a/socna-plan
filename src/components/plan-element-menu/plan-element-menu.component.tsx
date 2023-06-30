@@ -3,7 +3,7 @@ import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { useCallback, useEffect, useState } from "react";
 import styles from './plan-element-menu.module.scss';
 import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData } from "@/redux/plan/plan.actions";
-import { AEP, AddSegSession, AgrDrain, AllJointSegs, AppDynamicProps, Dimensions, Gutter, JointAEPs, JointAgrDrains, JointGutters, JointPools, JointREPs, JointREUs, JointRoadDrains, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Pool, REP, REU, ResArrowStatus, RoadDrain, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRoadDrain, SheetDataWall, Wall } from "@/entities";
+import { AEP, AddSegSession, AgrDrain, AllJointSegs, AppDynamicProps, Dimensions, Gutter, JointAEPs, JointAgrDrains, JointGutters, JointPools, JointREPs, JointREUs, JointRoadDrains, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Pool, REP, REU, ResArrowStatus, RoadDrain, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRoadDrain, SheetDataWall, SymbolName, Wall } from "@/entities";
 import { v4 } from 'uuid';
 import { selectAddSegSession, selectAppDynamicProps, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 // import { LEFT_MENU_WIDTH } from "@/global";
@@ -217,6 +217,19 @@ const PlanElementMenu: React.FC = () => {
     dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.AgrDrain)));
   },[dispatch]);
 
+
+  const handleClickOnAddDEP = useCallback(() =>{
+    PlanElementsHelper.addSymbolElement(
+      planElements, 
+      SymbolName.DEP,
+      {
+        x:(-appDynamicProps.planPosition.x + appDynamicProps.planSize.width/2) / appDynamicProps.planScale, 
+        y:(-appDynamicProps.planPosition.y + appDynamicProps.planSize.height/2) / appDynamicProps.planScale
+      }
+      );
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+  },[appDynamicProps, dispatch, planElements]);
+
   const goBack = useCallback(()=>{
     // dispatch(setPlanElementSheetData(null));
     PlanElementsHelper.unselectAllElements(planElements);
@@ -250,6 +263,8 @@ const PlanElementMenu: React.FC = () => {
           </div>
           <div className={styles['symbols-header']}>AJOUTER UN SYMBOLE</div>
           <div className={styles['symbols-body']}>
+            <PlanElementButton name="DEP" onClick={handleClickOnAddDEP}/>
+
           </div>
         </div>
       }

@@ -41,11 +41,11 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
     const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
-        const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
+        const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointersPositions()[e.target.getStage()?.getPointersPositions().length-1] : {x:e.evt.offsetX, y:e.evt.offsetY};
         // setCursorPos(new Point((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale));
-        return new Position((ePos.x - e.target.getStage().getPosition().x) * 1/appDynamicProps.planScale, (ePos.y - e.target.getStage().getPosition().y) * 1/appDynamicProps.planScale);
+        return new Position((ePos.x - appDynamicProps.planPosition.x) * 1/appDynamicProps.planScale, (ePos.y -  appDynamicProps.planPosition.y) * 1/appDynamicProps.planScale);
     
-    },[appDynamicProps.planScale]); 
+    },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale]); 
 
 
     // const calculateArrowPoints = ():number[] =>{

@@ -102,3 +102,13 @@ export const selectAllElementsWrapperCoordSize= createSelector(
   [selectPlan],
   (plan) => plan.allElementsWrapperCoordSize
 );
+
+export const selectStageRef= createSelector(
+  [selectPlan],
+  (plan) => plan.stageRef
+);
+
+// export const selectPointingOnStage= createSelector(
+//   [selectPlan],
+//   (plan) => plan.pointingOnStage
+// );

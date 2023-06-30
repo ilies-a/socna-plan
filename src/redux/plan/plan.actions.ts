@@ -1,5 +1,6 @@
 import { AddSegSession, AppDynamicProps, CoordSize, MagnetData, PlanElement, PlanElementSheetData, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, SegClassName, SegOnCreationData, TestPoint, Vector2D } from "@/entities";
 import PlanActionTypes from "./plan.types";
+import { MutableRefObject } from "react";
 
 export const setAppDynamicProps = (appDynamicProps: AppDynamicProps) => ({
   type: PlanActionTypes.SET_APP_DYNAMIC_PROPS,
@@ -105,3 +106,13 @@ export const setAllElementsWrapperCoordSize = (allElementsWrapperCoordSize: Coor
   type: PlanActionTypes.SET_ALL_ELEMENTS_WRAPPER_COORD_SIZE,
   payload: allElementsWrapperCoordSize,
 });
+
+export const setStageRef = (stageRef: MutableRefObject<any> ) => ({
+  type: PlanActionTypes.SET_STAGE_REF,
+  payload: stageRef,
+});
+
+// export const setPointingOnStage = (pointingOnStage: boolean ) => ({
+//   type: PlanActionTypes.SET_POINTING_ON_STAGE,
+//   payload: pointingOnStage,
+// });

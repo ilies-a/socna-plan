@@ -2,17 +2,18 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable, Size, CoordSize } from "@/entities";
+import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable, Size, CoordSize, SymbolPlanElement } from "@/entities";
 import { cloneArray, getDistance, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import { useDispatch, useSelector } from "react-redux";
-import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setAppDynamicProps, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddSegSession, selectAddingPointLineIdPointId, selectAllElementsWrapperCoordSize, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setAppDynamicProps, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setStageRef, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectAllElementsWrapperCoordSize, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectStageRef, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH_LARGE_SCREEN, LEFT_MENU_WIDTH_MEDIUM_SCREEN, NON_DAZZLING_WHITE, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, SCALE_MAX, SCALE_MIN, TOP_MENU_HEIGHT } from "@/global";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import SegNodeComponent from "../seg-node/seg-node.component";
 import SegComponent from "../seg-component/seg-component.component";
 import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 import RefText from "../ref-text/ref-text.component";
+import SymbolComponent from "../symbols/symbol.component";
 
 
 export type JointSegsAndSegNodes ={
@@ -20,6 +21,12 @@ export type JointSegsAndSegNodes ={
     segNodes: [SegNode, SegNode],
     startingNodesPos: [Position, Position],
 }
+
+type TouchPosition = {
+    id: number;
+    x: number;
+    y: number;
+  };
 
 const Plan: React.FC = () => {
     const minPlanDim: Dimensions = new Dimensions(window.innerWidth * 0.8, window.innerHeight * 0.8);
@@ -43,6 +50,7 @@ const Plan: React.FC = () => {
     // const scaleMax = 2;
     // const scaleMin = 1/9;
 
+    const stageRefRedux = useSelector(selectStageRef);
     const stageRef = useRef<any>();
     const stageToExportRef = useRef<any>();
     
@@ -81,6 +89,8 @@ const Plan: React.FC = () => {
 
     const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
     const allElementsWrapperCoordSize: CoordSize = useSelector(selectAllElementsWrapperCoordSize);
+    const [touches, setTouches] = useState<TouchList | null>(null);
+
 
     useEffect(()=>{
         const handleResize = ()=>{
@@ -130,6 +140,11 @@ const Plan: React.FC = () => {
 
         dispatch(setPlanMode(PlanMode.Move));
     },[dispatch, planMode])
+
+    useEffect(()=>{
+        if(stageRef && stageRefRedux) return;
+        dispatch(setStageRef(stageRef));
+    },[dispatch, stageRef, stageRefRedux])
 
     // useEffect(()=>{
     //     console.log("planElements.length", planElements.length);
@@ -270,6 +285,12 @@ const Plan: React.FC = () => {
             return ajs.jointSegs.map((js, i)=>{
                 return getJointSegsDrawings(js, i);
             });
+        }else if (el instanceof SymbolPlanElement) { //its a symbol
+            return <SymbolComponent 
+            key={el.id} 
+            symbol={el as SymbolPlanElement} 
+            pointingOnStage={pointerStartPos != null}
+            />
         }
         // switch(el.instantiatedClassName){
         //     case(PlanElementClassName.AllJointSegs): {
@@ -392,114 +413,93 @@ const Plan: React.FC = () => {
             y: (p1.y + p2.y) / 2,
         };
     }
-    const handlePinchTouchMove = useCallback((touches:TouchList)=>{
-        // setMsg("")
+    const handlePinchTouchMove = useCallback((touches:Vector2D[])=>{
 
-        var touch1 = touches[0];
-        var touch2 = touches[1];
 
         // setCounter(counter+1);
         // setMsg(counter.toString());
 
         // setMsg("touches.length = "+touches.length+", touch2 = "+touch2);
 
-        if (touch1 && touch2) {
-          setScaling(true);
 
-        //   //if were adding a point while scaling, cancel adding
-        //   if(addingPointLineIdPointId){
-        //     const lineIndex = PlanElementsHelper.findElementIndexById(planElements, addingPointLineIdPointId[0]);
-        //     if(lineIndex > -1){
-        //         // const line = planElements[lineIndex] as Seg;
-        //         // // removeLineIfNoPoints(lineIndex)
-        //         // if(line.path.length < 2){ //if line has only one point we remove the line
-        //         //     const clone = PlanElementsHelper.clone(planElements);
-        //         //     clone.splice(lineIndex, 1);
-        //         //     dispatch(setPlanElements(clone));
-        //         // }
-        //     }
-        //     dispatch(setAddingPointLineIdPointId(null));
-        //   }
+        if (touches && touches.length === 2 && touches[0] && touches[1]) {
+            setScaling(true);
 
-          // if the stage was under Konva's drag&drop
-          // we need to stop it, and implement our own pan logic with two pointers
-          let stage = stageRef.current;
-          if(!stage) return;
-
-          // if (stage.isDragging()) {
-          //   // stage.stopDrag();
-          //   setDraggable(false);
-          //   setMsg(msg+" and draggable false");
-
-          // }
-
-          var p1 = {
-            x: touch1.clientX,
-            y: touch1.clientY,
-          };
-          var p2 = {
-            x: touch2.clientX,
-            y: touch2.clientY,
-          };
-
-          let lastCenterLocalVar = lastCenter;
-
-          if (!lastCenterLocalVar) {
-            setLastCenter(getCenter(p1, p2));
-            return;
-          }
-          var newCenter = getCenter(p1, p2);
-
-          // alert("newCenter x = "+ newCenter.x + ", y = "+ newCenter.y);
+            const touch1 = touches[0];
+            const touch2 = touches[1];
+    
+            var p1 = {
+                x: touch1.x,
+                y: touch1.y,
+            };
+            var p2 = {
+                x: touch2.x,
+                y: touch2.y,
+            };
+    
+            // let lastCenterLocalVar = lastCenter;
+    
+    
+            // let lastCenterLocalVar = lastCenter;
 
 
-          var dist = getDistance(p1, p2);
-          let lastDistLocalVar = lastDist;
 
-          if (!lastDistLocalVar) {
-            // setLastDist(dist);
-            lastDistLocalVar = dist;
-          }
+            // alert("newCenter x = "+ newCenter.x + ", y = "+ newCenter.y);
 
-          // local coordinates of center point
-          var pointTo = {
-            x: (newCenter.x - stage.x()) / stage.scaleX(),
-            y: (newCenter.y - stage.y()) / stage.scaleX(),
-          };
 
-          var scale = stage.scaleX() * (dist / lastDistLocalVar);
-          scale = scale > SCALE_MAX ? SCALE_MAX : scale < SCALE_MIN ? SCALE_MIN : scale;
+            var dist = getDistance(p1, p2);
+            let lastDistLocalVar = lastDist;
 
-          appDynamicProps.planScale = scale;
-        //   stage.scaleX(scale);
-        //   stage.scaleY(scale);
+            if (!lastDistLocalVar) {
+                // setLastDist(dist);
+                lastDistLocalVar = dist;
+            }
 
-        //   calculate new position of the stage
-          var dx = newCenter.x - lastCenterLocalVar.x;
-          var dy = newCenter.y - lastCenterLocalVar.y;
 
-          var newPos = {
-            x: newCenter.x - pointTo.x * scale + dx,
-            y: newCenter.y - pointTo.y * scale + dy,
-          };
+            
+            const newAppDynamicProps = {... appDynamicProps};
 
-          appDynamicProps.planPosition = newPos;
-        //   dispatch(updatePlanProps(planProps));
-        //   setStagePosition(newPos);
+            // same in x & y so either will work
+            // let inc = 0.01;
+            let oldScale = newAppDynamicProps.planScale;
+        
+            let zoomBefore = oldScale;
+        
+            let zoomPoint = getCenter(p1, p2);
 
-          //stage.position(newPos);
-          setLastDist(dist);
-          setLastCenter(newCenter);
-        //   setMsg("scale = "+ scale);
+
+        
+            var mousePointTo = {
+                x: (zoomPoint.x - appDynamicProps.planPosition.x) / oldScale,
+                y: (zoomPoint.y - appDynamicProps.planPosition.y) / oldScale
+            };
+            
+            var newScale = appDynamicProps.planScale * (dist/lastDistLocalVar);
+            newScale = newScale > SCALE_MAX ? SCALE_MAX : newScale < SCALE_MIN ? SCALE_MIN : newScale;
+            
+            let zoomAfter = newScale;
+
+            
+            newAppDynamicProps.planScale =zoomAfter;
+
+            var newPos = {
+                x: zoomPoint.x - mousePointTo.x * zoomAfter,
+                y: zoomPoint.y - mousePointTo.y * zoomAfter
+            };
+        
+            newAppDynamicProps.planPosition = newPos;
+            dispatch(setAppDynamicProps(newAppDynamicProps));
+
+            setLastDist(dist);
 
         }
-    },[appDynamicProps, lastCenter, lastDist]);
+    },[appDynamicProps, dispatch, lastDist]);
 
     const handlePinchTouchEnd = useCallback(()=>{
         // setMsg("handlePinchTouchMove")
-        setScaling(false);
         setLastDist(0);
-        setLastCenter(null);
+        setTouches(null);
+        setScaling(false);
         // dispatch(updatePlanProps(planProps));
         dispatch(setAppDynamicProps({...appDynamicProps}));
     }, [appDynamicProps, dispatch]);
@@ -507,6 +507,7 @@ const Plan: React.FC = () => {
 
     const handleOnPointerUp = useCallback(()=>{
         setPointerStartPos(null);
+
         if(movingSeg){
             saveIfMovingSeg();
         }
@@ -564,11 +565,11 @@ const Plan: React.FC = () => {
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
-        const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
+        const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointersPositions()[e.target.getStage()?.getPointersPositions().length-1] : {x:e.evt.offsetX, y:e.evt.offsetY};
         // setCursorPos(new Point((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale));
-        return new Position((ePos.x - e.currentTarget.getPosition().x) * 1/appDynamicProps.planScale, (ePos.y - e.currentTarget.getPosition().y) * 1/appDynamicProps.planScale);
+        return new Position((ePos.x - appDynamicProps.planPosition.x) * 1/appDynamicProps.planScale, (ePos.y - appDynamicProps.planPosition.y) * 1/appDynamicProps.planScale);
     
-    },[appDynamicProps.planScale]); 
+    },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale]); 
 
     // const setCursorPosWithEventPos = useCallback((e:any, touch:boolean)=>{
     //     const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
@@ -654,7 +655,7 @@ const Plan: React.FC = () => {
                 ref={stageRef}
                 width={appDynamicProps.planSize.width} 
                 height={appDynamicProps.planSize.height}
-                // position={appDynamicProps.planPosition}
+                position={{x:appDynamicProps.planPosition.x, y:appDynamicProps.planPosition.y}}
                 scale={{x:appDynamicProps.planScale, y:appDynamicProps.planScale}}
                 // style={{"marginTop":""+PLAN_MARGIN_TOP+"px"}}
                 // style={{"width":"inherit", "height":"100vm"}}
@@ -681,6 +682,7 @@ const Plan: React.FC = () => {
                     // handleDblClick(e, addLineAndSetToAddMode);
                     // alert("currentTarget x = "+e.currentTarget.getPosition().x + ", currentTarget y = "+e.currentTarget.getPosition().y);
                     // setCursorPosWithEventPos(e, false);
+
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     dispatch(setPlanCursorPos(newCursorPos));
 
@@ -744,12 +746,40 @@ const Plan: React.FC = () => {
                     // var touchPos = e.target.getStage()?.getPointerPosition();
                     // if(!touchPos) return;
                     // setCursorPos(new Point(touchPos.x - e.currentTarget.getPosition().x, touchPos.y - e.currentTarget.getPosition().y));
-                    const newCursorPos = getCursorPosWithEventPos(e, true);
-                    dispatch(setPlanCursorPos(newCursorPos));
-                    handleAddSegSessionAndMovingSeg(newCursorPos);
+                    if(e.target.getStage()?.getPointersPositions().length===1){
+                        const newCursorPos = getCursorPosWithEventPos(e, true);
+                        dispatch(setPlanCursorPos(newCursorPos));
+                        handleAddSegSessionAndMovingSeg(newCursorPos);
+                    }
+                    
+
                     e.evt.preventDefault(); //for pinch
-                    handlePinchTouchMove(e.evt.touches);
+                    // setTouches(e.evt.touches);
+                    // const stagePointerPos = e.currentTarget.getStage()!.getPointerPosition();
+                    // if(stagePointerPos){
+                    //     handlePinchTouchMove(stagePointerPos);
+                    // }
+
                     dispatch(setUnselectAllOnPlanMouseUp(false));
+
+
+                    // const stagePointerPos = e.currentTarget.getStage()!.getPointerPosition();
+
+
+                    // const stage = e.target.getStage();
+                    // const touchList = Array.from(e.evt.changedTouches);
+      
+                    // const pointerPositions = touchList.map((touch) => {
+                    //     const id = touch.identifier;
+                    //     const position = stage!.getPointerPosition() as { x: number; y: number };
+                    //     return { id, ...position };
+                    //   });
+                    // setTouches(pointerPositions);
+                    if(!pointingOnSeg){
+                        handlePinchTouchMove(e.target.getStage()!.getPointersPositions());
+                    }
+
+                    // setMsg(""+touches.length);
                 }}
                 onTouchEnd={e => {
                     if(e.evt.touches.length === 0){
@@ -760,16 +790,37 @@ const Plan: React.FC = () => {
                 // onMouseUp={handleMouseUp}
                 draggable = {!scaling && !pointingOnSeg && !addingPointLineIdPointId && !addSegSession} //&& planMode !== PlanMode.AddPoint}
                 onDragStart={e => {
+                    e.cancelBubble = true;
                     dispatch(setPlanIsDragging(true));
                     // dispatch(setUnselectAllOnPlanMouseUp(false));
                 } }
                 onDragMove={e => {
+                    e.cancelBubble = true;
+
                     // dispatch(setUnselectAllOnPlanMouseUp(false));
+
+                    appDynamicProps.planPosition = {
+                        x:e.target.getPosition().x,
+                        y:e.target.getPosition().y
+                    };
+                    // stageRef.current.setPosition({x:1000, y:1000});
+                    
+                    // console.log("stageRef.current.getPosition()",  stageRef.current.getPosition())
+                    dispatch(setAppDynamicProps({...appDynamicProps}));
+
                 } }
                 onDragEnd={e => {
+                    e.cancelBubble = true;
+
                     dispatch(setPlanIsDragging(false));
-                    appDynamicProps.planPosition = e.currentTarget.getPosition()
-                    dispatch(setAppDynamicProps({...appDynamicProps}));
+                    // appDynamicProps.planPosition = {
+                    //     x:stageRef.current.getPosition().x / appDynamicProps.planScale, 
+                    //     y:stageRef.current.getPosition().y / appDynamicProps.planScale
+                    // };
+                    // // stageRef.current.setPosition({x:1000, y:1000});
+                    
+                    // console.log("stageRef.current.getPosition()",  stageRef.current.getPosition())
+                    // dispatch(setAppDynamicProps({...appDynamicProps}));
                     // dispatch(setUnselectAllOnPlanMouseUp(true));
                 }}
                 >

@@ -1,6 +1,6 @@
 import { AppDynamicProps, MagnetData, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
 import { addPlanElement, setAllElementsWrapperCoordSize, setAppDynamicProps, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAppDynamicProps, selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode } from "@/redux/plan/plan.selectors";
+import { selectAppDynamicProps, selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectStageRef } from "@/redux/plan/plan.selectors";
 import { MutableRefObject, useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
@@ -21,6 +21,7 @@ const ActionMenu: React.FC = () => {
   const savePlan = useSavePlan();
   const dispatch = useDispatch();
   const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
+  const stageRef = useSelector(selectStageRef);
 
   const toPreviousRecord = useCallback(()=>{
     if(planElementsRecords.currentRecordIndex === 0 ) return;
@@ -92,19 +93,169 @@ const ActionMenu: React.FC = () => {
     dispatch(setPlanMode(PlanMode.Export));
   };
 
-  const zoomIn = () => {
+  function findClosestValue(n: number): number {
+    let scaleByStepValues = [SCALE_MIN];
+    while(scaleByStepValues[scaleByStepValues.length - 1] != SCALE_MAX){
+      scaleByStepValues.push(scaleByStepValues[scaleByStepValues.length - 1] + SCALE_STEP);
+    }
+    let arr = scaleByStepValues;
+    let closestValue = arr[0];
+    let minDifference = Math.abs(n - closestValue);
+  
+    for (let i = 1; i < arr.length; i++) {
+      const difference = Math.abs(n - arr[i]);
+      if (difference < minDifference) {
+        minDifference = difference;
+        closestValue = arr[i];
+      }
+    }
+    return closestValue;
+  }
+
+  const zoomIn = useCallback(()=>{
+    if(!stageRef) return;
+
     const newAppDynamicProps = {... appDynamicProps};
     const newScale = newAppDynamicProps.planScale + SCALE_STEP;
-    newAppDynamicProps.planScale = newScale > SCALE_MAX ? SCALE_MAX : newScale;
-    dispatch(setAppDynamicProps(newAppDynamicProps));
-  };
 
-  const zoomOut = () => {
+    if(newScale > SCALE_MAX ){
+      newAppDynamicProps.planScale = SCALE_MAX;
+    }else{
+      // newAppDynamicProps.planScale = newScale;
+
+      // const stageWidth = stageRef.current.getClientRect().width;
+      // const stageHeight= stageRef.current.getClientRect().height;
+
+      // const centerX = stageRef.current.getPosition().x + stageWidth / 2;
+      // const centerY = stageRef.current.getPosition().y + stageHeight / 2;
+  
+      // const newWidth = stageWidth * newScale;
+      // const newHeight = stageHeight * newScale;
+  
+      // const newPositionX = centerX - newWidth / 2;
+      // const newPositionY = centerY - newHeight / 2;
+
+
+      // const oldWidth = stageWidth;
+      // const oldHeight = stageHeight;
+      // const newWidth2 = oldWidth + oldWidth * 0.25;
+      // const newHeight2 = oldHeight + oldHeight * 0.25;
+
+      
+      // // const widthDiff = newWidth2 - oldWidth;
+      // // const heightDiff = newHeight2 - oldHeight;
+
+      // console.log("oldWidth",oldWidth)
+      // console.log("newWidth2",newWidth2)
+
+  
+      // this.width = newWidth;
+      // this.height = newHeight;
+      // this.position.x = newPositionX;
+      // this.position.y = newPositionY;
+      // this.scale *= factor;
+
+      // newAppDynamicProps.planSize = {
+      //   width:newWidth,
+      //   height:newHeight
+      // }
+
+      // newAppDynamicProps.planPosition = {
+      //   x: newPositionX, 
+      //   y: newPositionY
+      // };
+
+
+
+
+
+
+       let inc = 0.25;
+       let oldScale = newAppDynamicProps.planScale;
+
+       let zoomBefore = oldScale;
+
+       let zoomPoint = 
+       {
+        x:appDynamicProps.planPosition.x,
+        y:appDynamicProps.planPosition.y
+      };
+ 
+      // compute the distance to the zoom point before applying zoom
+      var mousePointTo = {
+        x: (zoomPoint.x - appDynamicProps.planPosition.x) / oldScale,
+        y: (zoomPoint.y - appDynamicProps.planPosition.y) / oldScale
+      };
+    
+      // compute new scale
+      let zoomAfter = zoomBefore + inc;
+
+      //choose the closest value zoomAfter
+      zoomAfter = findClosestValue(zoomAfter);
+      newAppDynamicProps.planScale = zoomAfter;
+
+      // Important - move the stage so that the zoomed point remains 
+      // visually in place
+      var newPos = {
+        x: zoomPoint.x - mousePointTo.x * zoomAfter,
+        y: zoomPoint.y - mousePointTo.y * zoomAfter
+      };
+      
+      newAppDynamicProps.planPosition = newPos;
+    }
+
+    dispatch(setAppDynamicProps(newAppDynamicProps));
+  },[appDynamicProps, dispatch, stageRef]);
+
+  const zoomOut = useCallback(()=>{
+    if(!stageRef) return;
+
     const newAppDynamicProps = {... appDynamicProps};
     const newScale = newAppDynamicProps.planScale - SCALE_STEP;
-    newAppDynamicProps.planScale = newScale < SCALE_MIN ? SCALE_MIN : newScale;
+    if(newScale < SCALE_MIN ){
+      newAppDynamicProps.planScale = SCALE_MIN;
+    }else{
+      // newAppDynamicProps.planScale = newScale;
+      // newAppDynamicProps.planPosition = {
+      //   x: stageRef.current.getPosition().x / newScale, 
+      //   y: stageRef.current.getPosition().y / newScale
+      // };
+
+      let inc = -0.25;
+      let oldScale = newAppDynamicProps.planScale;
+
+      let zoomBefore = oldScale;
+
+      let zoomPoint = 
+      {
+        x:appDynamicProps.planPosition.x,
+        y:appDynamicProps.planPosition.y
+     };
+
+     // compute the distance to the zoom point before applying zoom
+     var mousePointTo = {
+       x: (zoomPoint.x - appDynamicProps.planPosition.x) / oldScale,
+       y: (zoomPoint.y - appDynamicProps.planPosition.y) / oldScale
+     };
+   
+     // compute new scale
+     let zoomAfter = zoomBefore + inc;
+  
+     zoomAfter = findClosestValue(zoomAfter);
+     newAppDynamicProps.planScale = zoomAfter;
+
+     // Important - move the stage so that the zoomed point remains 
+     // visually in place
+     var newPos = {
+       x: zoomPoint.x - mousePointTo.x * zoomAfter,
+       y: zoomPoint.y - mousePointTo.y * zoomAfter
+     };
+     
+     newAppDynamicProps.planPosition = newPos;
+    }
+
     dispatch(setAppDynamicProps(newAppDynamicProps));
-  };
+  },[appDynamicProps, dispatch, stageRef]);
 
   return (
     <div className={styles['main']}

@@ -3,6 +3,7 @@ import { AddSegSession, AppDynamicProps, CoordSize, MagnetData, PlanElement, Pla
 import { updatePlanProps, addPlanElement, removePlanElement, setPlanElements, updatePlanElement } from "./plan.utils";
 import { v4 } from "uuid";
 import { initialPlanElements } from "@/global-for-tests";
+import { MutableRefObject } from "react";
 
 const INITIAL_STATE = {
   // planProps: new PlanProps(),
@@ -24,7 +25,9 @@ const INITIAL_STATE = {
   magnetData: {activeOnAxes:true, node:null, seg:null} as MagnetData,
   addSegSession: null as AddSegSession | null,
   segOnCreationData: null as SegOnCreationData | null,
-  allElementsWrapperCoordSize: undefined as CoordSize | undefined
+  allElementsWrapperCoordSize: undefined as CoordSize | undefined,
+  stageRef: null as MutableRefObject<any> | null,
+  // pointingOnStage: false,
 };
 
 const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }) => {
@@ -139,6 +142,16 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
         ...state,
         allElementsWrapperCoordSize: action.payload
       };
+    case PlanActionTypes.SET_STAGE_REF:
+      return {
+        ...state,
+        stageRef: action.payload
+      };
+    // case PlanActionTypes.SET_POINTING_ON_STAGE:
+    //   return {
+    //     ...state,
+    //     pointingOnStage: action.payload
+    //   };
     default:
       return state;
   }

@@ -5,6 +5,7 @@ import { BIG_NUMBER, NAME_TEXT_DEFAULT_FONT_SIZE, NODE_RADIUS, PRECISION, RES_WI
 // export enum PlanElementClassName {AllJointSegs};
 export enum SegClassName {Wall, REU, REP, AEP, Gutter, Pool, RoadDrain, AgrDrain};
 export enum JointSegsClassName {JointWalls, JointREUs, JointREPs, JointAEPs, JointGutters, JointPools, JointRoadDrains, JointAgrDrains};
+export enum SymbolName {DEP};
 
 
 export class PlanProps {
@@ -107,7 +108,15 @@ export class PlanElementsHelper {
         const allJointSegsCoordSize = allJointSegs.calculateCoordSize();
         //todo: other symbols coordSize and compare them
         return allJointSegsCoordSize;
-    } 
+    }
+
+    static addSymbolElement(planElements:PlanElement[], symbolName: SymbolName, position:Vector2D){
+        switch(symbolName){
+            case SymbolName.DEP:
+                planElements.push(new DEP(v4(), position));
+                break;
+        }
+    }
 }
 
 
@@ -2191,84 +2200,83 @@ export type AppDynamicProps = {
 
 
 
-export abstract class Symbol {
-    id:string;
+export abstract class SymbolPlanElement extends PlanElement {
     position:Vector2D;
-    size:Size;
+    size:Size = {width:50, height:50};
     
-    constructor(id:string, position:Vector2D, size:Size){
+    constructor(id:string, position:Vector2D){
+        super(id);
         this.id = id;
-        this.position = position;
-        this.size = size;
+        this.position = {x: position.x - this.size.width/2, y: position.y - this.size.height/2};
     }
 }
 
-class A extends Symbol{
+class A extends SymbolPlanElement{
     public readonly NAME:string = "A";
     public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
 }
 
-class DEP extends Symbol{
+class DEP extends SymbolPlanElement{
     public readonly NAME:string = "DEP";
     public readonly NAME_FOR_RENDERING:string = "Descente d'eau pluviale"; 
 }
 
-class RVEP extends Symbol{
+class RVEP extends SymbolPlanElement{
     public readonly NAME:string = "RVEP";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux pluviales"; 
 }
 
-class RVEU extends Symbol{
+class RVEU extends SymbolPlanElement{
     public readonly NAME:string = "RVEU";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux usées"; 
 }
 
-class RB extends Symbol{
+class RB extends SymbolPlanElement{
     public readonly NAME:string = "RB";
     public readonly NAME_FOR_RENDERING:string = "Regard borgne"; 
 }
 
-class FS extends Symbol{
+class FS extends SymbolPlanElement{
     public readonly NAME:string = "FS";
     public readonly NAME_FOR_RENDERING:string = "Fosse sceptique"; 
 }
 
-class CR extends Symbol{
+class CR extends SymbolPlanElement{
     public readonly NAME:string = "CR";
     public readonly NAME_FOR_RENDERING:string = "Cuve récupération eau plvuiale"; 
 }
 
-class VAAEP extends Symbol{
+class VAAEP extends SymbolPlanElement{
     public readonly NAME:string = "VAAEP";
     public readonly NAME_FOR_RENDERING:string = "Vanne d'arrêt AEP"; 
 }
 
-class CAEP extends Symbol{
+class CAEP extends SymbolPlanElement{
     public readonly NAME:string = "Compteur AEP";
     public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
 }
 
-class Compass extends Symbol{
+class Compass extends SymbolPlanElement{
     public readonly NAME:string = "Compass";
     public readonly NAME_FOR_RENDERING:string = "Boussole"; 
 }
 
-class PoolSymbol extends Symbol{
+class PoolSymbol extends SymbolPlanElement{
     public readonly NAME:string = "Pool";
     public readonly NAME_FOR_RENDERING:string = "Piscine"; 
 }
 
-class Gate extends Symbol{
+class Gate extends SymbolPlanElement{
     public readonly NAME:string = "Gate";
     public readonly NAME_FOR_RENDERING:string = "Portail"; 
 }
 
-class Door extends Symbol{
+class Door extends SymbolPlanElement{
     public readonly NAME:string = "Door";
     public readonly NAME_FOR_RENDERING:string = "Porte"; 
 }
 
-class ADJ extends Symbol{
+class ADJ extends SymbolPlanElement{
     public readonly NAME:string = "ADJ";
     public readonly NAME_FOR_RENDERING:string = "Abri de jardin"; 
 }
