@@ -99,8 +99,7 @@ const Plan: React.FC = () => {
     const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
     const allElementsWrapperCoordSize: CoordSize = useSelector(selectAllElementsWrapperCoordSize);
     const [touches, setTouches] = useState<TouchList | null>(null);
-
-
+    
     useEffect(()=>{
         const handleResize = ()=>{
             console.log("resize")
@@ -372,34 +371,34 @@ const Plan: React.FC = () => {
                 }
                 </Group>
                 <Group
-                    // draggable = {addingPoint()}
-                    draggable = {planMode === PlanMode.MovePoint}
-                    onDragStart={e => {
-                        setDragStartPos(new Position(e.currentTarget.getPosition().x, e.currentTarget.getPosition().y));
-                        setPlanElementsAtDragStart(PlanElementsHelper.clone(planElements));
-                        // console.log("e.evt.offsetX", e.evt.)
-                    }}
-                    onDragEnd={e => {
-                        if(!dragStartPos) return;
-                        const dragDxy = new Position(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
-                        // for(const el of selectedElements){
-                        //     if(!(el.typeName === PlanElementTypeName.Seg)) continue;
-                        //     const l = el as Seg;
-                        //         for(const p of l.path){
-                        //             p.x += dragDxy.x;
-                        //             p.y += dragDxy.y;
-                        //         }
-                        // }
+                    // // draggable = {addingPoint()}
+                    // draggable = {planMode === PlanMode.MovePoint}
+                    // onDragStart={e => {
+                    //     setDragStartPos(new Position(e.currentTarget.getPosition().x, e.currentTarget.getPosition().y));
+                    //     setPlanElementsAtDragStart(PlanElementsHelper.clone(planElements));
+                    //     // console.log("e.evt.offsetX", e.evt.)
+                    // }}
+                    // onDragEnd={e => {
+                    //     if(!dragStartPos) return;
+                    //     const dragDxy = new Position(e.currentTarget.getPosition().x - dragStartPos.x, e.currentTarget.getPosition().y - dragStartPos.y);
+                    //     // for(const el of selectedElements){
+                    //     //     if(!(el.typeName === PlanElementTypeName.Seg)) continue;
+                    //     //     const l = el as Seg;
+                    //     //         for(const p of l.path){
+                    //     //             p.x += dragDxy.x;
+                    //     //             p.y += dragDxy.y;
+                    //     //         }
+                    //     // }
 
-                        const currentPlanElementsClone = planElementsAtDragStart as PlanElement[];
-                        const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+                    //     const currentPlanElementsClone = planElementsAtDragStart as PlanElement[];
+                    //     const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
                     
-                        savePlan(currentPlanElementsClone, nextPlanElementsClone);
+                    //     savePlan(currentPlanElementsClone, nextPlanElementsClone);
 
-                        setDragStartPos(null);
-                        setPlanElementsAtDragStart(null);
-                        e.currentTarget.setPosition(new Position(0,0));
-                    }}
+                    //     setDragStartPos(null);
+                    //     setPlanElementsAtDragStart(null);
+                    //     e.currentTarget.setPosition(new Position(0,0));
+                    // }}
                 >
                 {
                     selectedElements.map((el, _) => {
@@ -849,7 +848,7 @@ const Plan: React.FC = () => {
 
                 }}
                 // onMouseUp={handleMouseUp}
-                draggable = {!scaling && !pointingOnSeg && !pointingOnSymbol && !addingPointLineIdPointId && !addSegSession} //&& planMode !== PlanMode.AddPoint}
+                draggable = {!(scaling || pointingOnSeg || pointingOnSymbol || addSegSession)} //&& planMode !== PlanMode.AddPoint}
                 onDragStart={e => {
                     e.cancelBubble = true;
                     dispatch(setPlanIsDragging(true));

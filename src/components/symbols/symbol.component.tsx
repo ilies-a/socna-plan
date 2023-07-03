@@ -35,7 +35,7 @@ const SymbolComponent: React.FC<Props> = ({symbol, setPointingOnSymbol, movingSy
             position = {symbol.position}
             size = {symbol.size}
             onPointerDown={e =>{
-                setPointingOnSymbol(true);
+                // setPointingOnSymbol(true);
                 if(planMode === PlanMode.AddSeg){
                     e.cancelBubble = true;
                 }else{
@@ -46,7 +46,7 @@ const SymbolComponent: React.FC<Props> = ({symbol, setPointingOnSymbol, movingSy
                     dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
                 }
             }}
-            onPointerMove={e=>{
+            onPointerMove={_=>{
                 if(!pointerStartPos || pointingOnSeg || movingSymbol || planMode === PlanMode.AddSeg) return;
                 dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
                 setMovingSymbol({

@@ -122,6 +122,19 @@ export class PlanElementsHelper {
         planElements.push(newSymbol);
 
     }
+
+    // static addDummyWall(planElements:PlanElement[]){
+    //     const jointWalls = this.getAllJointSegs(planElements).jointWalls;
+    //     const node1 = new SegNode(v4(), new Position(0,0), []);
+    //     const node2 = new SegNode(v4(), new Position(100,100), []);
+    //     node1.linkedNodes.push(node2);
+    //     node2.linkedNodes.push(node1);
+
+    //     jointWalls.addNode(node1);
+    //     jointWalls.addNode(node2);
+
+    //     jointWalls.setSegs();
+    // }
 }
 
 
