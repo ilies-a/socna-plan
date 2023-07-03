@@ -26,10 +26,11 @@ type Props = {
     movingSeg: JointSegsAndSegNodes | null,
     setMovingSeg: Dispatch<SetStateAction<JointSegsAndSegNodes | null>>,
     setPointingOnSeg: Dispatch<boolean>
+    pointingOnSymbol: boolean,
   };
 
 
-const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segIsSelected, nodes, pointerStartPos, movingSeg, setMovingSeg, setPointingOnSeg}) => {
+const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segIsSelected, nodes, pointerStartPos, movingSeg, setMovingSeg, setPointingOnSeg, pointingOnSymbol}) => {
     const dispatch = useDispatch();
     const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
     const planMode: PlanMode = useSelector(selectPlanMode);
@@ -89,7 +90,7 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
                             undefined, 
                             seg);
 
-                    }else{
+                    }else {
                         setPointingOnSeg(true);
                         if(segIsSelected) return;
                         PlanElementsHelper.unselectAllElements(planElements);
@@ -99,7 +100,7 @@ const SegComponent: React.FC<Props> = ({jointSegs, seg, id, numero, points, segI
                     }
                 }}
                 onPointerMove={_=>{
-                    if(!pointerStartPos || movingSeg || planMode === PlanMode.AddSeg) return;
+                    if(!pointerStartPos || pointingOnSymbol || movingSeg || planMode === PlanMode.AddSeg) return;
                     dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
 
                     const node1 = jointSegs.nodes[nodes[0].id];

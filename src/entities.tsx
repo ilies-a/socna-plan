@@ -75,8 +75,8 @@ export class PlanElementsHelper {
     }
 
     static selectElement(planElements:PlanElement[], element:SheetDataEditable){
-        if(element instanceof PlanElement){
-
+        if(element instanceof SymbolPlanElement){
+            element.select();
         }
         else{
             const seg = element as Seg;
@@ -111,11 +111,16 @@ export class PlanElementsHelper {
     }
 
     static addSymbolElement(planElements:PlanElement[], symbolName: SymbolName, position:Vector2D){
+        let newSymbol;
         switch(symbolName){
             case SymbolName.DEP:
-                planElements.push(new DEP(v4(), position));
+                newSymbol = new DEP(v4(), position);
                 break;
         }
+        newSymbol.position.x -= newSymbol.size.width/2;
+        newSymbol.position.y -= newSymbol.size.height/2;
+        planElements.push(newSymbol);
+
     }
 }
 
@@ -2203,80 +2208,204 @@ export type AppDynamicProps = {
 export abstract class SymbolPlanElement extends PlanElement {
     position:Vector2D;
     size:Size = {width:50, height:50};
+    scale:number = 1;
+    isSelected = false;
     
     constructor(id:string, position:Vector2D){
         super(id);
         this.id = id;
-        this.position = {x: position.x - this.size.width/2, y: position.y - this.size.height/2};
+        this.position = {x: position.x, y: position.y};
+    }
+
+    select(){
+        this.isSelected = true;
+    }
+    override unselect(): void {
+        this.isSelected = false;
+    }
+    override getSelected():boolean{
+        return this.isSelected;
     }
 }
 
 class A extends SymbolPlanElement{
     public readonly NAME:string = "A";
-    public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
+    public readonly NAME_FOR_RENDERING:string = "Anomalie";
+
+    override clone():A{
+        const symbolClone = new A(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class DEP extends SymbolPlanElement{
     public readonly NAME:string = "DEP";
-    public readonly NAME_FOR_RENDERING:string = "Descente d'eau pluviale"; 
+    public readonly NAME_FOR_RENDERING:string = "Descente d'eau pluviale";
+
+    override clone():DEP{
+        const symbolClone = new DEP(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class RVEP extends SymbolPlanElement{
     public readonly NAME:string = "RVEP";
-    public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux pluviales"; 
+    public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux pluviales";
+
+    override clone():RVEP{
+        const symbolClone = new RVEP(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class RVEU extends SymbolPlanElement{
     public readonly NAME:string = "RVEU";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux usées"; 
+
+    override clone():RVEU{
+        const symbolClone = new RVEU(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class RB extends SymbolPlanElement{
     public readonly NAME:string = "RB";
     public readonly NAME_FOR_RENDERING:string = "Regard borgne"; 
+
+    override clone():RB{
+        const symbolClone = new RB(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class FS extends SymbolPlanElement{
     public readonly NAME:string = "FS";
     public readonly NAME_FOR_RENDERING:string = "Fosse sceptique"; 
+
+    override clone():FS{
+        const symbolClone = new FS(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class CR extends SymbolPlanElement{
     public readonly NAME:string = "CR";
     public readonly NAME_FOR_RENDERING:string = "Cuve récupération eau plvuiale"; 
+
+    override clone():CR{
+        const symbolClone = new CR(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class VAAEP extends SymbolPlanElement{
     public readonly NAME:string = "VAAEP";
     public readonly NAME_FOR_RENDERING:string = "Vanne d'arrêt AEP"; 
+
+    override clone():VAAEP{
+        const symbolClone = new VAAEP(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class CAEP extends SymbolPlanElement{
     public readonly NAME:string = "Compteur AEP";
     public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
+
+    override clone():CAEP{
+        const symbolClone = new CAEP(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class Compass extends SymbolPlanElement{
     public readonly NAME:string = "Compass";
     public readonly NAME_FOR_RENDERING:string = "Boussole"; 
+
+    override clone():Compass{
+        const symbolClone = new Compass(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class PoolSymbol extends SymbolPlanElement{
     public readonly NAME:string = "Pool";
     public readonly NAME_FOR_RENDERING:string = "Piscine"; 
+
+    override clone():PoolSymbol{
+        const symbolClone = new PoolSymbol(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class Gate extends SymbolPlanElement{
     public readonly NAME:string = "Gate";
     public readonly NAME_FOR_RENDERING:string = "Portail"; 
+
+    override clone():Gate{
+        const symbolClone = new Gate(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class Door extends SymbolPlanElement{
     public readonly NAME:string = "Door";
     public readonly NAME_FOR_RENDERING:string = "Porte"; 
+
+    override clone():Door{
+        const symbolClone = new Door(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }
 
 class ADJ extends SymbolPlanElement{
     public readonly NAME:string = "ADJ";
     public readonly NAME_FOR_RENDERING:string = "Abri de jardin"; 
+
+    override clone():ADJ{
+        const symbolClone = new ADJ(this.id, {x:this.position.x, y:this.position.y});
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        return symbolClone;
+    }
 }

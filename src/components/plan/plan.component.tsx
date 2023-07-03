@@ -22,6 +22,12 @@ export type JointSegsAndSegNodes ={
     startingNodesPos: [Position, Position],
 }
 
+export type MovingSymbolData ={
+    symbol:SymbolPlanElement,
+    pointerAndPositionOffset: Vector2D,
+    startingPos: Vector2D,
+}
+
 type TouchPosition = {
     id: number;
     x: number;
@@ -74,6 +80,9 @@ const Plan: React.FC = () => {
 
     const [movingSeg, setMovingSeg] = useState<JointSegsAndSegNodes | null>(null);
     const [pointingOnSeg, setPointingOnSeg] = useState<boolean>(false);
+
+    const [movingSymbol, setMovingSymbol] = useState<MovingSymbolData | null>(null);
+    const [pointingOnSymbol, setPointingOnSymbol] = useState<boolean>(false);
 
 
     const savePlan = useSavePlan();
@@ -190,6 +199,21 @@ const Plan: React.FC = () => {
         }
     },[dispatch, movingSeg, planElements, planElementsSnapshot, savePlan]);
 
+    const saveIfMovingSymbol = useCallback(()=>{
+        const MIN_SHIFT_TO_ALLOW_SAVE = 1;
+        if(movingSymbol){
+            const d = Math.sqrt(Math.pow((movingSymbol.symbol.position.x - movingSymbol.startingPos.x), 2) + Math.pow((movingSymbol.symbol.position.y - movingSymbol.startingPos.y), 2));
+            if(d>MIN_SHIFT_TO_ALLOW_SAVE)
+            {
+                if(!planElementsSnapshot) return; //should throw error
+                const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
+                savePlan(planElementsSnapshot, nextPlanElementsClone);
+                dispatch(setPlanElementsSnapshot(null));
+            }
+            setMovingSymbol(null);
+        }
+    },[dispatch, movingSymbol, planElements, planElementsSnapshot, savePlan]);
+
     const getJointSegsDrawings = useCallback((js:JointSegs, idx: number) => {
         js.setSegs();
         js.setSegsPoints();
@@ -212,6 +236,7 @@ const Plan: React.FC = () => {
                         movingSeg={movingSeg} 
                         setMovingSeg={setMovingSeg}
                         setPointingOnSeg= {setPointingOnSeg}
+                        pointingOnSymbol = {pointingOnSymbol}
                         />
                 })
             }
@@ -277,7 +302,7 @@ const Plan: React.FC = () => {
             } */}
             </Group>
         );
-    }, [magnetData.linePoints, magnetData.seg, movingSeg, pointerStartPos, pointingOnSeg]);
+    }, [magnetData.linePoints, magnetData.seg, movingSeg, pointerStartPos, pointingOnSeg, pointingOnSymbol]);
 
     const getPlanElement = useCallback((el:PlanElement)=> {
         if(el instanceof AllJointSegs){
@@ -288,8 +313,13 @@ const Plan: React.FC = () => {
         }else if (el instanceof SymbolPlanElement) { //its a symbol
             return <SymbolComponent 
             key={el.id} 
-            symbol={el as SymbolPlanElement} 
-            pointingOnStage={pointerStartPos != null}
+            symbol={el as SymbolPlanElement}
+            // setMovingSymbol={setMovingSymbol}
+            movingSymbol={movingSymbol}
+            setMovingSymbol={setMovingSymbol}
+            setPointingOnSymbol= {setPointingOnSymbol}
+            pointerStartPos={pointerStartPos}
+            pointingOnSeg={pointingOnSeg}
             />
         }
         // switch(el.instantiatedClassName){
@@ -304,7 +334,7 @@ const Plan: React.FC = () => {
         //         });
         //     };
         // }
-    },[getJointSegsDrawings]);
+    },[getJointSegsDrawings, movingSymbol, pointerStartPos, pointingOnSeg]);
 
     const unselectAllPlanElements = useCallback(() => {
         if(!preventUnselectAllElements){
@@ -511,10 +541,19 @@ const Plan: React.FC = () => {
         if(movingSeg){
             saveIfMovingSeg();
         }
-        if(pointingOnSeg){
-            setPointingOnSeg(false);
+        if(movingSymbol){
+            saveIfMovingSymbol();
+        }
+        if(pointingOnSeg || pointingOnSymbol){
+            if(pointingOnSeg){
+                setPointingOnSeg(false);
+            }
+            if(pointingOnSymbol){
+                setPointingOnSymbol(false);
+            }
             setPreventUnselectAllElements(true);
         }
+
         // //pointerUp on node but just in in case
         // if(addSegSession){
         //     dispatch(setAddSegSession(null));
@@ -561,7 +600,7 @@ const Plan: React.FC = () => {
           }else{
             setPreventUnselectAllElements(false);
           }
-    }, [addSegSession, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.seg, movingSeg, planElements, planElementsSnapshot, pointingOnSeg, saveIfMovingSeg, savePlan]);
+    }, [addSegSession, dispatch, magnetData.activeOnAxes, magnetData.node, magnetData.seg, movingSeg, movingSymbol, planElements, planElementsSnapshot, pointingOnSeg, pointingOnSymbol, saveIfMovingSeg, saveIfMovingSymbol, savePlan]);
     
 
     const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
@@ -597,8 +636,29 @@ const Plan: React.FC = () => {
         dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
     }, [dispatch, movingSeg, planElements, pointerStartPos]);
 
+    const handleMovingSymbol = useCallback((newCursorPos: Position) => {
+        if(!movingSymbol || !pointerStartPos) return;
 
-    const handleAddSegSessionAndMovingSeg = useCallback((newCursorPos: Position) => {
+        const movingSymbolBeforeMoveClone = movingSymbol.symbol.clone();
+
+        // const cursorOffset = new Position(
+        //     newCursorPos.x - pointerStartPos.x,
+        //     newCursorPos.y - pointerStartPos.y
+        // );
+        // for(let i=0; i<2; i++){
+        //     movingSeg.segNodes[i].position.x = movingSeg.startingNodesPos[i].x + cursorOffset.x;
+        //     movingSeg.segNodes[i].position.y = movingSeg.startingNodesPos[i].y + cursorOffset.y;
+        // }
+
+        movingSymbol.symbol.position = {x: newCursorPos.x - movingSymbol.pointerAndPositionOffset.x, y:newCursorPos.y - movingSymbol.pointerAndPositionOffset.y};
+
+        // movingSymbol.updateNameTextPositionAndAngle(movingSymbolBeforeMoveClone, movingSymbol); //function to implement
+
+        dispatch(updatePlanElement(movingSymbol.symbol));
+    }, [dispatch, movingSymbol, pointerStartPos]);
+
+
+    const handleAddSegSessionAndMovingSegAndMovingSymbol = useCallback((newCursorPos: Position) => {
         if(addSegSession){
             const node = addSegSession.draggingNode;
             
@@ -636,8 +696,9 @@ const Plan: React.FC = () => {
         }
         else{
             handleMovingSeg(newCursorPos);
+            handleMovingSymbol(newCursorPos);
         }
-    },[addSegSession, dispatch, handleMovingSeg, magnetData, planElements]);
+    },[addSegSession, dispatch, handleMovingSeg, handleMovingSymbol, magnetData, planElements]);
 
     // const addSegFunc = useCallback((jointSegs:JointSegs, pointerPos: Vector2D, node?:SegNode, seg?:Seg)=>{
     //     addSeg(jointSegs, pointerPos, node, seg);
@@ -740,7 +801,7 @@ const Plan: React.FC = () => {
                     const newCursorPos = getCursorPosWithEventPos(e, false);
                     // dispatch(setPlanCursorPos(newCursorPos));
 
-                    handleAddSegSessionAndMovingSeg(newCursorPos);
+                    handleAddSegSessionAndMovingSegAndMovingSymbol(newCursorPos);
                 }}
                 onTouchMove={e => {
                     // var touchPos = e.target.getStage()?.getPointerPosition();
@@ -749,7 +810,7 @@ const Plan: React.FC = () => {
                     if(e.target.getStage()?.getPointersPositions().length===1){
                         const newCursorPos = getCursorPosWithEventPos(e, true);
                         dispatch(setPlanCursorPos(newCursorPos));
-                        handleAddSegSessionAndMovingSeg(newCursorPos);
+                        handleAddSegSessionAndMovingSegAndMovingSymbol(newCursorPos);
                     }
                     
 
@@ -775,7 +836,7 @@ const Plan: React.FC = () => {
                     //     return { id, ...position };
                     //   });
                     // setTouches(pointerPositions);
-                    if(!pointingOnSeg){
+                    if(!pointingOnSeg && !pointingOnSymbol){
                         handlePinchTouchMove(e.target.getStage()!.getPointersPositions());
                     }
 
@@ -788,7 +849,7 @@ const Plan: React.FC = () => {
 
                 }}
                 // onMouseUp={handleMouseUp}
-                draggable = {!scaling && !pointingOnSeg && !addingPointLineIdPointId && !addSegSession} //&& planMode !== PlanMode.AddPoint}
+                draggable = {!scaling && !pointingOnSeg && !pointingOnSymbol && !addingPointLineIdPointId && !addSegSession} //&& planMode !== PlanMode.AddPoint}
                 onDragStart={e => {
                     e.cancelBubble = true;
                     dispatch(setPlanIsDragging(true));

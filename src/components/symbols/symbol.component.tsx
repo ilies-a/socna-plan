@@ -5,52 +5,61 @@ import Image from "next/image";
 import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData, Res, ResArrowStatus, AppDynamicProps, Gutter, Wall, SymbolPlanElement } from "@/entities";
 import { Arrow, Group, Path, Rect, Text } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
-import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
-import { JointSegsAndSegNodes } from "../plan/plan.component";
+import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
+import { JointSegsAndSegNodes, MovingSymbolData } from "../plan/plan.component";
 import { selectAddSegSession, selectAppDynamicProps, selectMagnetData, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { getOrthogonalProjection, shrinkOrEnlargeSegment } from "@/utils";
 import { v4 } from 'uuid';
 import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 import ArrowDrawing from "../arrow-drawing/arrow-drawing.component";
 import { SELECTED_ITEM_COLOR } from "@/global";
+import DEPComponent from "./dep/dep.component";
 
 type Props = {
     symbol: SymbolPlanElement,
-    pointingOnStage:boolean
-  };
+    movingSymbol: MovingSymbolData | null,
+    setMovingSymbol: Dispatch<SetStateAction<MovingSymbolData | null>>,
+    setPointingOnSymbol: Dispatch<boolean>,
+    pointerStartPos: Position | null,
+    pointingOnSeg: boolean
+};
 
 
-const SymbolComponent: React.FC<Props> = ({symbol, pointingOnStage}) => {
+const SymbolComponent: React.FC<Props> = ({symbol, setPointingOnSymbol, movingSymbol, setMovingSymbol, pointerStartPos, pointingOnSeg}) => {
     const dispatch = useDispatch();
-    const sheetData: PlanElementSheetData | null = useSelector(selectPlanElementSheetData);
-    const planMode: PlanMode = useSelector(selectPlanMode);
     const planElements: PlanElement[] = useSelector(selectPlanElements);
-    const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
-
-    const getCursorPosWithEventPos = useCallback((e:any, touch:boolean): Position =>{
-        const ePos:{x:number, y:number} = touch? e.target.getStage()?.getPointerPosition() : {x:e.evt.offsetX, y:e.evt.offsetY};
-        // setCursorPos(new Point((ePos.x - e.currentTarget.getPosition().x) * 1/planProps.scale, (ePos.y - e.currentTarget.getPosition().y) * 1/planProps.scale));
-        return new Position((ePos.x - e.target.getStage().getPosition().x) * 1/appDynamicProps.planScale, (ePos.y - e.target.getStage().getPosition().y) * 1/appDynamicProps.planScale);
+    const planMode: PlanMode = useSelector(selectPlanMode);
     
-    },[appDynamicProps.planScale]); 
-
-
     return (
-        <Group>
-            <Rect
-                x={symbol.position.x}
-                y={symbol.position.y}
-                width={symbol.size.width}
-                height={symbol.size.height}
-                fill={"green"}
-                draggable
-                onDragStart={e=>{e.cancelBubble=true}}
-                onDragMove={e=>{e.cancelBubble=true}}
-                onDragEnd={e=>{e.cancelBubble=true}}
-                onPointerDown={e=>{e.cancelBubble=true}}
-                onPointerMove={e=>{e.cancelBubble=true}}
-                onPointerUp={e=>{e.cancelBubble=true}}
-                listening= {!pointingOnStage}
+        <Group
+            position = {symbol.position}
+            size = {symbol.size}
+            onPointerDown={e =>{
+                setPointingOnSymbol(true);
+                if(planMode === PlanMode.AddSeg){
+                    e.cancelBubble = true;
+                }else{
+                    setPointingOnSymbol(true);
+                    if(symbol.isSelected) return;
+                    PlanElementsHelper.unselectAllElements(planElements);
+                    symbol.select();
+                    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+                }
+            }}
+            onPointerMove={e=>{
+                if(!pointerStartPos || pointingOnSeg || movingSymbol || planMode === PlanMode.AddSeg) return;
+                dispatch(setPlanElementsSnapshot(PlanElementsHelper.clone(planElements)));
+                setMovingSymbol({
+                    symbol:symbol,
+                    pointerAndPositionOffset:{x:pointerStartPos.x - symbol.position.x, y:pointerStartPos.y - symbol.position.y},
+                    startingPos:{x:symbol.position.x, y:symbol.position.y}});
+            }}
+            onPointerUp={_=>{}}
+        >
+            <DEPComponent
+                size = {symbol.size}
+                scale = {1}
+                selected = {symbol.isSelected}
             />
         </Group>
     )

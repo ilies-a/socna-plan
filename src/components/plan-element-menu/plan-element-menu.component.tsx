@@ -10,6 +10,7 @@ import { selectAddSegSession, selectAppDynamicProps, selectLineToAdd, selectPlan
 import PlanElementSheet from "../plan-element-sheet/plan-element-sheet.component";
 import PlanElementButton from "../plan-element-button/plan-element-button.component";
 import { NAME_TEXT_DEFAULT_FONT_SIZE } from "@/global";
+import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 
 
 const PlanElementMenu: React.FC = () => {
@@ -27,8 +28,7 @@ const PlanElementMenu: React.FC = () => {
   const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
   const [sheetDataOpen, setSheetDataOpen] = useState<boolean>(false);
   const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
-
-
+  const savePlan = useSavePlan();
 
   useEffect(()=>{
     const selectedEl = PlanElementsHelper.getSelectedElement(planElements);
@@ -219,6 +219,7 @@ const PlanElementMenu: React.FC = () => {
 
 
   const handleClickOnAddDEP = useCallback(() =>{
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
     PlanElementsHelper.addSymbolElement(
       planElements, 
       SymbolName.DEP,
@@ -227,8 +228,8 @@ const PlanElementMenu: React.FC = () => {
         y:(-appDynamicProps.planPosition.y + appDynamicProps.planSize.height/2) / appDynamicProps.planScale
       }
       );
-    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
-  },[appDynamicProps, dispatch, planElements]);
+    savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
+  },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale, appDynamicProps.planSize.height, appDynamicProps.planSize.width, planElements, savePlan]);
 
   const goBack = useCallback(()=>{
     // dispatch(setPlanElementSheetData(null));
