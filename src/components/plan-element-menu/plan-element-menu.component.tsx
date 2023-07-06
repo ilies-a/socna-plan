@@ -2,8 +2,8 @@ import { useDispatch, useSelector } from "react-redux";
 import PlanMenuButton from "../plan-menu-button/plan-menu-button.component";
 import { useCallback, useEffect, useState } from "react";
 import styles from './plan-element-menu.module.scss';
-import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData } from "@/redux/plan/plan.actions";
-import { AEP, AddSegSession, AgrDrain, AllJointSegs, AppDynamicProps, Dimensions, Gutter, JointAEPs, JointAgrDrains, JointGutters, JointPools, JointREPs, JointREUs, JointRoadDrains, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Pool, REP, REU, ResArrowStatus, RoadDrain, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRoadDrain, SheetDataWall, SymbolName, Wall } from "@/entities";
+import { setPlanElementSheetData, setPlanElements, setPlanMode, setSegOnCreationData, updatePlanElement } from "@/redux/plan/plan.actions";
+import { A, ADJ, AEP, AddSegSession, AgrDrain, AllJointSegs, AppDynamicProps, CAEP, CR, Compass, DEP, Dimensions, Door, FS, Gate, Gutter, JointAEPs, JointAgrDrains, JointGutters, JointPools, JointREPs, JointREUs, JointRoadDrains, JointSegsClassName, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, Pool, PoolSymbol, RB, REP, REU, RVEP, RVEU, ResArrowStatus, RoadDrain, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataA, SheetDataADJ, SheetDataAEP, SheetDataAgrDrain, SheetDataCAEP, SheetDataCR, SheetDataCompass, SheetDataDEP, SheetDataDoor, SheetDataFS, SheetDataGate, SheetDataGutter, SheetDataPool, SheetDataPoolSymbol, SheetDataRB, SheetDataREP, SheetDataREU, SheetDataRVEP, SheetDataRVEU, SheetDataRoadDrain, SheetDataSymbol, SheetDataVAAEP, SheetDataWall, SymbolName, VAAEP, Wall } from "@/entities";
 import { v4 } from 'uuid';
 import { selectAddSegSession, selectAppDynamicProps, selectLineToAdd, selectPlanElementSheetData, selectPlanElements, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 // import { LEFT_MENU_WIDTH } from "@/global";
@@ -90,6 +90,37 @@ const PlanElementMenu: React.FC = () => {
         //     break;
         //   }
         // }
+        setSheetDataOpen(true);
+      }else{ //it's a symbol
+        if(selectedEl instanceof A){
+          setSheetData(new SheetDataA(selectedEl.id));
+        }else if(selectedEl instanceof DEP){
+          setSheetData(new SheetDataDEP(selectedEl.id));
+        }else if(selectedEl instanceof RVEP){
+          setSheetData(new SheetDataRVEP(selectedEl.id));
+        }else if(selectedEl instanceof RVEU){
+          setSheetData(new SheetDataRVEU(selectedEl.id));
+        }else if(selectedEl instanceof RB){
+          setSheetData(new SheetDataRB(selectedEl.id));
+        }else if(selectedEl instanceof FS){
+          setSheetData(new SheetDataFS(selectedEl.id));
+        }else if(selectedEl instanceof CR){
+          setSheetData(new SheetDataCR(selectedEl.id));
+        }else if(selectedEl instanceof VAAEP){
+          setSheetData(new SheetDataVAAEP(selectedEl.id));
+        }else if(selectedEl instanceof CAEP){
+          setSheetData(new SheetDataCAEP(selectedEl.id));
+        }else if(selectedEl instanceof Compass){
+          setSheetData(new SheetDataCompass(selectedEl.id));
+        }else if(selectedEl instanceof PoolSymbol){
+          setSheetData(new SheetDataPoolSymbol(selectedEl.id));
+        }else if(selectedEl instanceof Gate){
+          setSheetData(new SheetDataGate(selectedEl.id));
+        }else if(selectedEl instanceof Door){
+          setSheetData(new SheetDataDoor(selectedEl.id));
+        }else if(selectedEl instanceof ADJ){
+          setSheetData(new SheetDataADJ(selectedEl.id));
+        }
         setSheetDataOpen(true);
       }
       // switch(selectedEl.instantiatedClassName){
@@ -220,7 +251,7 @@ const PlanElementMenu: React.FC = () => {
 
   const handleClickOnAddDEP = useCallback(() =>{
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    PlanElementsHelper.addSymbolElement(
+    const addedSymbol = PlanElementsHelper.addSymbolElement(
       planElements, 
       SymbolName.DEP,
       {
@@ -229,7 +260,26 @@ const PlanElementMenu: React.FC = () => {
       }
       );
     savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
-  },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale, appDynamicProps.planSize.height, appDynamicProps.planSize.width, planElements, savePlan]);
+    PlanElementsHelper.selectElement(planElements, addedSymbol);
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+  },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale, appDynamicProps.planSize.height, appDynamicProps.planSize.width, dispatch, planElements, savePlan]);
+
+
+  const handleClickOnAddRVEP = useCallback(() =>{
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+    const addedSymbol = PlanElementsHelper.addSymbolElement(
+      planElements, 
+      SymbolName.RVEP,
+      {
+        x:(-appDynamicProps.planPosition.x + appDynamicProps.planSize.width/2) / appDynamicProps.planScale, 
+        y:(-appDynamicProps.planPosition.y + appDynamicProps.planSize.height/2) / appDynamicProps.planScale
+      }
+      );
+    savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
+    PlanElementsHelper.selectElement(planElements, addedSymbol);
+    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+  },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale, appDynamicProps.planSize.height, appDynamicProps.planSize.width, dispatch, planElements, savePlan]);
+
 
   const goBack = useCallback(()=>{
     // dispatch(setPlanElementSheetData(null));
@@ -265,6 +315,7 @@ const PlanElementMenu: React.FC = () => {
           <div className={styles['symbols-header']}>AJOUTER UN SYMBOLE</div>
           <div className={styles['symbols-body']}>
             <PlanElementButton name="DEP" onClick={handleClickOnAddDEP}/>
+            <PlanElementButton name="RVEP" onClick={handleClickOnAddRVEP}/>
 
           </div>
         </div>

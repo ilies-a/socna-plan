@@ -16,11 +16,11 @@ import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 type Props = {
     planElement: PlanElement,
     editableElement:SheetDataEditable,
-    setPointingOnSeg: Dispatch<boolean>
+    setPointingOnElement: Dispatch<boolean>
   };
 
 
-const RefText: React.FC<Props> = ({planElement, editableElement, setPointingOnSeg}) => {
+const RefText: React.FC<Props> = ({planElement, editableElement, setPointingOnElement}) => {
     const dispatch = useDispatch();
     const planElements: PlanElement[] = useSelector(selectPlanElements);
     const savePlan = useSavePlan();
@@ -38,12 +38,12 @@ const RefText: React.FC<Props> = ({planElement, editableElement, setPointingOnSe
             y={editableElement.nameTextPosition.y}
             rotation={editableElement.nameTextRotation}
             fontSize={editableElement.nameTextFontSize}
-            offsetX={20} //arbitrary
-            offsetY={10} //arbitrary
+            // offsetX={(editableElement.nameTextFontSize /2 * editableElement.getRef().length) /2}
+            // offsetY={editableElement.nameTextFontSize / 2}
             draggable
             onPointerDown={e=>{
                 e.cancelBubble = true;
-                setPointingOnSeg(true);
+                setPointingOnElement(true);
                 selectElement();
             }}
             onDragStart={e=>{

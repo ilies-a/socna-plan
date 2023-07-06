@@ -515,3 +515,36 @@ export function getOrthogonalPoints(segment: Segment, point: Point, distance: nu
 //     width = Math.abs(Math.abs(coordSize.x2) - Math.abs(coordSize.x1)); 
 //   }
 // }
+
+
+export function getRotatedRectanglePoints(rectangle: Size, position: Vector2D, r: number): Vector2D[] {
+  const centerX = position.x + rectangle.width / 2;
+  const centerY = position.y + rectangle.height / 2;
+
+  const cosR = Math.cos(r);
+  const sinR = Math.sin(r);
+
+  const points: Vector2D[] = [];
+
+  // Top-left point
+  const tlX = (position.x - centerX) * cosR - (position.y - centerY) * sinR + centerX;
+  const tlY = (position.x - centerX) * sinR + (position.y - centerY) * cosR + centerY;
+  points.push({ x: tlX, y: tlY });
+
+  // Top-right point
+  const trX = (position.x + rectangle.width - centerX) * cosR - (position.y - centerY) * sinR + centerX;
+  const trY = (position.x + rectangle.width - centerX) * sinR + (position.y - centerY) * cosR + centerY;
+  points.push({ x: trX, y: trY });
+
+  // Bottom-right point
+  const brX = (position.x + rectangle.width - centerX) * cosR - (position.y + rectangle.height - centerY) * sinR + centerX;
+  const brY = (position.x + rectangle.width - centerX) * sinR + (position.y + rectangle.height - centerY) * cosR + centerY;
+  points.push({ x: brX, y: brY });
+
+  // Bottom-left point
+  const blX = (position.x - centerX) * cosR - (position.y + rectangle.height - centerY) * sinR + centerX;
+  const blY = (position.x - centerX) * sinR + (position.y + rectangle.height - centerY) * cosR + centerY;
+  points.push({ x: blX, y: blY });
+
+  return points;
+}

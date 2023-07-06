@@ -2,12 +2,13 @@
 import { MouseEventHandler, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from './plan-element-sheet.module.scss';
 import Image from "next/image";
-import { AllJointSegs, Dimensions, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataAEP, SheetDataAgrDrain, SheetDataGutter, SheetDataPool, SheetDataREP, SheetDataREU, SheetDataRes, SheetDataRoadDrain, SheetDataSeg, SheetDataWall, Wall, iconDataArr } from "@/entities";
+import { AllJointSegs, Diameter, Dimensions, EditableHelper, JointSegs, JointWalls, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, Res, ResArrowStatus, Seg, SegClassName, SegOnCreationData, SheetData, SheetDataA, SheetDataADJ, SheetDataAEP, SheetDataAgrDrain, SheetDataCAEP, SheetDataCR, SheetDataCompass, SheetDataDEP, SheetDataDoor, SheetDataEditable, SheetDataFS, SheetDataGate, SheetDataGutter, SheetDataPool, SheetDataPoolSymbol, SheetDataRB, SheetDataREP, SheetDataREU, SheetDataRVEP, SheetDataRVEU, SheetDataRes, SheetDataRoadDrain, SheetDataSeg, SheetDataSymbol, SheetDataVAAEP, SheetDataWall, SymbolPlanElement, Wall, iconDataArr } from "@/entities";
 import { useDispatch, useSelector } from "react-redux";
 import { setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setSegOnCreationData, updatePlanElement } from "@/redux/plan/plan.actions";
 import { selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectSegOnCreationData } from "@/redux/plan/plan.selectors";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import { NAME_TEXT_DEFAULT_FONT_SIZE } from "@/global";
+import { v4 } from 'uuid';
 
 type Props = {
     sheetData: SheetData,
@@ -22,7 +23,9 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   // const [inputNumero, setInputNumero] = useState<string>("");
   const savePlan = useSavePlan();
   const segOnCreationData: SegOnCreationData | null = useSelector(selectSegOnCreationData);
-  const [sheetDataPlanElement, setSheetDataPlanElement] = useState<PlanElement | undefined>();
+  const [editable, setEditable] = useState<SheetDataEditable | undefined>(undefined);
+
+  // const [sheetDataPlanElement, setSheetDataPlanElement] = useState<PlanElement | undefined>();
 
   // useEffect(()=>{
   //   if(!sheetData.planElementId) return;
@@ -31,9 +34,6 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
   // },[planElements]);
 
 
-  // useEffect(()=>{
-  //   setInputNumero("");
-  // },[sheetData])
 
     // useEffect(()=>{
   //   setInputNumero("");
@@ -59,8 +59,29 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     }
   }, [sheetData]);
 
+  const getEditable = useCallback((): SheetDataEditable | undefined =>{
+    const segIsOnCreation = segOnCreationData != null;
+    let editable: SheetDataEditable | undefined;
 
-  const handleInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    if(sheetData instanceof SheetDataSeg){
+      const segId = (sheetData as SheetDataSeg).segId!;
+      if(segIsOnCreation){
+
+      }
+      else if(sheetData.planElementId != undefined){
+        editable= getRightJointSegs(PlanElementsHelper.getAllJointSegs(planElements))!.segs[segId];
+      }
+    }else if(sheetData instanceof SheetDataSymbol && sheetData.planElementId != undefined){
+      editable = PlanElementsHelper.findElementById(planElements, sheetData.planElementId) as SymbolPlanElement;
+    }
+    return editable;
+  }, [getRightJointSegs, planElements, segOnCreationData, sheetData]);
+
+  useEffect(()=>{
+    setEditable(getEditable());
+  },[getEditable])
+
+  const handleNumeroInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
     const newNumero = e.currentTarget.value;
     // setInputNumero(newNumero);
     let sheetDataPlanElement:PlanElement | undefined;
@@ -98,8 +119,18 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         }
 
       }
-
   
+    }else if(sheetData.planElementId != undefined){
+      sheetDataPlanElement = PlanElementsHelper.findElementById(planElements, sheetData.planElementId);
+      (sheetDataPlanElement as SymbolPlanElement).numero = newNumero;
+      for(const planElementsRecord of planElementsRecords.records){
+        const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+        if(elIdx === -1) continue;
+        const symbolInPlanElementsRecord = PlanElementsHelper.findElementById(planElementsRecord, sheetData.planElementId);
+        if(symbolInPlanElementsRecord){
+          (symbolInPlanElementsRecord as SymbolPlanElement).numero = newNumero;
+        }
+      }
     }
     
     if(segIsOnCreation || !sheetDataPlanElement) return;
@@ -126,22 +157,54 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       return "DR";
     }else if(sheetData instanceof SheetDataAgrDrain){
       return "DA";
+    }else if(sheetData instanceof SheetDataA){
+      return "A";
+    }else if(sheetData instanceof SheetDataDEP){
+      return "DEP";
+    }else if(sheetData instanceof SheetDataRVEP){
+      return "RVEP";
+    }else if(sheetData instanceof SheetDataRVEU){
+      return "RVEU";
+    }else if(sheetData instanceof SheetDataRB){
+      return "RB";
+    }else if(sheetData instanceof SheetDataFS){
+      return "FS";
+    }else if(sheetData instanceof SheetDataCR){
+      return "CR";
+    }else if(sheetData instanceof SheetDataVAAEP){
+      return "VAAEP";
+    }else if(sheetData instanceof SheetDataCAEP){
+      return "CAEP";
+    }else if(sheetData instanceof SheetDataCompass){
+      return "Compass";
+    }else if(sheetData instanceof SheetDataPoolSymbol){
+      return "PoolSymbol";
+    }else if(sheetData instanceof SheetDataGate){
+      return "Gate";
+    }else if(sheetData instanceof SheetDataDoor){
+      return "Door";
+    }else if(sheetData instanceof SheetDataADJ){
+      return "ADJ";
     }
   },[sheetData]);
 
   const deleteElement = useCallback(()=>{
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
-    getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.deleteSeg((sheetData as SheetDataSeg).segId!);
+    if(sheetData instanceof SheetDataSeg){
+      const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
+      getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.deleteSeg((sheetData as SheetDataSeg).segId!);
+    }else if(sheetData.planElementId != undefined){
+      PlanElementsHelper.deleteSymbol(planElements, sheetData.planElementId);
+    }
 
-    if(!sheetDataPlanElement) return; //theorically not possible but just in case
+    // if(!sheetDataPlanElement) return; //theorically not possible but just in case
     // dispatch(updatePlanElement(sheetDataPlanElement));
-    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+    // dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
 
     const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
     savePlan(currentPlanElementsClone, nextPlanElementsClone);
     dispatch(setPlanElementSheetData(null));
-  }, [planElements, getRightJointSegs, sheetData, dispatch, savePlan]);
+  }, [planElements, sheetData, dispatch, savePlan, getRightJointSegs]);
 
 
   const handleShowArrowInputChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
@@ -190,40 +253,49 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     }else{
 
       const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-
-      const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
-      const segId = (sheetData as SheetDataSeg).segId!;
-      const seg:Seg = getRightJointSegs(sheetDataPlanElement)!.segs[segId];
-
+      let editableElement: Seg | SymbolPlanElement | undefined; 
+      if(sheetData instanceof SheetDataSeg){
+        const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+        const segId = (sheetData as SheetDataSeg).segId!;
+        editableElement = getRightJointSegs(sheetDataPlanElement)!.segs[segId] as Seg;
+  
+      }else if(sheetData.planElementId != undefined){
+        editableElement = PlanElementsHelper.findElementById(planElements, sheetData.planElementId) as SymbolPlanElement;
+      }
+      if(!editableElement) return; //should throw error
       if(!showName){
-        seg.nameTextVisibility = false;
+        editableElement.nameTextVisibility = false;
       }else{
-        seg.nameTextPosition = {x:seg.nodes[0].position.x, y:seg.nodes[0].position.y};
-        seg.nameTextFontSize = seg.nameTextFontSize;
-        seg.nameTextRotation = seg.nameTextRotation;
-        seg.nameTextVisibility = true;
+        editableElement.nameTextPosition = editableElement.getDefaultNameTextPosition();
+        editableElement.nameTextFontSize = editableElement.nameTextFontSize;
+        editableElement.nameTextRotation = editableElement.nameTextRotation;
+        editableElement.nameTextVisibility = true;
       }
 
       const nextPlanElementsClone = PlanElementsHelper.clone(planElements);
       savePlan(currentPlanElementsClone, nextPlanElementsClone);
       // dispatch(updatePlanElement(sheetDataPlanElement));
       // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
-      return seg.nameTextVisibility;
+      return editableElement.nameTextVisibility;
     }
 
   },[dispatch, getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
 
   const nameIsVisible = useCallback(():boolean=>{
-    if(segOnCreationData != null){
-      return segOnCreationData.nameTextVisibility;
+    if(sheetData instanceof SheetDataSeg){
+      if(segOnCreationData != null){
+        return segOnCreationData.nameTextVisibility;
+      }else if(sheetData.planElementId != undefined){
+          const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+          const segId = (sheetData as SheetDataSeg).segId!;
+          const seg:Seg = getRightJointSegs(sheetDataPlanElement)!.segs[segId];
+          return seg? seg.nameTextVisibility:false;
+      }
     }else if(sheetData.planElementId != undefined){
-      const sheetDataPlanElement:AllJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
-      const segId = (sheetData as SheetDataSeg).segId!;
-      const seg:Seg = getRightJointSegs(sheetDataPlanElement)!.segs[segId];
-
-      return seg? seg.nameTextVisibility:false;
-
+      const sheetDataPlanElement = PlanElementsHelper.findElementById(planElements, sheetData.planElementId);
+      return sheetDataPlanElement? (sheetDataPlanElement as SymbolPlanElement).nameTextVisibility:false;
     }
+  
     return false;
   },[getRightJointSegs, planElements, segOnCreationData, sheetData]);
 
@@ -254,7 +326,7 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
 
   }
 
-  const getNumero = useCallback(():string=>{
+  const getNumero = useCallback((hideMinusOne:boolean):string=>{
     const segIsOnCreation= segOnCreationData != null;
     
     if(sheetData instanceof SheetDataSeg){
@@ -266,10 +338,13 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
       else if(sheetData.planElementId != undefined){
         const sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
         const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId];
-        return seg? seg.numero : "";
-      
+        return seg? seg.numero == "-1" && hideMinusOne ? "":seg.numero:"";
       }
-
+    }else if(sheetData.planElementId != undefined){
+      const sheetDataPlanElement = PlanElementsHelper.findElementById(planElements, sheetData.planElementId);
+      if(!sheetDataPlanElement) return "";
+      const symbol = sheetDataPlanElement as SymbolPlanElement;
+      return symbol? symbol.numero == "-1" && hideMinusOne ? "":symbol.numero:"";
     }
 
     return "";
@@ -293,13 +368,16 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         
       }
 
+    }else if(sheetData.planElementId != undefined){
+      const sheetDataPlanElement = PlanElementsHelper.findElementById(planElements, sheetData.planElementId);
+      return (sheetDataPlanElement as SymbolPlanElement).nameTextFontSize.toString();
     }
     return "";
   }, [getRightJointSegs, planElements, segOnCreationData, sheetData]);
 
 
 
-  const handleSizeInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+  const handleTextSizeInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
     const newSize = e.currentTarget.value;
     const newSizeNumber = parseFloat(newSize);
     // setInputNumero(newNumero);
@@ -337,9 +415,18 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
             segInPlanElementsRecord.nameTextFontSize = newSizeNumber;
           }
         }
-
       }
-
+    }else if(sheetData.planElementId != undefined){
+      sheetDataPlanElement = PlanElementsHelper.findElementById(planElements, sheetData.planElementId);
+      (sheetDataPlanElement as SymbolPlanElement).nameTextFontSize = newSizeNumber;
+      for(const planElementsRecord of planElementsRecords.records){
+        const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
+        if(elIdx === -1) continue;
+        const symbolInPlanElementsRecord = PlanElementsHelper.findElementById(planElementsRecord, sheetData.planElementId);
+        if(symbolInPlanElementsRecord){
+          (symbolInPlanElementsRecord as SymbolPlanElement).nameTextFontSize = newSizeNumber;
+        }
+      }
     }
     
     if(segIsOnCreation || !sheetDataPlanElement) return;
@@ -397,11 +484,39 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     }else if(sheetData instanceof SheetDataGutter){
       return "Gouttière";
     }else if(sheetData instanceof SheetDataPool){
-      return "Rés. Piscine";
+      return "Réseau piscine";
     }else if(sheetData instanceof SheetDataRoadDrain){
       return "Drain Routier";
     }else if(sheetData instanceof SheetDataAgrDrain){
       return "Drain Agricole";
+    }else if(sheetData instanceof SheetDataA){
+      return "Anomalie";
+    }else if(sheetData instanceof SheetDataDEP){
+      return "Descente d'eau pluviale";
+    }else if(sheetData instanceof SheetDataRVEP){
+      return "Regard de visite d'eaux pluviales";
+    }else if(sheetData instanceof SheetDataRVEU){
+      return "Regard de visite d'eaux usées";
+    }else if(sheetData instanceof SheetDataRB){
+      return "Regard borgne";
+    }else if(sheetData instanceof SheetDataFS){
+      return "Fosse sceptique";
+    }else if(sheetData instanceof SheetDataCR){
+      return "Cuve récupération eau pluviale";
+    }else if(sheetData instanceof SheetDataVAAEP){
+      return "Vanne d'arrêt AEP";
+    }else if(sheetData instanceof SheetDataCAEP){
+      return "Cuve récupération eau pluviale";
+    }else if(sheetData instanceof SheetDataCompass){
+      return "Boussole";
+    }else if(sheetData instanceof SheetDataPoolSymbol){
+      return "Piscine";
+    }else if(sheetData instanceof SheetDataGate){
+      return "Portail";
+    }else if(sheetData instanceof SheetDataDoor){
+      return "Porte";
+    }else if(sheetData instanceof SheetDataADJ){
+      return "Abri de jardin";
     }
     return "";
   }
@@ -435,19 +550,10 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         // let segId:string | undefined;
         sheetDataPlanElement = PlanElementsHelper.getAllJointSegs(planElements);
         const seg = getRightJointSegs(sheetDataPlanElement as AllJointSegs)!.segs[segId] as Wall;
+        const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
         seg.sinister = newValue;
-        for(const planElementsRecord of planElementsRecords.records){
-          const elIdx = PlanElementsHelper.findElementIndexById(planElementsRecord, sheetData.planElementId);
-          if(elIdx === -1) continue;
-          const segInPlanElementsRecord = getRightJointSegs(planElementsRecord[elIdx] as AllJointSegs)!.segs[segId] as Wall;
-          if(segInPlanElementsRecord){
-            segInPlanElementsRecord.sinister = newValue;
-          }
-        }
-
+        savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
       }
-
-  
     }
     
     if(segIsOnCreation || !sheetDataPlanElement) return;
@@ -455,7 +561,17 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     // dispatch(updatePlanElement(sheetDataPlanElement));
     // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
   
-  },[dispatch, getRightJointSegs, planElements, planElementsRecords.records, segOnCreationData, sheetData]);
+  },[dispatch, getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
+
+  
+  const handleSymbolScaleInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    const newValue = e.currentTarget.value;
+    if(!(sheetData instanceof SheetDataSymbol && sheetData.planElementId != undefined)) return;
+    const symbol = PlanElementsHelper.findElementById(planElements, sheetData.planElementId) as SymbolPlanElement;
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+    symbol.scale = parseFloat(newValue);
+    savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
+  },[planElements, savePlan, sheetData]);
 
   
   const getSinister = useCallback(():boolean=>{
@@ -477,22 +593,122 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
     return false;
   }, [getRightJointSegs, planElements, segOnCreationData, sheetData]);
 
+  const getSymbolScale = useCallback(():string=>{    
+    if(!(sheetData instanceof SheetDataSymbol && sheetData.planElementId != undefined)) return "";
+    const symbol = PlanElementsHelper.findElementById(planElements, sheetData.planElementId) as SymbolPlanElement;
+    if(!symbol) return "";
+    return symbol.scale.toString();
+  }, [planElements, sheetData]);
+
+
+  const getAdditionalProperties = () : ReactNode => {
+    const segIsOnCreation = segOnCreationData != null;
+    let editable: SheetDataEditable | undefined;
+
+    if(sheetData instanceof SheetDataSeg){
+      const segId = (sheetData as SheetDataSeg).segId!;
+      if(segIsOnCreation){
+
+      }
+      else if(sheetData.planElementId != undefined){
+        editable= getRightJointSegs(PlanElementsHelper.getAllJointSegs(planElements))!.segs[segId];
+      }
+    }else if(sheetData instanceof SheetDataSymbol && sheetData.planElementId != undefined){
+      editable = PlanElementsHelper.findElementById(planElements, sheetData.planElementId) as SymbolPlanElement;
+    }
+
+    const result = [];
+    if(!editable) return null;
+
+    if(editable.availableDiameters.length){
+      result.push(
+        <div>
+          <label htmlFor="diameter-select">Diamètre:</label>
+          <select name="diameters" id="diameter-select" value={EditableHelper.diameterNumberToDiameterKey(editable.diameter, editable.availableDiameters)} onChange={handleDiameterSelectOnChange}>
+            {
+              editable.availableDiameters.map(diameter => 
+                <option 
+                key={v4()} 
+                value={diameter}
+                > 
+                  {EditableHelper.diameterKeyToDiameterNumber(diameter)}
+                </option>)
+            }
+          </select>
+          
+
+
+        </div>
+      );
+    }
+    if(!result) return null;
+    return result.map(reactNode => <div key={v4()}>{reactNode}</div>);
+  };
+  
+  const handleDiameterOnChange = useCallback((diameter:number)=>{
+    const newValue = diameter;
+
+    // setInputNumero(newNumero);
+    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
+
+    //(only a seg can be on creation because a symbol element is created instantly)
+    const segIsOnCreation = segOnCreationData != null;
+
+    let editable: SheetDataEditable | undefined;
+
+    if(sheetData instanceof SheetDataSeg){
+      const segId = (sheetData as SheetDataSeg).segId!;
+
+      if(segIsOnCreation){
+
+      }
+      else if(sheetData.planElementId != undefined){
+        const allJointSegs = PlanElementsHelper.getAllJointSegs(planElements);
+        editable = getRightJointSegs(allJointSegs)!.segs[segId];
+
+      }
+    }else if(sheetData.planElementId != undefined){
+      editable = PlanElementsHelper.findElementById(planElements, sheetData.planElementId) as SymbolPlanElement;
+    }
+
+    if(!editable) return;
+    editable.diameter = newValue;
+
+    savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
+
+    // if(segIsOnCreation || !sheetDataPlanElement) return;
+    // dispatch(updatePlanElement(sheetDataPlanElement));
+    // dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+
+    // dispatch(setPlanElementsRecords(planElementsRecords.clone()));
+  
+  },[getRightJointSegs, planElements, savePlan, segOnCreationData, sheetData]);
+
+
+  const handleDiameterSelectOnChange = useCallback((e:React.FormEvent<HTMLSelectElement>)=>{
+    handleDiameterOnChange(EditableHelper.diameterKeyToDiameterNumber(parseFloat(e.currentTarget.value)) as number);
+  },[handleDiameterOnChange]);
+
+
+  const handleDiameterInputOnChange = useCallback((e:React.FormEvent<HTMLInputElement>)=>{
+    handleDiameterOnChange(parseFloat(e.currentTarget.value? e.currentTarget.value:"0"));
+  },[handleDiameterOnChange]);
 
   return (
     <div className={`${styles['main']}`} >
       <div className={styles['sheet-header']}>{getSheetTitle()}</div>
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>Ref</div>
-        <div className={`${styles['content']}`}>{convertTypeNameToString() + getNumero()}</div>
+        <div className={`${styles['content']}`}>{convertTypeNameToString() + getNumero(true)}</div>
       </div>
       <div className={`${styles['table']}`}>
         <div className={`${styles['label']}`}>N°</div>
         <input
             className={`${styles['content']}`}
-            value={getNumero()}
+            value={getNumero(false)}
             type="number"
-            min="0"
-            onChange={(e) => {handleInputOnChange(e)}} 
+            min="-1"
+            onChange={(e) => {handleNumeroInputOnChange(e)}} 
         />
       </div>
       
@@ -512,14 +728,14 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         {/* {nameIsVisible()?"Cacher":"Afficher"} le nom
       </button> */}
       {nameIsVisible()?
-        <>
-          <input type="range" id="size" name="size" value={getTextSize()} onChange={handleSizeInputOnChange}
+        <div>
+          <input type="range" id="text-size" name="text-size" value={getTextSize()} onChange={handleTextSizeInputOnChange}
           min="16" max="22"/>
-          <label htmlFor="size">Taille</label>
+          <label htmlFor="text-size">Taille du texte</label>
           {/* <input type="range" id="rotation" name="rotation" value={getTextRotation()} onChange={(e)=>{handleRotationInputOnChange(e)}}
           min="0" max="360"/>
           <label htmlFor="volume">Angle</label> */}
-        </>
+        </div>
         :null
       }
 
@@ -564,6 +780,29 @@ const PlanElementSheet: React.FC<Props> = ({sheetData}) => {
         </div>
         :null
       }
+      {sheetData instanceof SheetDataSymbol?
+        <div>
+          <input type="range" id="symbol-scale" name="symbol-scale" value={getSymbolScale()} onChange={handleSymbolScaleInputOnChange}
+            min="0" max="2" step={0.1}/>
+          <label htmlFor="symbol-scale">Taille du symbole</label>
+          {/* <input type="range" id="rotation" name="rotation" value={getTextRotation()} onChange={(e)=>{handleRotationInputOnChange(e)}}
+          min="0" max="360"/>
+          <label htmlFor="volume">Angle</label> */}
+        </div>
+        :null
+      }
+      {
+        <>
+          {getAdditionalProperties()}
+        </>
+      }
+      {editable?
+        <input
+            value={editable.diameter ? editable.diameter : ""}
+            type="number"
+            min="0"
+            onChange={handleDiameterInputOnChange} 
+              /> : null}
       {!segOnCreationData?
         <button className={styles['del-btn']}
           onClick={deleteElement}

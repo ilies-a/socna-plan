@@ -1,11 +1,26 @@
 import { v4 } from 'uuid';
-import { calculateAngle, calculateSidelinesPoints, calculateSlope, cloneArray, doSegmentsIntersect, getDistance, getOrthogonalPoints, getOrthogonalProjection, getPointAlongSegment, getPositionOnSegment, isPointInPolygon, radiansToDegrees, sortPointsClockwise } from './utils';
+import { calculateAngle, calculateSidelinesPoints, calculateSlope, cloneArray, doSegmentsIntersect, getDistance, getOrthogonalPoints, getOrthogonalProjection, getPointAlongSegment, getPositionOnSegment, getRotatedRectanglePoints, isPointInPolygon, radiansToDegrees, sortPointsClockwise } from './utils';
 import { BIG_NUMBER, NAME_TEXT_DEFAULT_FONT_SIZE, NODE_RADIUS, PRECISION, RES_WIDTH } from './global';
 
 // export enum PlanElementClassName {AllJointSegs};
 export enum SegClassName {Wall, REU, REP, AEP, Gutter, Pool, RoadDrain, AgrDrain};
 export enum JointSegsClassName {JointWalls, JointREUs, JointREPs, JointAEPs, JointGutters, JointPools, JointRoadDrains, JointAgrDrains};
-export enum SymbolName {DEP};
+export enum SymbolName {
+    A, 
+    DEP, 
+    RVEP, 
+    RVEU,
+    RB,
+    FS,
+    CR,
+    VAAEP,
+    CAEP,
+    Compass,
+    PoolSymbol,
+    Gate,
+    Door,
+    ADJ,
+};
 
 
 export class PlanProps {
@@ -69,6 +84,9 @@ export class PlanElementsHelper {
                         result.push([el,seg]);
                     }
                 }
+            }else if(el instanceof SymbolPlanElement){
+                if(!el.nameTextVisibility) continue;
+                result.push([el, el]);
             }
         }
         return result;
@@ -104,23 +122,160 @@ export class PlanElementsHelper {
     }
 
     static calculateAllElementsWrapperCoordSize(planElements:PlanElement[]):CoordSize{
-        const allJointSegs = this.getAllJointSegs(planElements);
-        const allJointSegsCoordSize = allJointSegs.calculateCoordSize();
-        //todo: other symbols coordSize and compare them
-        return allJointSegsCoordSize;
+        // const allJointSegsCoordSize = allJointSegs.calculateCoordSize();
+
+        let minMax:{xMin: number | undefined, yMin:number | undefined, xMax:number | undefined, yMax:number | undefined} = {
+            xMin: undefined,
+            yMin: undefined,
+            xMax: undefined,
+            yMax: undefined
+        };
+
+        let margin = 50;
+
+        // for(const jointSegsItem of allJointSegs.jointSegs){
+        //     for(const nodeId in jointSegsItem.nodes){
+        //         const nodePosition = jointSegsItem.nodes[nodeId].position;
+        //         updateMinMax(nodePosition, minMax);
+        //     }
+        //     for(const segId in jointSegsItem.segs){
+        //         const seg = jointSegsItem.segs[segId];
+        //         if(!seg.nameTextVisibility) continue;
+        //         const textSize = {width:seg.nameTextFontSize * seg.getRef().length, height:seg.nameTextFontSize};
+        //         const textTopLeftPos = {
+        //             x:seg.nameTextPosition.x - textSize.width/2, 
+        //             y:seg.nameTextPosition.y - textSize.height/2,
+        //         };
+        //         const points = getRotatedRectanglePoints(textSize,  textTopLeftPos,  seg.nameTextRotation);
+        //         for(const p of points){
+        //             updateMinMax(p, minMax);
+        //         }
+        //     }
+        // }
+
+        const updateMinMax = (p: Vector2D, minMax:{xMin: number | undefined, yMin:number | undefined, xMax:number | undefined, yMax:number | undefined})=>{
+            if(!minMax.xMin){
+              minMax.xMin = p.x;
+            }
+            if(!minMax.xMax){
+              minMax.xMax = p.x;
+            }
+            if(!minMax.yMin){
+              minMax.yMin = p.y;
+            }
+            if(!minMax.yMax){
+              minMax.yMax = p.y;
+            }
+            
+            if(p.x < minMax.xMin){
+              minMax.xMin = p.x;
+            }
+            if(p.x > minMax.xMax){
+              minMax.xMax = p.x;
+            }
+            if(p.y < minMax.yMin){
+              minMax.yMin = p.y;
+            }
+            if(p.y > minMax.yMax){
+              minMax.yMax = p.y;
+            }
+        };
+
+        const updateMinMaxWithEditableText = (editable: SheetDataEditable)=>{
+            if(!editable.nameTextVisibility) return;
+            const textSize = {width:editable.nameTextFontSize * editable.getRef().length, height:editable.nameTextFontSize};
+            const points = getRotatedRectanglePoints(textSize,  editable.nameTextPosition,  editable.nameTextRotation);
+            for(const p of points){
+                updateMinMax(p, minMax);
+            }
+        };
+
+        for(const planEl of planElements){
+            if(planEl instanceof AllJointSegs){
+                for(const jointSegsItem of planEl.jointSegs){
+                    for(const nodeId in jointSegsItem.nodes){
+                        const nodePosition = jointSegsItem.nodes[nodeId].position;
+                        updateMinMax(nodePosition, minMax);
+                    }
+                    for(const segId in jointSegsItem.segs){
+                        updateMinMaxWithEditableText(jointSegsItem.segs[segId]);
+                    }
+                }
+            }else if(planEl instanceof SymbolPlanElement){
+                const xLeft = planEl.position.x;
+                const xRight = planEl.position.x + planEl.size.width;
+                const yTop = planEl.position.y;
+                const yBottom = planEl.position.y + planEl.size.height;
+                
+                const points = [
+                    {x:xLeft, y:yTop},
+                    {x:xLeft, y:yBottom},
+                    {x:xRight, y:yTop},
+                    {x:xRight, y:yBottom}
+                ]
+
+                for(const p of points){
+                    updateMinMax(p, minMax);
+                    updateMinMaxWithEditableText(planEl);
+                }
+
+            }
+        }
+
+        return {x1:minMax.xMin! - margin, y1:minMax.yMin! - margin, x2:minMax.xMax! + margin, y2:minMax.yMax! + margin};
+
     }
 
-    static addSymbolElement(planElements:PlanElement[], symbolName: SymbolName, position:Vector2D){
+    static addSymbolElement(planElements:PlanElement[], symbolName: SymbolName, position:Vector2D): SymbolPlanElement{
         let newSymbol;
         switch(symbolName){
+            case SymbolName.A:
+                newSymbol = new A(v4(), position);
+                break;
             case SymbolName.DEP:
                 newSymbol = new DEP(v4(), position);
+                break;
+            case SymbolName.RVEP:
+                newSymbol = new RVEP(v4(), position);
+                break;
+            case SymbolName.RVEU:
+                newSymbol = new RVEU(v4(), position);
+                break;
+            case SymbolName.RB:
+                newSymbol = new RB(v4(), position);
+                break;
+            case SymbolName.FS:
+                newSymbol = new FS(v4(), position);
+                break;
+            case SymbolName.CR:
+                newSymbol = new CR(v4(), position);
+                break;
+            case SymbolName.VAAEP:
+                newSymbol = new VAAEP(v4(), position);
+                break;
+            case SymbolName.CAEP:
+                newSymbol = new CAEP(v4(), position);
+                break;
+            case SymbolName.Compass:
+                newSymbol = new Compass(v4(), position);
+                break;
+            case SymbolName.PoolSymbol:
+                newSymbol = new PoolSymbol(v4(), position);
+                break;
+            case SymbolName.Gate:
+                newSymbol = new Gate(v4(), position);
+                break;
+            case SymbolName.Door:
+                newSymbol = new Door(v4(), position);
+                break;
+            case SymbolName.ADJ:
+                newSymbol = new ADJ(v4(), position);
                 break;
         }
         newSymbol.position.x -= newSymbol.size.width/2;
         newSymbol.position.y -= newSymbol.size.height/2;
         planElements.push(newSymbol);
-
+        return newSymbol;
     }
 
     // static addDummyWall(planElements:PlanElement[]){
@@ -135,6 +290,11 @@ export class PlanElementsHelper {
 
     //     jointWalls.setSegs();
     // }
+
+    static deleteSymbol(planElements:PlanElement[], symbolId: string){
+        const symbolIndex = this.findElementIndexById(planElements, symbolId);
+        planElements.splice(symbolIndex, 1);
+    }
 }
 
 
@@ -434,45 +594,43 @@ export class AllJointSegs extends PlanElement{
         return ajsClone;
     }
 
-    calculateCoordSize():CoordSize{
-        let xMin!:number;
-        let xMax!:number;
-        let yMin!:number;
-        let yMax!:number;
-        let margin = 50; 
-        for(const jointSegsItem of this.jointSegs){
-            for(const nodeId in jointSegsItem.nodes){
-                const nodePosition = jointSegsItem.nodes[nodeId].position;
-                if(!xMin){
-                    xMin = nodePosition.x;
-                }
-                if(!xMax){
-                    xMax = nodePosition.x;
-                }
-                if(!yMin){
-                    yMin = nodePosition.y;
-                }
-                if(!yMax){
-                    yMax = nodePosition.y;
-                }
-                
-                if(nodePosition.x < xMin){
-                    xMin = nodePosition.x;
-                }
-                if(nodePosition.x > xMax){
-                    xMax = nodePosition.x;
-                }
-                if(nodePosition.y < yMin){
-                    yMin = nodePosition.y;
-                }
-                if(nodePosition.y > yMax){
-                    yMax = nodePosition.y;
-                }
-            }
-        }
+    // calculateCoordSize():CoordSize{
+    //     // let xMin!:number;
+    //     // let xMax!:number;
+    //     // let yMin!:number;
+    //     // let yMax!:number;
 
-        return {x1:xMin! - margin, y1:yMin! - margin, x2:xMax! + margin, y2:yMax! + margin};
-    }
+    //     let minMax:{xMin: number | undefined, yMin:number | undefined, xMax:number | undefined, yMax:number | undefined} = {
+    //         xMin: undefined,
+    //         yMin: undefined,
+    //         xMax: undefined,
+    //         yMax: undefined
+    //     };
+
+    //     let margin = 50;
+
+    //     for(const jointSegsItem of this.jointSegs){
+    //         for(const nodeId in jointSegsItem.nodes){
+    //             const nodePosition = jointSegsItem.nodes[nodeId].position;
+    //             updateMinMax(nodePosition, minMax);
+    //         }
+    //         for(const segId in jointSegsItem.segs){
+    //             const seg = jointSegsItem.segs[segId];
+    //             if(!seg.nameTextVisibility) continue;
+    //             const textSize = {width:seg.nameTextFontSize * seg.getRef().length, height:seg.nameTextFontSize};
+    //             const textTopLeftPos = {
+    //                 x:seg.nameTextPosition.x - textSize.width/2, 
+    //                 y:seg.nameTextPosition.y - textSize.height/2,
+    //             };
+    //             const points = getRotatedRectanglePoints(textSize,  textTopLeftPos,  seg.nameTextRotation);
+    //             for(const p of points){
+    //                 updateMinMax(p, minMax);
+    //             }
+    //         }
+    //     }
+
+    //     return {x1:minMax.xMin! - margin, y1:minMax.yMin! - margin, x2:minMax.xMax! + margin, y2:minMax.yMax! + margin};
+    // }
 
 }
 
@@ -555,6 +713,18 @@ export abstract class JointSegs {
                 seg.nameTextPosition = thisSeg.nameTextPosition;
                 seg.nameTextRotation = thisSeg.nameTextRotation;
                 seg.nameTextFontSize = thisSeg.nameTextFontSize;
+
+                seg.availableMaterials = [...thisSeg.availableMaterials];
+                seg.availableComments = [...thisSeg.availableComments];
+                seg.availableDiameters = [...thisSeg.availableDiameters];
+                seg.availableTests = [...thisSeg.availableTests];
+                seg.material = thisSeg.material;
+                seg.diameter = thisSeg.diameter;
+                seg.comment = thisSeg.comment;
+                seg.tests = [...thisSeg.tests];
+                seg.anomaliesIds = [...thisSeg.anomaliesIds];;
+                seg.photoURLs = [...thisSeg.photoURLs];;
+
                 if(seg instanceof Wall && thisSeg instanceof Wall){
                     seg.sinister = thisSeg.sinister;
                 }
@@ -1709,22 +1879,104 @@ export class SegNode {
 //     getNameTextContent: ()=>string
 // }
 
-export abstract class SheetDataEditable {
-    id:string="";
-    elementNameForRendering:string = "";
-    numero:string = "0";
-    nameTextVisibility:boolean = false;
-    nameTextPosition:Vector2D = {x:0, y:0};
-    nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
-    nameTextRotation:number = 0;
+// export interface SheetDataEditable {
+//     id:string="";
+//     elementNameForRendering:string = "";
+//     numero:string = "0";
+//     nameTextVisibility:boolean = false;
+//     nameTextPosition:Vector2D = {x:0, y:0};
+//     nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
+//     nameTextRotation:number = 0;
 
-    constructor(id:string){
-        this.id = id;
-    }
+//     constructor(id:string){
+//         this.id = id;
+//     }
 
-    getRef():string{
-        return this.elementNameForRendering+this.numero;
-    }
+//     getRef():string{
+//         return this.elementNameForRendering+this.numero;
+//     }
+
+//     // getNameTextContent():string{
+//     //     return "";
+//     // }
+
+
+
+// }
+
+export enum Material{
+    PVC, 
+    PVE, 
+    CUIVRE, 
+    FONTE, 
+    FIBROCIMENT, 
+    PE, 
+    PER, 
+    ZINC, 
+    ALU, 
+    PVC_RIGIDE, 
+    PVC_SOUPLE, 
+    INOX,
+    BETON,
+    UserInput
+}
+
+export enum Diameter{
+    _32,
+    _40, 
+    _50, 
+    _63, 
+    _80, 
+    _90, 
+    _10,
+    _100,
+    _110, 
+    _125,
+    _150, 
+    _200,
+    UserInput,
+}
+
+export enum Test{
+    Etancheite,
+    Ecoulement, 
+    PassageCamera,
+    DebitMetrique,
+    None
+}
+
+export enum Comment{
+    Good,
+    Bad, 
+    Anomaly,
+    RaisedIndex,
+    UserInput
+}
+
+export interface SheetDataEditable {
+    id:string;
+    elementNameForRendering:string;
+    numero:string;
+    nameTextVisibility:boolean;
+    nameTextPosition:Vector2D;
+    nameTextFontSize:number;
+    nameTextRotation:number;
+
+    availableDiameters:Diameter[];
+    availableMaterials:Material[];
+    availableTests:Test[];
+    availableComments:Comment[];
+
+    material: string | undefined;
+    diameter: number | undefined;
+    tests: Test[];
+    comment: string | undefined;
+    anomaliesIds: string[];
+    photoURLs: string[];
+
+
+    getRef():string;
+    
 
     // getNameTextContent():string{
     //     return "";
@@ -1735,7 +1987,7 @@ export abstract class SheetDataEditable {
 }
 
 
-export abstract class Seg extends SheetDataEditable{
+export abstract class Seg implements SheetDataEditable{
     id: string;
     // instantiatedSegClassName: SegClassName | undefined;
     // numero: string = "";
@@ -1753,7 +2005,6 @@ export abstract class Seg extends SheetDataEditable{
 
     constructor(nodes:[SegNode, SegNode]){
         const id = nodes[0].id + nodes[1].id;
-        super(id);
         // this.nodes = nodes.sort((a, b) => { 
         //     const sortedIds = [a.id, b.id].sort();
         //     const aIdIndex = sortedIds.findIndex(id => id === a.id);
@@ -1763,7 +2014,25 @@ export abstract class Seg extends SheetDataEditable{
         this.nodes = nodes;
         this.id = id;
     }
-
+    photoURLs: string[] = [];
+    availableDiameters: Diameter[] = [];
+    availableMaterials: Material[] = [];
+    availableTests: Test[] = [];
+    availableComments: Comment[] = [];
+    material: string | undefined;
+    diameter: number | undefined;
+    tests: Test[] = [];
+    comment: string | undefined;
+    anomaliesIds: string[] = [];
+    elementNameForRendering:string = "";
+    numero:string = "0";
+    nameTextVisibility:boolean = false;
+    nameTextPosition:Vector2D = {x:0, y:0};
+    nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
+    nameTextRotation:number = 0;
+    getRef():string{
+        return this.elementNameForRendering+(this.numero != "-1"?this.numero:"");
+    }
     // getNameTextContent():string{
     //     return "";
     // };
@@ -1849,6 +2118,16 @@ export abstract class Seg extends SheetDataEditable{
         segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
         segmentClone.nameTextFontSize = this.nameTextFontSize;
         segmentClone.nameTextRotation = this.nameTextRotation;
+        segmentClone.availableMaterials = [...this.availableMaterials];
+        segmentClone.availableComments = [...this.availableComments];
+        segmentClone.availableDiameters = [...this.availableDiameters];
+        segmentClone.availableTests = [...this.availableTests];
+        segmentClone.material = this.material;
+        segmentClone.diameter = this.diameter;
+        segmentClone.comment = this.comment;
+        segmentClone.tests = [...this.tests];
+        segmentClone.anomaliesIds = [...this.anomaliesIds];
+        segmentClone.photoURLs = [...this.photoURLs];
 
         segmentClone.sideline1Points = [
             new Position(this.sideline1Points[0].x, this.sideline1Points[0].y),
@@ -1859,6 +2138,27 @@ export abstract class Seg extends SheetDataEditable{
             new Position(this.sideline2Points[1].x, this.sideline2Points[1].y),
         ];
         return segmentClone;
+    }
+    finalizeClone(segmentClone:Seg){
+        segmentClone.numero = this.numero;
+        segmentClone.nameTextVisibility = this.nameTextVisibility;
+        segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
+        segmentClone.nameTextFontSize = this.nameTextFontSize;
+        segmentClone.nameTextRotation = this.nameTextRotation;
+        segmentClone.availableMaterials = [...this.availableMaterials];
+        segmentClone.availableComments = [...this.availableComments];
+        segmentClone.availableDiameters = [...this.availableDiameters];
+        segmentClone.availableTests = [...this.availableTests];
+        segmentClone.material = this.material;
+        segmentClone.diameter = this.diameter;
+        segmentClone.comment = this.comment;
+        segmentClone.tests = [...this.tests];
+        segmentClone.anomaliesIds = [...this.anomaliesIds];
+        segmentClone.photoURLs = [...this.photoURLs];;
+    }
+    getDefaultNameTextPosition():Vector2D{
+        const offset = 20;
+        return {x:this.nodes[0].position.x - offset, y:this.nodes[0].position.y};
     }
 }
 
@@ -1882,13 +2182,8 @@ export class Wall extends Seg{
 
     cloneWithoutNodes():Wall{        
         const segmentClone = this.createSeg();
-        segmentClone.id = this.id;
-        segmentClone.numero = this.numero;
+        this.finalizeClone(segmentClone);
         segmentClone.elementNameForRendering = this.elementNameForRendering;
-        segmentClone.nameTextVisibility = this.nameTextVisibility;
-        segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
-        segmentClone.nameTextFontSize = this.nameTextFontSize;
-        segmentClone.nameTextRotation = this.nameTextRotation;
         segmentClone.sinister = this.sinister;
 
         segmentClone.sideline1Points = [
@@ -1919,14 +2214,8 @@ export abstract class Res extends Seg{
 
     override cloneWithoutNodes():Res{        
         const segmentClone:Res = this.createSeg() as Res;
-        segmentClone.id = this.id;
-        segmentClone.numero = this.numero;
+        this.finalizeClone(segmentClone);
         segmentClone.elementNameForRendering = this.elementNameForRendering;
-        segmentClone.nameTextVisibility = this.nameTextVisibility;
-        segmentClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
-        segmentClone.nameTextFontSize = this.nameTextFontSize;
-        segmentClone.nameTextRotation = this.nameTextRotation;
-
         segmentClone.arrowStatus = this.arrowStatus;
 
         segmentClone.sideline1Points = [
@@ -2185,6 +2474,16 @@ export class SheetDataAgrDrain extends SheetDataRes {
     }
 }
 
+
+export class SheetDataSymbol extends SheetData {
+    // public readonly NAME: SheetDataChildClassName= SheetDataChildClassName.REU;
+    constructor(planElementId?:string){
+        super(planElementId);
+        // this.instantiatedSegClassName = this.NAME;
+    }
+}
+
+
 export type SegOnCreationData = {
     segClassName: SegClassName,
     numero: string,
@@ -2218,7 +2517,7 @@ export type AppDynamicProps = {
 
 
 
-export abstract class SymbolPlanElement extends PlanElement {
+export abstract class SymbolPlanElement extends PlanElement implements SheetDataEditable{
     position:Vector2D;
     size:Size = {width:50, height:50};
     scale:number = 1;
@@ -2228,10 +2527,36 @@ export abstract class SymbolPlanElement extends PlanElement {
         super(id);
         this.id = id;
         this.position = {x: position.x, y: position.y};
+        this.nameTextPosition = this.getDefaultNameTextPosition();
+    }
+    photoURLs: string[] = [];
+    availableDiameters: Diameter[] = [];
+    availableMaterials: Material[] = [];
+    availableTests: Test[] = [];
+    availableComments: Comment[] = [];
+    material: string | undefined;
+    diameter: number | undefined;
+    tests: Test[] = [];
+    comment: string | undefined;
+    anomaliesIds: string[] = [];
+    elementNameForRendering:string = "";
+    numero:string = "-1";
+    nameTextVisibility:boolean = false;
+    nameTextPosition:Vector2D;
+    nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
+    nameTextRotation:number = 0;
+    getRef():string{
+        return this.elementNameForRendering+(this.numero != "-1"?this.numero:"");
     }
 
     select(){
         this.isSelected = true;
+    }
+
+    getDefaultNameTextPosition():Vector2D{
+        return {
+            x: this.position.x + (this.size.width - this.nameTextFontSize /2 * (this.getRef().length - 2)) /2, 
+            y: this.position.y - this.nameTextFontSize };
     }
     override unselect(): void {
         this.isSelected = false;
@@ -2239,186 +2564,430 @@ export abstract class SymbolPlanElement extends PlanElement {
     override getSelected():boolean{
         return this.isSelected;
     }
+
+    override clone():SymbolPlanElement{
+        return this;
+    }
+
+    finalizeClone(symbolClone:SymbolPlanElement){
+        symbolClone.size = {width: this.size.width, height: this.size.height};
+        symbolClone.scale = this.scale;
+        symbolClone.isSelected = this.isSelected;
+        symbolClone.numero = this.numero;
+        symbolClone.nameTextVisibility = this.nameTextVisibility;
+        symbolClone.nameTextPosition = {x:this.nameTextPosition.x, y:this.nameTextPosition.y};
+        symbolClone.nameTextFontSize = this.nameTextFontSize;
+        symbolClone.nameTextRotation = this.nameTextRotation;
+        symbolClone.availableMaterials = [...this.availableMaterials];
+        symbolClone.availableComments = [...this.availableComments];
+        symbolClone.availableDiameters = [...this.availableDiameters];
+        symbolClone.availableTests = [...this.availableTests];
+        symbolClone.material = this.material;
+        symbolClone.diameter = this.diameter;
+        symbolClone.comment = this.comment;
+        symbolClone.tests = [...this.tests];
+        symbolClone.anomaliesIds = [...this.anomaliesIds];
+        symbolClone.photoURLs = [...this.photoURLs];
+    }
 }
 
-class A extends SymbolPlanElement{
+export class A extends SymbolPlanElement{
     public readonly NAME:string = "A";
     public readonly NAME_FOR_RENDERING:string = "Anomalie";
 
     override clone():A{
         const symbolClone = new A(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class DEP extends SymbolPlanElement{
+export class DEP extends SymbolPlanElement{
     public readonly NAME:string = "DEP";
     public readonly NAME_FOR_RENDERING:string = "Descente d'eau pluviale";
 
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableDiameters = [Diameter._80, Diameter._100, Diameter.UserInput];
+        this.availableMaterials = [
+            Material.ZINC,
+            Material.CUIVRE,
+            Material.CUIVRE,
+            Material.PVC,
+            Material.ALU,
+            Material.INOX,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
+        // this.material = this.availableMaterials[0];
+        // this.comment = this.availableComments[0];
+    }
+
     override clone():DEP{
         const symbolClone = new DEP(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class RVEP extends SymbolPlanElement{
+export class RVEP extends SymbolPlanElement{
     public readonly NAME:string = "RVEP";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux pluviales";
 
     override clone():RVEP{
         const symbolClone = new RVEP(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class RVEU extends SymbolPlanElement{
+export class RVEU extends SymbolPlanElement{
     public readonly NAME:string = "RVEU";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux usées"; 
 
     override clone():RVEU{
         const symbolClone = new RVEU(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class RB extends SymbolPlanElement{
+export class RB extends SymbolPlanElement{
     public readonly NAME:string = "RB";
     public readonly NAME_FOR_RENDERING:string = "Regard borgne"; 
 
     override clone():RB{
         const symbolClone = new RB(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class FS extends SymbolPlanElement{
+export class FS extends SymbolPlanElement{
     public readonly NAME:string = "FS";
     public readonly NAME_FOR_RENDERING:string = "Fosse sceptique"; 
 
     override clone():FS{
         const symbolClone = new FS(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class CR extends SymbolPlanElement{
+export class CR extends SymbolPlanElement{
     public readonly NAME:string = "CR";
     public readonly NAME_FOR_RENDERING:string = "Cuve récupération eau plvuiale"; 
 
     override clone():CR{
         const symbolClone = new CR(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class VAAEP extends SymbolPlanElement{
+export class VAAEP extends SymbolPlanElement{
     public readonly NAME:string = "VAAEP";
     public readonly NAME_FOR_RENDERING:string = "Vanne d'arrêt AEP"; 
 
     override clone():VAAEP{
         const symbolClone = new VAAEP(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class CAEP extends SymbolPlanElement{
+export class CAEP extends SymbolPlanElement{
     public readonly NAME:string = "Compteur AEP";
     public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
 
     override clone():CAEP{
         const symbolClone = new CAEP(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class Compass extends SymbolPlanElement{
+export class Compass extends SymbolPlanElement{
     public readonly NAME:string = "Compass";
     public readonly NAME_FOR_RENDERING:string = "Boussole"; 
 
     override clone():Compass{
         const symbolClone = new Compass(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class PoolSymbol extends SymbolPlanElement{
+export class PoolSymbol extends SymbolPlanElement{
     public readonly NAME:string = "Pool";
     public readonly NAME_FOR_RENDERING:string = "Piscine"; 
 
     override clone():PoolSymbol{
         const symbolClone = new PoolSymbol(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class Gate extends SymbolPlanElement{
+export class Gate extends SymbolPlanElement{
     public readonly NAME:string = "Gate";
     public readonly NAME_FOR_RENDERING:string = "Portail"; 
 
     override clone():Gate{
         const symbolClone = new Gate(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class Door extends SymbolPlanElement{
+export class Door extends SymbolPlanElement{
     public readonly NAME:string = "Door";
     public readonly NAME_FOR_RENDERING:string = "Porte"; 
 
     override clone():Door{
         const symbolClone = new Door(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
     }
 }
 
-class ADJ extends SymbolPlanElement{
+export class ADJ extends SymbolPlanElement{
     public readonly NAME:string = "ADJ";
     public readonly NAME_FOR_RENDERING:string = "Abri de jardin"; 
 
     override clone():ADJ{
         const symbolClone = new ADJ(this.id, {x:this.position.x, y:this.position.y});
-        symbolClone.size = {width: this.size.width, height: this.size.height};
-        symbolClone.scale = this.scale;
-        symbolClone.isSelected = this.isSelected;
+        symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
+        this.finalizeClone(symbolClone);
         return symbolClone;
+    }
+}
+
+
+export class SheetDataA extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataDEP extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataRVEP extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataRVEU extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataRB extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataFS extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataCR extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataVAAEP extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataCAEP extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataCompass extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataPoolSymbol extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataGate extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataDoor extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export class SheetDataADJ extends SheetDataSymbol {
+    constructor(planElementId?:string){
+        super(planElementId);
+    }
+}
+
+export abstract class EditableHelper{
+    static getMaterialName(material:Material):string{
+        switch(material){
+            case Material.PVC:
+                return "PVC";
+            case Material.PVE:
+                return "PVE";
+            case Material.CUIVRE:
+                return "CUIVRE";
+            case Material.FONTE:
+                return "FONTE";
+            case Material.FIBROCIMENT:
+                return "FIBROCIMENT";
+            case Material.PE:
+                return "PE";
+            case Material.PER:
+                return "PER";
+            case Material.ZINC:
+                return "ZINC";
+            case Material.ALU:
+                return "ALU";
+            case Material.PVC_RIGIDE:
+                return "PVC_RIGIDE";
+            case Material.PVC_SOUPLE:
+                return "PVC_SOUPLE";
+            case Material.INOX:
+                return "INOX";
+            case Material.BETON:
+                return "BETON";
+            case Material.UserInput:
+                return "Valeur saisie";
+        }
+    }
+    static diameterKeyToDiameterNumber(diameter:Diameter):number | string{
+        switch(diameter){
+            case Diameter._32:
+                return 32;
+            case Diameter._40:
+                return 40;           
+            case Diameter._50:
+                return 50;
+            case Diameter._63:
+                return 63;
+            case Diameter._80:
+                return 80;
+            case Diameter._90:
+                return 90;
+            case Diameter._10:
+                return 10;
+            case Diameter._100:
+                return 100;
+            case Diameter._110:
+                return 110;
+            case Diameter._125:
+                return 125;
+            case Diameter._150:
+                return 150;
+            case Diameter._200:
+                return 200;
+            case Diameter.UserInput:
+                return "Valeur saisie";
+        }
+    }
+
+    static diameterNumberToDiameterKey(diameter:number | undefined, concernedDiameters:Diameter[]):Diameter{
+        switch(diameter){
+            case 32:
+                return concernedDiameters.find(v => v === Diameter._32) ? Diameter._32 : Diameter.UserInput;
+            case 40:
+                return concernedDiameters.find(v => v === Diameter._40) ? Diameter._40 : Diameter.UserInput;          
+            case 50:
+                return concernedDiameters.find(v => v === Diameter._50) ? Diameter._50 : Diameter.UserInput;
+            case 63:
+                return concernedDiameters.find(v => v === Diameter._63) ? Diameter._63 : Diameter.UserInput;
+            case 80:
+                return concernedDiameters.find(v => v === Diameter._80) ? Diameter._80 : Diameter.UserInput;
+            case 90:
+                return concernedDiameters.find(v => v === Diameter._90) ? Diameter._90 : Diameter.UserInput;
+            case 10:
+                return concernedDiameters.find(v => v === Diameter._10) ? Diameter._10 : Diameter.UserInput;
+            case 100:
+                return concernedDiameters.find(v => v === Diameter._100) ? Diameter._100 : Diameter.UserInput;
+            case 110:
+                return concernedDiameters.find(v => v === Diameter._110) ? Diameter._110 : Diameter.UserInput;
+            case 125:
+                return concernedDiameters.find(v => v === Diameter._125) ? Diameter._125 : Diameter.UserInput;
+            case 150:
+                return concernedDiameters.find(v => v === Diameter._150) ? Diameter._150 : Diameter.UserInput;
+            case 200:
+                return concernedDiameters.find(v => v === Diameter._200) ? Diameter._200 : Diameter.UserInput;
+            default:
+                return Diameter.UserInput;
+        }
+    }
+
+    static getTestName(test:Test):string{
+        switch(test){
+            case Test.Etancheite:
+                return "Étanchéite";
+            case Test.Ecoulement:
+                return "Écoulement";
+            case Test.PassageCamera:
+                return "Passage caméra";
+            case Test.DebitMetrique:
+                return "Débit métrique";
+            case Test.None:
+                return "Pas de test";
+        }
+    }
+
+    static getCommentName(test:Comment):string{
+        switch(test){
+            case Comment.Good:
+                return "Bon état";
+            case Comment.Bad:
+                return "Mauvais état";
+            case Comment.Anomaly:
+                return "Anomalie";
+            case Comment.RaisedIndex:
+                return "Index relevé";
+            case Comment.UserInput:
+                return "Valeur saisie";
+        }
     }
 }

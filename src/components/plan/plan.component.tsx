@@ -14,6 +14,7 @@ import SegComponent from "../seg-component/seg-component.component";
 import { useAddSeg } from "@/custom-hooks/use-add-seg.hook";
 import RefText from "../ref-text/ref-text.component";
 import SymbolComponent from "../symbols/symbol.component";
+import jsPDF from "jspdf";
 
 
 export type JointSegsAndSegNodes ={
@@ -141,12 +142,39 @@ const Plan: React.FC = () => {
     useEffect(()=>{
         if(!(planMode === PlanMode.Export)) return;
         if(!stageToExportRef) return;
-        const uri = stageToExportRef.current.toDataURL({pixelRatio: 1});
-        downloadURI(uri, 'plan.png');
+        const stageToExport = stageToExportRef.current;
+        //FOR PNG:
+        // const uri = stageToExport.toDataURL({pixelRatio: 1});
+        // downloadURI(uri, 'plan.png');
         // console.log("stageRef.current.getSize()", stageRef.current.getSize());
         // console.log("stageRef.current.getPosition()", stageRef.current.getPosition());
 
+        //FOR PDF:
+        var pdf = new jsPDF('l', 'px', [stageToExport.width(), stageToExport.height()]);
+        pdf.setTextColor('#000000');
+        // first add texts
+        stageToExport.find('Text').forEach((text:any) => {
+          const size = text.fontSize() / 0.75; // convert pixels to points
+          pdf.setFontSize(size);
+          pdf.text(text.text(), text.x(), text.y(), {
+            baseline: 'top',
+            angle: -text.getAbsoluteRotation(),
+          });
+        });
+
+        // then put image on top of texts (so texts are not visible)
+        pdf.addImage(
+          stageToExport.toDataURL({ pixelRatio: 3 }),
+          0,
+          0,
+          stageToExport.width(),
+          stageToExport.height()
+        );
+
+        pdf.save('plan.pdf');
+
         dispatch(setPlanMode(PlanMode.Move));
+
     },[dispatch, planMode])
 
     useEffect(()=>{
@@ -424,7 +452,7 @@ const Plan: React.FC = () => {
                         key={i}
                         planElement={editableElement[0]}
                         editableElement = {editableElement[1]}
-                        setPointingOnSeg= {setPointingOnSeg}
+                        setPointingOnElement= {editableElement[0] instanceof SymbolPlanElement ? setPointingOnSymbol : setPointingOnSeg}
                     />
             }
         )
@@ -638,20 +666,13 @@ const Plan: React.FC = () => {
     const handleMovingSymbol = useCallback((newCursorPos: Position) => {
         if(!movingSymbol || !pointerStartPos) return;
 
-        const movingSymbolBeforeMoveClone = movingSymbol.symbol.clone();
-
-        // const cursorOffset = new Position(
-        //     newCursorPos.x - pointerStartPos.x,
-        //     newCursorPos.y - pointerStartPos.y
-        // );
-        // for(let i=0; i<2; i++){
-        //     movingSeg.segNodes[i].position.x = movingSeg.startingNodesPos[i].x + cursorOffset.x;
-        //     movingSeg.segNodes[i].position.y = movingSeg.startingNodesPos[i].y + cursorOffset.y;
-        // }
+        const dx= movingSymbol.symbol.position.x - movingSymbol.symbol.nameTextPosition.x;
+        const dy = movingSymbol.symbol.position.y - movingSymbol.symbol.nameTextPosition.y;
 
         movingSymbol.symbol.position = {x: newCursorPos.x - movingSymbol.pointerAndPositionOffset.x, y:newCursorPos.y - movingSymbol.pointerAndPositionOffset.y};
 
-        // movingSymbol.updateNameTextPositionAndAngle(movingSymbolBeforeMoveClone, movingSymbol); //function to implement
+        movingSymbol.symbol.nameTextPosition.x = movingSymbol.symbol.position.x - dx;
+        movingSymbol.symbol.nameTextPosition.y = movingSymbol.symbol.position.y - dy;
 
         dispatch(updatePlanElement(movingSymbol.symbol));
     }, [dispatch, movingSymbol, pointerStartPos]);
