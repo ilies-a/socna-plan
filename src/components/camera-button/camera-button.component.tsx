@@ -23,8 +23,8 @@ const CameraButton: React.FC<Props> = ({editable}) => {
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file) {
-        const base64Data = await convertToBase64(file);
-        console.log(base64Data); // Do something with the base64 data here
+        // const base64Data = await convertToBase64(file);
+        const base64Data = await compressImage(file);
         const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
         editable.photoURLs.push(base64Data);
         savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
@@ -39,7 +39,46 @@ const CameraButton: React.FC<Props> = ({editable}) => {
         reader.onerror = (error) => reject(error);
       });
     };
-  
+    const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 400;
+              const MAX_HEIGHT = 400;
+              let width = img.width;
+              let height = img.height;
+    
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+    
+              canvas.width = width;
+              canvas.height = height;
+    
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+    
+              const compressedBase64Data = canvas.toDataURL('image/jpeg', 0.5); // Adjust the quality level as needed
+    
+              resolve(compressedBase64Data);
+            };
+            img.src = event.target?.result as string;
+          };
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(file);
+        });
+      };
     return (
       <>
         <button onClick={handleButtonClick}>&#128247;</button>
