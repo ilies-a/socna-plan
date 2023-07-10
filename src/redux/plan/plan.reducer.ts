@@ -27,6 +27,7 @@ const INITIAL_STATE = {
   segOnCreationData: null as SegOnCreationData | null,
   allElementsWrapperCoordSize: undefined as CoordSize | undefined,
   stageRef: null as MutableRefObject<any> | null,
+  showAnomalies: true
   // pointingOnStage: false,
 };
 
@@ -152,6 +153,11 @@ const planReducer = (state = INITIAL_STATE, action: { type: any; payload: any; }
     //     ...state,
     //     pointingOnStage: action.payload
     //   };
+    case PlanActionTypes.SET_SHOW_ANOMALIES:
+      return {
+        ...state,
+        showAnomalies: action.payload
+      };
     default:
       return state;
   }

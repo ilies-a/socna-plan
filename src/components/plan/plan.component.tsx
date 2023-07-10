@@ -2,11 +2,11 @@ import { Group, Layer, Path, Rect, Shape, Stage, Line as KonvaLine, Circle, Text
 import styles from './plan.module.scss';
 import { v4 } from 'uuid';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable, Size, CoordSize, SymbolPlanElement } from "@/entities";
+import { Dimensions, Seg, PlanMode, PlanElement, PlanProps, Point, Position, PlanElementsHelper, JointSegs, TestPoint, SegNode, AddSegSession, MagnetData, PlanElementSheetData, Vector2D, PlanElementsRecordsHandler, JointSegsClassName, AllJointSegs, SegOnCreationData, AppDynamicProps, SheetDataEditable, Size, CoordSize, SymbolPlanElement, A } from "@/entities";
 import { cloneArray, getDistance, getMovingNodePositionWithMagnet, objToArr } from "@/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { addPlanElement, setAddSegSession, setAddingPointLineIdPointId, setAppDynamicProps, setMagnetData, setPlanCursorPos, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanElementsSnapshot, setPlanIsDragging, setPlanMode, setSegOnCreationData, setSelectingPlanElement, setStageRef, setUnselectAllOnPlanMouseUp, updatePlanElement, updatePlanProps } from "@/redux/plan/plan.actions";
-import { selectAddSegSession, selectAddingPointLineIdPointId, selectAllElementsWrapperCoordSize, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectStageRef, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
+import { selectAddSegSession, selectAddingPointLineIdPointId, selectAllElementsWrapperCoordSize, selectAppDynamicProps, selectLineToAdd, selectMagnetData, selectPlanCursorPos, selectPlanElementSheetData, selectPlanElements, selectPlanElementsRecords, selectPlanElementsSnapshot, selectPlanIsDragging, selectPlanMode, selectPlanPointerUpActionsHandler, selectSegOnCreationData, selectSelectingPlanElement, selectShowAnomalies, selectStageRef, selectTestPoints, selectUnselectAllOnPlanMouseUp } from "@/redux/plan/plan.selectors";
 import { LEFT_MENU_WIDTH_LARGE_SCREEN, LEFT_MENU_WIDTH_MEDIUM_SCREEN, NON_DAZZLING_WHITE, PLAN_HEIGHT_SCREEN_RATIO, PLAN_HORIZONTAL_MARGIN, PLAN_MARGIN_BOTTOM, PLAN_MARGIN_TOP, PLAN_VERTICAL_MARGIN, PLAN_WIDTH_SCREEN_RATIO, SCALE_MAX, SCALE_MIN, TOP_MENU_HEIGHT } from "@/global";
 import { useSavePlan } from "@/custom-hooks/use-save-plan.hook";
 import SegNodeComponent from "../seg-node/seg-node.component";
@@ -100,7 +100,8 @@ const Plan: React.FC = () => {
     const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
     const allElementsWrapperCoordSize: CoordSize = useSelector(selectAllElementsWrapperCoordSize);
     const [touches, setTouches] = useState<TouchList | null>(null);
-    
+    const showAnomalies: boolean = useSelector(selectShowAnomalies);
+
     useEffect(()=>{
         const handleResize = ()=>{
             console.log("resize")
@@ -337,7 +338,9 @@ const Plan: React.FC = () => {
             return ajs.jointSegs.map((js, i)=>{
                 return getJointSegsDrawings(js, i);
             });
-        }else if (el instanceof SymbolPlanElement) { //its a symbol
+        }else if (el instanceof SymbolPlanElement
+            && !(el instanceof A && !showAnomalies)
+            ) {
             return <SymbolComponent 
             key={el.id} 
             symbol={el as SymbolPlanElement}
@@ -361,7 +364,7 @@ const Plan: React.FC = () => {
         //         });
         //     };
         // }
-    },[getJointSegsDrawings, movingSymbol, pointerStartPos, pointingOnSeg]);
+    },[getJointSegsDrawings, movingSymbol, pointerStartPos, pointingOnSeg, showAnomalies]);
 
     const unselectAllPlanElements = useCallback(() => {
         if(!preventUnselectAllElements){
@@ -448,7 +451,7 @@ const Plan: React.FC = () => {
     const getPlanElementsNameTexts = useCallback(()=>{
         const editableElements:[PlanElement, SheetDataEditable][] = PlanElementsHelper.getEditableElements(planElements);
         return editableElements.map((editableElement, i) => {            
-            return <RefText 
+            return editableElement[0] instanceof A && !showAnomalies? null : <RefText 
                         key={i}
                         planElement={editableElement[0]}
                         editableElement = {editableElement[1]}
@@ -457,7 +460,7 @@ const Plan: React.FC = () => {
             }
         )
     
-    },[planElements]);
+    },[planElements, showAnomalies]);
 
 
     // function getDistance(p1:{ x: number; y: number; }, p2:{ x: number; y: number; }) {

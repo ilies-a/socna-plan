@@ -197,12 +197,12 @@ const PlanElementMenu: React.FC = () => {
   const createNewStandardSegOnCreationData = (segClassName:SegClassName):SegOnCreationData=>{
     return {
       segClassName: segClassName, 
-      numero:"0", 
-      resArrowStatus: ResArrowStatus.None,
-      nameTextVisibility: false,
-      nameTextFontSize: NAME_TEXT_DEFAULT_FONT_SIZE,
-      nameTextRotation: 0,
-      sinister:false,
+      // numero:"0", 
+      // resArrowStatus: ResArrowStatus.None,
+      // nameTextVisibility: false,
+      // nameTextFontSize: NAME_TEXT_DEFAULT_FONT_SIZE,
+      // nameTextRotation: 0,
+      // sinister:false,
     }
   }
 
@@ -248,12 +248,11 @@ const PlanElementMenu: React.FC = () => {
     dispatch(setSegOnCreationData(createNewStandardSegOnCreationData(SegClassName.AgrDrain)));
   },[dispatch]);
 
-
-  const handleClickOnAddDEP = useCallback(() =>{
+  const handleAddSymbol = useCallback((symbolName: SymbolName)=>{
     const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
     const addedSymbol = PlanElementsHelper.addSymbolElement(
       planElements, 
-      SymbolName.DEP,
+      symbolName,
       {
         x:(-appDynamicProps.planPosition.x + appDynamicProps.planSize.width/2) / appDynamicProps.planScale, 
         y:(-appDynamicProps.planPosition.y + appDynamicProps.planSize.height/2) / appDynamicProps.planScale
@@ -262,24 +261,21 @@ const PlanElementMenu: React.FC = () => {
     savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
     PlanElementsHelper.selectElement(planElements, addedSymbol);
     dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
+
   },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale, appDynamicProps.planSize.height, appDynamicProps.planSize.width, dispatch, planElements, savePlan]);
+
+  const handleClickOnAddDEP = useCallback(() =>{
+    handleAddSymbol(SymbolName.DEP)
+  },[handleAddSymbol]);
 
 
   const handleClickOnAddRVEP = useCallback(() =>{
-    const currentPlanElementsClone = PlanElementsHelper.clone(planElements);
-    const addedSymbol = PlanElementsHelper.addSymbolElement(
-      planElements, 
-      SymbolName.RVEP,
-      {
-        x:(-appDynamicProps.planPosition.x + appDynamicProps.planSize.width/2) / appDynamicProps.planScale, 
-        y:(-appDynamicProps.planPosition.y + appDynamicProps.planSize.height/2) / appDynamicProps.planScale
-      }
-      );
-    savePlan(currentPlanElementsClone, PlanElementsHelper.clone(planElements));
-    PlanElementsHelper.selectElement(planElements, addedSymbol);
-    dispatch(setPlanElements(PlanElementsHelper.clone(planElements)));
-  },[appDynamicProps.planPosition.x, appDynamicProps.planPosition.y, appDynamicProps.planScale, appDynamicProps.planSize.height, appDynamicProps.planSize.width, dispatch, planElements, savePlan]);
+    handleAddSymbol(SymbolName.RVEP)
+  },[handleAddSymbol]);
 
+  const handleClickOnAddAnomaly = useCallback(() =>{
+    handleAddSymbol(SymbolName.A)
+  },[handleAddSymbol]);
 
   const goBack = useCallback(()=>{
     // dispatch(setPlanElementSheetData(null));
@@ -316,7 +312,7 @@ const PlanElementMenu: React.FC = () => {
           <div className={styles['symbols-body']}>
             <PlanElementButton name="DEP" onClick={handleClickOnAddDEP}/>
             <PlanElementButton name="RVEP" onClick={handleClickOnAddRVEP}/>
-
+            <PlanElementButton name="Anomalie" onClick={handleClickOnAddAnomaly}/>
           </div>
         </div>
       }

@@ -108,6 +108,11 @@ export const selectStageRef= createSelector(
   (plan) => plan.stageRef
 );
 
+export const selectShowAnomalies= createSelector(
+  [selectPlan],
+  (plan) => plan.showAnomalies
+);
+
 // export const selectPointingOnStage= createSelector(
 //   [selectPlan],
 //   (plan) => plan.pointingOnStage

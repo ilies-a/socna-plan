@@ -2,7 +2,7 @@
 import { Dispatch, MouseEventHandler, ReactNode, SetStateAction, useCallback, useEffect, useState } from "react";
 import styles from './plan-menu-button.module.scss';
 import Image from "next/image";
-import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData, Res, ResArrowStatus, AppDynamicProps, Gutter, Wall, SymbolPlanElement, DEP, RVEP } from "@/entities";
+import { AddSegSession, Dimensions, JointSegs, MagnetData, PlanElement, PlanElementSheetData, PlanElementsHelper, PlanMode, PlanProps, Position, TestPoint, Vector2D, Seg, SegNode, iconDataArr, SegOnCreationData, Res, ResArrowStatus, AppDynamicProps, Gutter, Wall, SymbolPlanElement, DEP, RVEP, A } from "@/entities";
 import { Arrow, Group, Path, Rect, Text } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
 import { setAddSegSession, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsSnapshot, setTestPoints, updatePlanElement } from "@/redux/plan/plan.actions";
@@ -15,6 +15,7 @@ import ArrowDrawing from "../arrow-drawing/arrow-drawing.component";
 import { SELECTED_ITEM_COLOR } from "@/global";
 import DEPComponent from "./dep/dep.component";
 import RVEPComponent from "./rvep/rvep.component";
+import AnomalyComponent from "./anomaly/anomaly.component";
 
 type Props = {
     symbol: SymbolPlanElement,
@@ -41,6 +42,11 @@ const SymbolComponent: React.FC<Props> = ({symbol, setPointingOnSymbol, movingSy
         }else if(symbol instanceof RVEP){
             return <RVEPComponent
             size = {symbol.size}
+            scale = {symbol.scale}
+            selected = {symbol.isSelected}
+        />;
+        }else if(symbol instanceof A){
+            return <AnomalyComponent
             scale = {symbol.scale}
             selected = {symbol.isSelected}
         />;

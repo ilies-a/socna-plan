@@ -97,19 +97,19 @@ export function useAddSeg() {
         )
     ));
 
-    if(!segOnCreationData) return false; //should throw error
-    addedSeg.numero = segOnCreationData.numero;
-    addedSeg.nameTextVisibility = segOnCreationData.nameTextVisibility;
-    addedSeg.nameTextFontSize = segOnCreationData.nameTextFontSize;
-    addedSeg.nameTextRotation = segOnCreationData.nameTextRotation;
-    addedSeg.nameTextPosition = {x:addedSeg.nodes[0].position.x, y:addedSeg.nodes[0].position.y};
-    if(addedSeg instanceof Wall){
-        addedSeg.sinister = segOnCreationData.sinister;
-    }
+    // if(!segOnCreationData) return false; //should throw error
+    // addedSeg.numero = segOnCreationData.numero;
+    // addedSeg.nameTextVisibility = segOnCreationData.nameTextVisibility;
+    // addedSeg.nameTextFontSize = segOnCreationData.nameTextFontSize;
+    // addedSeg.nameTextRotation = segOnCreationData.nameTextRotation;
+    // addedSeg.nameTextPosition = {x:addedSeg.nodes[0].position.x, y:addedSeg.nodes[0].position.y};
+    // if(addedSeg instanceof Wall){
+    //     addedSeg.sinister = segOnCreationData.sinister;
+    // }
 
-    if(addedSeg instanceof Res){
-        (addedSeg as Res).arrowStatus = segOnCreationData.resArrowStatus;
-    }
+    // if(addedSeg instanceof Res){
+    //     (addedSeg as Res).arrowStatus = segOnCreationData.resArrowStatus;
+    // }
     
     dispatch(updatePlanElement(PlanElementsHelper.getAllJointSegs(planElements)));
     return true;

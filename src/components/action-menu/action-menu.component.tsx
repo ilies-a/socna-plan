@@ -1,6 +1,6 @@
 import { AppDynamicProps, MagnetData, PlanElement, PlanElementsHelper, PlanElementsRecordsHandler, PlanMode, PlanProps, Point, Position } from "@/entities";
-import { addPlanElement, setAllElementsWrapperCoordSize, setAppDynamicProps, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, updatePlanElement } from "@/redux/plan/plan.actions";
-import { selectAppDynamicProps, selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectStageRef } from "@/redux/plan/plan.selectors";
+import { addPlanElement, setAllElementsWrapperCoordSize, setAppDynamicProps, setMagnetData, setPlanElementSheetData, setPlanElements, setPlanElementsRecords, setPlanMode, setSelectingPlanElement, setShowAnomalies, updatePlanElement } from "@/redux/plan/plan.actions";
+import { selectAppDynamicProps, selectMagnetData, selectPlanElements, selectPlanElementsRecords, selectPlanMode, selectShowAnomalies, selectStageRef } from "@/redux/plan/plan.selectors";
 import { MutableRefObject, useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Group } from "react-konva";
 import { useDispatch, useSelector } from "react-redux";
@@ -22,6 +22,8 @@ const ActionMenu: React.FC = () => {
   const dispatch = useDispatch();
   const appDynamicProps: AppDynamicProps = useSelector(selectAppDynamicProps);
   const stageRef = useSelector(selectStageRef);
+  const showAnomalies: boolean = useSelector(selectShowAnomalies);
+
 
   const toPreviousRecord = useCallback(()=>{
     if(planElementsRecords.currentRecordIndex === 0 ) return;
@@ -257,6 +259,10 @@ const ActionMenu: React.FC = () => {
     dispatch(setAppDynamicProps(newAppDynamicProps));
   },[appDynamicProps, dispatch, stageRef]);
 
+  const toggleShowAnomalies = useCallback(()=>{
+    dispatch(setShowAnomalies(!showAnomalies));
+  },[dispatch, showAnomalies]);
+
   return (
     <div className={styles['main']}
       style={{"height":""+TOP_MENU_HEIGHT+"px"}}
@@ -273,6 +279,7 @@ const ActionMenu: React.FC = () => {
         <PlanMenuButton iconFileName="magnet.png" handleOnClick={toggleActivateMagnet} active={magnetData.activeOnAxes} available={true}/>
         <PlanMenuButton iconFileName="zoom-in.png" handleOnClick={zoomIn} active={false} available={true}/>
         <PlanMenuButton iconFileName="zoom-out.png" handleOnClick={zoomOut} active={false} available={true}/>
+        <PlanMenuButton iconFileName="show-anomalies.png" handleOnClick={toggleShowAnomalies} active={showAnomalies} available={true}/>
         <PlanMenuButton iconFileName="export.png" handleOnClick={handleExport} active={false} available={true}/>
       </div>
       {/* {

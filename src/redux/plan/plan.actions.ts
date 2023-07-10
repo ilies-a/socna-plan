@@ -112,6 +112,12 @@ export const setStageRef = (stageRef: MutableRefObject<any> ) => ({
   payload: stageRef,
 });
 
+export const setShowAnomalies = (showAnomalies: boolean ) => ({
+  type: PlanActionTypes.SET_SHOW_ANOMALIES,
+  payload: showAnomalies,
+});
+
+
 // export const setPointingOnStage = (pointingOnStage: boolean ) => ({
 //   type: PlanActionTypes.SET_POINTING_ON_STAGE,
 //   payload: pointingOnStage,

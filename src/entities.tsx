@@ -295,6 +295,37 @@ export class PlanElementsHelper {
         const symbolIndex = this.findElementIndexById(planElements, symbolId);
         planElements.splice(symbolIndex, 1);
     }
+
+    static getAnomalies(planElements:PlanElement[]):A[]{
+        const anomalies = [];
+        for(const planEl of planElements){
+            if(planEl instanceof A){
+                anomalies.push(planEl);
+            }
+        }
+        return anomalies;
+    }
+
+    static removeAnomalyIdFromAllElements(planElements:PlanElement[], anomalyId:string){
+        const removeAnomalyId = (editable:SheetDataEditable)=>{
+            const anomalyIdx = editable.anomaliesIds.findIndex(id => id === anomalyId);
+            if(anomalyIdx != -1){
+                editable.anomaliesIds.splice(anomalyIdx, 1);
+            }
+        }
+        for(const planEl of planElements){
+            if(planEl instanceof AllJointSegs){
+                for(const jointSegsItem of planEl.jointSegs){
+                    for(const segId in jointSegsItem.segs){
+                        removeAnomalyId(jointSegsItem.segs[segId])
+                    }
+                }
+            }else if(planEl instanceof SymbolPlanElement){
+                removeAnomalyId(planEl)
+
+            }
+        }
+    }
 }
 
 
@@ -438,7 +469,7 @@ export const iconDataArr:IconData[] = [
     new IconData("export.png", new Dimensions(50,50)),
     new IconData("zoom-in.png", new Dimensions(50,50)),
     new IconData("zoom-out.png", new Dimensions(50,50)),
-
+    new IconData("show-anomalies.png", new Dimensions(50,50)),
   ];
 
 
@@ -1917,8 +1948,7 @@ export enum Material{
     PVC_RIGIDE, 
     PVC_SOUPLE, 
     INOX,
-    BETON,
-    UserInput
+    BETON
 }
 
 export enum Diameter{
@@ -1941,6 +1971,7 @@ export enum Test{
     Etancheite,
     Ecoulement, 
     PassageCamera,
+    Pression,
     DebitMetrique,
     None
 }
@@ -1949,7 +1980,7 @@ export enum Comment{
     Good,
     Bad, 
     Anomaly,
-    RaisedIndex,
+    IndexCollected,
     UserInput
 }
 
@@ -2031,7 +2062,7 @@ export abstract class Seg implements SheetDataEditable{
     nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
     nameTextRotation:number = 0;
     getRef():string{
-        return this.elementNameForRendering+(this.numero != "-1"?this.numero:"");
+        return this.elementNameForRendering+(this.numero != "0"?this.numero:"");
     }
     // getNameTextContent():string{
     //     return "";
@@ -2238,6 +2269,42 @@ export class REP extends Res{
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
+        this.availableDiameters = [
+            Diameter._32, 
+            Diameter._40, 
+            Diameter._50, 
+            Diameter._63, 
+            Diameter._80, 
+            Diameter._90, 
+            Diameter._10, 
+            Diameter._110, 
+            Diameter._125, 
+            Diameter._150, 
+            Diameter._200, 
+            Diameter.UserInput
+        ];
+        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
+        this.availableMaterials = [
+            Material.ZINC,
+            Material.CUIVRE,
+            Material.PVC,
+            Material.ALU,
+            Material.INOX,
+        ];
+        this.material = EditableHelper.materialKeyToMaterialString(this.availableMaterials[0]);
+        this.availableTests = [
+            Test.Etancheite,
+            Test.Ecoulement,
+            Test.PassageCamera,
+            Test.None,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
     }
 
     override createSeg():REP{
@@ -2253,6 +2320,34 @@ export class REU extends Res{
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
+        this.availableDiameters = [
+            Diameter._32, 
+            Diameter._40, 
+            Diameter._50, 
+            Diameter._63, 
+            Diameter._80, 
+            Diameter._90, 
+            Diameter._10, 
+            Diameter._110, 
+            Diameter._125, 
+            Diameter._150, 
+            Diameter._200, 
+            Diameter.UserInput
+        ];
+        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
+        this.availableTests = [
+            Test.Etancheite,
+            Test.Ecoulement,
+            Test.PassageCamera,
+            Test.None,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
     }
 
     override createSeg():REU{
@@ -2268,6 +2363,29 @@ export class AEP extends Res{
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
+        this.availableDiameters = [
+            Diameter.UserInput
+        ];
+        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
+        this.availableMaterials = [
+            Material.PE,
+            Material.PER,
+            Material.CUIVRE,
+        ];
+        this.material = EditableHelper.materialKeyToMaterialString(this.availableMaterials[0]);
+        this.availableTests = [
+            Test.Etancheite,
+            Test.Pression,
+            Test.DebitMetrique,
+            Test.None,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
     }
 
     override createSeg():AEP{
@@ -2283,6 +2401,20 @@ export class Gutter extends Res{
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
+        this.availableMaterials = [
+            Material.ZINC,
+            Material.CUIVRE,
+            Material.ALU,
+            Material.INOX,
+        ];
+        this.material = EditableHelper.materialKeyToMaterialString(this.availableMaterials[0]);
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
     }
 
     override createSeg():Gutter{
@@ -2298,6 +2430,29 @@ export class Pool extends Res{
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
+        this.availableDiameters = [
+            Diameter.UserInput
+        ];
+        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
+        this.availableMaterials = [
+            Material.PVC_RIGIDE,
+            Material.PVC_SOUPLE,
+        ];
+        this.material = EditableHelper.materialKeyToMaterialString(this.availableMaterials[0]);
+        this.availableTests = [
+            Test.Etancheite,
+            Test.Pression,
+            Test.DebitMetrique,
+            Test.PassageCamera,
+            Test.None,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
     }
 
     override createSeg():Pool{
@@ -2328,6 +2483,13 @@ export class AgrDrain extends Res{
         super(nodes);
         this.elementNameForRendering = this.NAME_FOR_RENDERING;
         this.setSidelinesPoints();
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
     }
 
     override createSeg():AgrDrain{
@@ -2486,13 +2648,58 @@ export class SheetDataSymbol extends SheetData {
 
 export type SegOnCreationData = {
     segClassName: SegClassName,
-    numero: string,
-    nameTextVisibility: boolean,
-    resArrowStatus: ResArrowStatus,
-    nameTextFontSize: number,
-    nameTextRotation: number,
-    sinister: boolean,
+    // numero: string,
+    // nameTextVisibility: boolean,
+    // resArrowStatus: ResArrowStatus,
+    // nameTextFontSize: number,
+    // nameTextRotation: number,
+    // sinister: boolean,
 }
+
+// export class SegOnCreationData2 implements SheetDataEditable {
+//     segClassName: SegClassName;
+//     resArrowStatus: ResArrowStatus;
+//     sinister: boolean;
+//     elementNameForRendering: string;
+//     numero: string;
+//     nameTextVisibility: boolean;
+//     nameTextPosition: Vector2D;
+//     nameTextFontSize: number;
+//     nameTextRotation: number;
+//     availableDiameters: Diameter[];
+//     availableMaterials: Material[];
+//     availableTests: Test[];
+//     availableComments: Comment[];
+//     material: string | undefined;
+//     diameter: number | undefined;
+//     tests: Test[];
+//     comment: string | undefined;
+//     anomaliesIds: string[];
+//     photoURLs: string[];
+
+//     constructor(
+//         segClassName: SegClassName,
+//         numero: string,
+//         nameTextVisibility: boolean,
+//         resArrowStatus: ResArrowStatus,
+//         nameTextFontSize: number,
+//         nameTextRotation: number,
+//         sinister: boolean,
+//         ){
+//         this.segClassName = segClassName;
+//         this.numero = numero;
+//         this.nameTextVisibility = nameTextVisibility;
+//         this.resArrowStatus = resArrowStatus;
+//         this.nameTextFontSize = nameTextFontSize;
+//         this.nameTextRotation = nameTextRotation;
+//         this.sinister = sinister;
+//     }
+
+//     getRef(): string {
+//         throw new Error('Method not implemented.');
+//     }
+
+// }
 
 export type Size = {
     width: number,
@@ -2540,13 +2747,13 @@ export abstract class SymbolPlanElement extends PlanElement implements SheetData
     comment: string | undefined;
     anomaliesIds: string[] = [];
     elementNameForRendering:string = "";
-    numero:string = "-1";
+    numero:string = "0";
     nameTextVisibility:boolean = false;
     nameTextPosition:Vector2D;
     nameTextFontSize:number = NAME_TEXT_DEFAULT_FONT_SIZE;
     nameTextRotation:number = 0;
     getRef():string{
-        return this.elementNameForRendering+(this.numero != "-1"?this.numero:"");
+        return this.elementNameForRendering+(this.numero != "0"?this.numero:"");
     }
 
     select(){
@@ -2593,7 +2800,13 @@ export abstract class SymbolPlanElement extends PlanElement implements SheetData
 
 export class A extends SymbolPlanElement{
     public readonly NAME:string = "A";
-    public readonly NAME_FOR_RENDERING:string = "Anomalie";
+    public readonly NAME_FOR_RENDERING:string = "A";
+
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.nameTextVisibility = true;
+        this.numero = "1";
+    }
 
     override clone():A{
         const symbolClone = new A(this.id, {x:this.position.x, y:this.position.y});
@@ -2610,21 +2823,23 @@ export class DEP extends SymbolPlanElement{
     constructor(id:string, position:Vector2D){
         super(id, position);
         this.availableDiameters = [Diameter._80, Diameter._100, Diameter.UserInput];
+        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
         this.availableMaterials = [
             Material.ZINC,
-            Material.CUIVRE,
             Material.CUIVRE,
             Material.PVC,
             Material.ALU,
             Material.INOX,
         ];
+        this.material = EditableHelper.materialKeyToMaterialString(this.availableMaterials[0]);
         this.availableComments = [
             Comment.Good,
             Comment.Bad,
             Comment.Anomaly,
             Comment.UserInput,
         ];
-        this.diameter = EditableHelper.diameterKeyToDiameterNumber(this.availableDiameters[0]) as number;
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+
         // this.material = this.availableMaterials[0];
         // this.comment = this.availableComments[0];
     }
@@ -2641,6 +2856,20 @@ export class RVEP extends SymbolPlanElement{
     public readonly NAME:string = "RVEP";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux pluviales";
 
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableTests = [
+            Test.Etancheite,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
+
     override clone():RVEP{
         const symbolClone = new RVEP(this.id, {x:this.position.x, y:this.position.y});
         symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
@@ -2653,6 +2882,20 @@ export class RVEU extends SymbolPlanElement{
     public readonly NAME:string = "RVEU";
     public readonly NAME_FOR_RENDERING:string = "Regard de visite d'eaux usées"; 
 
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableTests = [
+            Test.Etancheite,
+        ];
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
+    
     override clone():RVEU{
         const symbolClone = new RVEU(this.id, {x:this.position.x, y:this.position.y});
         symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
@@ -2664,6 +2907,17 @@ export class RVEU extends SymbolPlanElement{
 export class RB extends SymbolPlanElement{
     public readonly NAME:string = "RB";
     public readonly NAME_FOR_RENDERING:string = "Regard borgne"; 
+
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
 
     override clone():RB{
         const symbolClone = new RB(this.id, {x:this.position.x, y:this.position.y});
@@ -2677,6 +2931,17 @@ export class FS extends SymbolPlanElement{
     public readonly NAME:string = "FS";
     public readonly NAME_FOR_RENDERING:string = "Fosse sceptique"; 
 
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
+
     override clone():FS{
         const symbolClone = new FS(this.id, {x:this.position.x, y:this.position.y});
         symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
@@ -2688,6 +2953,17 @@ export class FS extends SymbolPlanElement{
 export class CR extends SymbolPlanElement{
     public readonly NAME:string = "CR";
     public readonly NAME_FOR_RENDERING:string = "Cuve récupération eau plvuiale"; 
+
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
 
     override clone():CR{
         const symbolClone = new CR(this.id, {x:this.position.x, y:this.position.y});
@@ -2701,6 +2977,17 @@ export class VAAEP extends SymbolPlanElement{
     public readonly NAME:string = "VAAEP";
     public readonly NAME_FOR_RENDERING:string = "Vanne d'arrêt AEP"; 
 
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
+
     override clone():VAAEP{
         const symbolClone = new VAAEP(this.id, {x:this.position.x, y:this.position.y});
         symbolClone.elementNameForRendering = this.NAME_FOR_RENDERING;
@@ -2710,8 +2997,16 @@ export class VAAEP extends SymbolPlanElement{
 }
 
 export class CAEP extends SymbolPlanElement{
-    public readonly NAME:string = "Compteur AEP";
-    public readonly NAME_FOR_RENDERING:string = "Anomalie"; 
+    public readonly NAME:string = "CAEP";
+    public readonly NAME_FOR_RENDERING:string = "Compteur AEP"; 
+
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableComments = [
+            Comment.IndexCollected,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
 
     override clone():CAEP{
         const symbolClone = new CAEP(this.id, {x:this.position.x, y:this.position.y});
@@ -2760,6 +3055,17 @@ export class Gate extends SymbolPlanElement{
 export class Door extends SymbolPlanElement{
     public readonly NAME:string = "Door";
     public readonly NAME_FOR_RENDERING:string = "Porte"; 
+
+    constructor(id:string, position:Vector2D){
+        super(id, position);
+        this.availableComments = [
+            Comment.Good,
+            Comment.Bad,
+            Comment.Anomaly,
+            Comment.UserInput,
+        ];
+        this.comment = EditableHelper.commentKeyToCommentString(this.availableComments[0], false);
+    }
 
     override clone():Door{
         const symbolClone = new Door(this.id, {x:this.position.x, y:this.position.y});
@@ -2895,10 +3201,40 @@ export abstract class EditableHelper{
                 return "INOX";
             case Material.BETON:
                 return "BETON";
-            case Material.UserInput:
+        }
+    }
+    static getTestName(test:Test):string{
+        switch(test){
+            case Test.Etancheite:
+                return "Étanchéite";
+            case Test.Ecoulement:
+                return "Écoulement";
+            case Test.PassageCamera:
+                return "Passage caméra";
+            case Test.Pression:
+                return "Pression";
+            case Test.DebitMetrique:
+                return "Débit métrique";
+            case Test.None:
+                return "Pas de test";
+        }
+    }
+
+    static getCommentName(test:Comment):string{
+        switch(test){
+            case Comment.Good:
+                return "Bon état";
+            case Comment.Bad:
+                return "Mauvais état";
+            case Comment.Anomaly:
+                return "Anomalie";
+            case Comment.IndexCollected:
+                return "Index relevé";
+            case Comment.UserInput:
                 return "Valeur saisie";
         }
     }
+
     static diameterKeyToDiameterNumber(diameter:Diameter):number | string{
         switch(diameter){
             case Diameter._32:
@@ -2933,61 +3269,162 @@ export abstract class EditableHelper{
     static diameterNumberToDiameterKey(diameter:number | undefined, concernedDiameters:Diameter[]):Diameter{
         switch(diameter){
             case 32:
-                return concernedDiameters.find(v => v === Diameter._32) ? Diameter._32 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._32) != undefined ? Diameter._32 : Diameter.UserInput;
             case 40:
-                return concernedDiameters.find(v => v === Diameter._40) ? Diameter._40 : Diameter.UserInput;          
+                return concernedDiameters.find(v => v === Diameter._40) != undefined ? Diameter._40 : Diameter.UserInput;          
             case 50:
-                return concernedDiameters.find(v => v === Diameter._50) ? Diameter._50 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._50) != undefined ? Diameter._50 : Diameter.UserInput;
             case 63:
-                return concernedDiameters.find(v => v === Diameter._63) ? Diameter._63 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._63) != undefined ? Diameter._63 : Diameter.UserInput;
             case 80:
-                return concernedDiameters.find(v => v === Diameter._80) ? Diameter._80 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._80) != undefined ? Diameter._80 : Diameter.UserInput;
             case 90:
-                return concernedDiameters.find(v => v === Diameter._90) ? Diameter._90 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._90) != undefined ? Diameter._90 : Diameter.UserInput;
             case 10:
-                return concernedDiameters.find(v => v === Diameter._10) ? Diameter._10 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._10) != undefined ? Diameter._10 : Diameter.UserInput;
             case 100:
-                return concernedDiameters.find(v => v === Diameter._100) ? Diameter._100 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._100) != undefined ? Diameter._100 : Diameter.UserInput;
             case 110:
-                return concernedDiameters.find(v => v === Diameter._110) ? Diameter._110 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._110) != undefined ? Diameter._110 : Diameter.UserInput;
             case 125:
-                return concernedDiameters.find(v => v === Diameter._125) ? Diameter._125 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._125) != undefined ? Diameter._125 : Diameter.UserInput;
             case 150:
-                return concernedDiameters.find(v => v === Diameter._150) ? Diameter._150 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._150) != undefined ? Diameter._150 : Diameter.UserInput;
             case 200:
-                return concernedDiameters.find(v => v === Diameter._200) ? Diameter._200 : Diameter.UserInput;
+                return concernedDiameters.find(v => v === Diameter._200) != undefined ? Diameter._200 : Diameter.UserInput;
             default:
                 return Diameter.UserInput;
         }
     }
 
-    static getTestName(test:Test):string{
-        switch(test){
-            case Test.Etancheite:
-                return "Étanchéite";
-            case Test.Ecoulement:
-                return "Écoulement";
-            case Test.PassageCamera:
-                return "Passage caméra";
-            case Test.DebitMetrique:
-                return "Débit métrique";
-            case Test.None:
-                return "Pas de test";
+    static materialKeyToMaterialString(material:Material):string{
+        switch(material){
+            case Material.PVC:
+                return "PVC";
+            case Material.PVE:
+                return "PVE";
+            case Material.CUIVRE:
+                return "CUIVRE";
+            case Material.FONTE:
+                return "FONTE";
+            case Material.FIBROCIMENT:
+                return "FIBROCIMENT";
+            case Material.PE:
+                return "PE";
+            case Material.PER:
+                return "PER";
+            case Material.ZINC:
+                return "ZINC";
+            case Material.ALU:
+                return "ALU";
+            case Material.PVC_RIGIDE:
+                return "PVC_RIGIDE";
+            case Material.PVC_SOUPLE:
+                return "PVC_SOUPLE";
+            case Material.INOX:
+                return "INOX";
+            case Material.BETON:
+                return "BETON";
         }
     }
 
-    static getCommentName(test:Comment):string{
+    static materialStringToMaterialKey(material:string | undefined, concernedMaterials:Material[]):Material{
+        const defaultVal = concernedMaterials[0];
+        switch(material){
+            case "PVC":
+                return concernedMaterials.find(v => v === Material.PVC) != undefined ? Material.PVC : defaultVal;
+            case "PVE":
+                return concernedMaterials.find(v => v === Material.PVE) != undefined ? Material.PVE : defaultVal;          
+            case "CUIVRE":
+                return concernedMaterials.find(v => v === Material.CUIVRE) != undefined ? Material.CUIVRE : defaultVal;
+            case "FONTE":
+                return concernedMaterials.find(v => v === Material.FONTE) != undefined ? Material.FONTE : defaultVal;
+            case "FIBROCIMENT":
+                return concernedMaterials.find(v => v === Material.FIBROCIMENT) != undefined ? Material.FIBROCIMENT : defaultVal;
+            case "PE":
+                return concernedMaterials.find(v => v === Material.PE) != undefined ? Material.PE : defaultVal;
+            case "PER":
+                return concernedMaterials.find(v => v === Material.PER) != undefined ? Material.PER : defaultVal;
+            case "ZINC":
+                return concernedMaterials.find(v => v === Material.ZINC) != undefined ? Material.ZINC : defaultVal;
+            case "ALU":
+                return concernedMaterials.find(v => v === Material.ALU) != undefined ? Material.ALU : defaultVal;
+            case "PVC_RIGIDE":
+                return concernedMaterials.find(v => v === Material.PVC_RIGIDE) != undefined ? Material.PVC_RIGIDE : defaultVal;
+            case "INOX":
+                return concernedMaterials.find(v => v === Material.INOX) != undefined ? Material.INOX : defaultVal;
+            case "BETON":
+                return concernedMaterials.find(v => v === Material.BETON) != undefined ? Material.BETON : defaultVal;
+            default:
+                return defaultVal;
+        }
+    }
+
+    static testKeyToTestString(test:Test):string{
         switch(test){
+            case Test.Etancheite:
+                return "Étanchéité"
+            case Test.Ecoulement:
+                return "Écoulement"
+            case Test.PassageCamera:
+                return "Passage caméra"
+            case Test.Pression:
+                return "Pression"
+            case Test.DebitMetrique:
+                return "Débit métrique"
+            case Test.None:
+                return "Pas de test"
+        }
+    }
+
+    static testStringToTestKey(test:string | undefined, concernedTests:Test[]):Test{
+        const defaultVal = concernedTests[0];
+
+        switch(test){
+            case "Étanchéité":
+                return concernedTests.find(v => v === Test.Etancheite) != undefined ? Test.Etancheite : defaultVal;
+            case "Écoulement":
+                return concernedTests.find(v => v === Test.Ecoulement) != undefined ? Test.Ecoulement : defaultVal;          
+            case "Passage caméra":
+                return concernedTests.find(v => v === Test.PassageCamera) != undefined ? Test.PassageCamera : defaultVal;
+            case "Pression":
+                return concernedTests.find(v => v === Test.Pression) != undefined ? Test.Pression : defaultVal;
+            case "Débit métrique":
+                return concernedTests.find(v => v === Test.DebitMetrique) != undefined ? Test.DebitMetrique : defaultVal;
+            case "Pas de test":
+                return concernedTests.find(v => v === Test.None) != undefined ? Test.None : defaultVal;
+            default:
+                return defaultVal;
+        }
+    }
+
+    static commentKeyToCommentString(comment:Comment, userInputLabel:boolean):string{
+        switch(comment){
             case Comment.Good:
                 return "Bon état";
             case Comment.Bad:
-                return "Mauvais état";
+                return "Mauvais état";           
             case Comment.Anomaly:
                 return "Anomalie";
-            case Comment.RaisedIndex:
-                return "Index relevé";
+            case Comment.IndexCollected:
+                    return "Index relevé";
             case Comment.UserInput:
-                return "Valeur saisie";
+                return userInputLabel?"Valeur saisie":"";
+        }
+    }
+
+    static commentStringToCommentKey(comment:string | undefined, concernedComments:Comment[]):Comment{
+        switch(comment){
+            case "Bon état":
+                return concernedComments.find(v => v === Comment.Good) != undefined ? Comment.Good : Comment.UserInput;
+            case "Mauvais état":
+                return concernedComments.find(v => v === Comment.Bad) != undefined ? Comment.Bad : Comment.UserInput;          
+            case "Anomalie":
+                return concernedComments.find(v => v === Comment.Anomaly) != undefined ? Comment.Anomaly : Comment.UserInput;
+            case "Index relevé":
+                return concernedComments.find(v => v === Comment.IndexCollected) != undefined ? Comment.IndexCollected : Comment.UserInput;
+            default:
+                return Comment.UserInput;
         }
     }
 }
